@@ -22,6 +22,7 @@ export interface CardView {
   timestamp: string;
   href: string | null; // null = no published article yet → render as a non-link (graceful)
   topic: string;           // raw topic for editorial rules (e.g. sports lead cap)
+  country: string;         // ISO2 country code (or 'XX') — used to place the Around-the-World map pin
   independentSources: number;
   freshnessSeconds: number; // age of the story for editorial lead rules (e.g. freshness cap)
   pinned: boolean;          // editor-pinned top headline — exempt from the auto lead rules
@@ -77,6 +78,7 @@ export function toCardView(card: StoryCard): CardView {
     timestamp: relativeTime(card.publishedSeconds ?? card.freshnessSeconds),
     href: card.hasArticle ? `/long-read/${card.id}` : null,
     topic: card.topic,
+    country: card.country,
     independentSources: card.independentSources,
     freshnessSeconds: card.freshnessSeconds,
     pinned: card.pinned ?? false,
