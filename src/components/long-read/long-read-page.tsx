@@ -477,6 +477,9 @@ function StorylineRow({ hub, divided }: { hub: HubView; divided: boolean }) {
       <ul className="grid gap-x-9 gap-y-6 md:grid-cols-2 xl:grid-cols-3">
         {hub.members.map((m) => (
           <li key={m.slug} style={{ borderLeft: `2px solid ${RULE}`, paddingLeft: 14 }}>
+            {m.href
+              ? <Link href={m.href} aria-label={m.title} className="block"><img src={m.image} alt="" className="block w-full" style={{ aspectRatio: '16/10', objectFit: 'cover', marginBottom: 10 }} onError={onImgError} /></Link>
+              : <img src={m.image} alt="" className="block w-full" style={{ aspectRatio: '16/10', objectFit: 'cover', marginBottom: 10 }} onError={onImgError} />}
             <div style={{ fontFamily: 'var(--font-mono), monospace', color: ACCENT, fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', marginBottom: 4, textTransform: 'uppercase' }}>{m.timestamp}</div>
             <h4 style={{ color: INK, fontSize: 'clamp(0.95rem, 1.15vw, 1.0625rem)', fontWeight: 700, lineHeight: 1.24, letterSpacing: '-0.01em', textWrap: 'balance' }}>
               <TitleLink story={m}>{m.title}</TitleLink>

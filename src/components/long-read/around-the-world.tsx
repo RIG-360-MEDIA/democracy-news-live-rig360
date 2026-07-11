@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import type { SyntheticEvent } from 'react';
 
 import type { CardView } from '@/lib/worldwide/to-view';
 
@@ -13,6 +14,15 @@ const SOFT = 'var(--rw-faint)';
 const RULE = 'var(--rw-rule)';
 const RULE2 = 'var(--rw-rule-strong)';
 const ACCENT = 'var(--rw-accent)';
+const FALLBACK_IMAGE = '/cards/long-read.png';
+
+/** Never leave an image slot broken — swap to the brand placeholder once on load failure. */
+function onImgError(e: SyntheticEvent<HTMLImageElement>): void {
+  const img = e.currentTarget;
+  if (img.dataset.fallback) return;
+  img.dataset.fallback = '1';
+  img.src = FALLBACK_IMAGE;
+}
 
 export function AroundTheWorld({ stories }: { stories: CardView[] }) {
   if (stories.length === 0) return null;
@@ -38,14 +48,20 @@ export function AroundTheWorld({ stories }: { stories: CardView[] }) {
 }
 
 function CountryCard({ story }: { story: CardView }) {
+  const title = story.href
+    ? <Link href={story.href} className="hover:opacity-75 transition-opacity">{story.title}</Link>
+    : <span>{story.title}</span>;
   return (
     <article>
+      {story.href
+        ? <Link href={story.href} aria-label={story.title} className="block"><img src={story.image} alt="" className="block w-full" style={{ aspectRatio: '16/10', objectFit: 'cover', marginBottom: 12 }} onError={onImgError} /></Link>
+        : <img src={story.image} alt="" className="block w-full" style={{ aspectRatio: '16/10', objectFit: 'cover', marginBottom: 12 }} onError={onImgError} />}
       <div className="flex items-baseline justify-between" style={{ marginBottom: 6 }}>
         <span style={{ fontFamily: 'var(--font-mono), monospace', color: ACCENT, fontSize: 10.5, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase' }}>{story.kicker}</span>
         <span style={{ fontFamily: 'var(--font-mono), monospace', color: SOFT, fontSize: 9.5, letterSpacing: '0.08em' }}>{story.timestamp}</span>
       </div>
       <h4 style={{ color: INK, fontSize: 'clamp(1.0625rem, 1.4vw, 1.25rem)', fontWeight: 700, lineHeight: 1.18, letterSpacing: '-0.014em', fontVariationSettings: "'opsz' 24, 'SOFT' 10", textWrap: 'balance' }}>
-        {story.href ? <Link href={story.href} className="hover:opacity-75 transition-opacity">{story.title}</Link> : <span>{story.title}</span>}
+        {title}
       </h4>
     </article>
   );
