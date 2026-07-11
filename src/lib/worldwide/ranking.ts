@@ -141,12 +141,15 @@ async function bestClusterImages(storyIds: string[]): Promise<Map<string, string
     FROM analytics.story_cluster_members_v8 mem
     JOIN articles a2 ON a2.id = mem.article_id
     LEFT JOIN rigwire.image_checks ic2 ON ic2.thumbnail_url = a2.thumbnail_url
+    LEFT JOIN rigwire.domain_reputation dr ON dr.domain = lower(split_part(split_part(a2.thumbnail_url, '://', 2), '/', 1))
     WHERE mem.story_id = ANY(${storyIds})
       AND a2.thumbnail_url IS NOT NULL AND a2.thumbnail_url <> ''
-      AND coalesce(ic2.clean, true) = true            -- never a flagged-graphic thumbnail
+      -- scanned-clean, OR unscanned from a source that isn't historically mostly-junk (domain prior)
+      AND (ic2.clean = true OR (ic2.clean IS NULL AND coalesce(dr.flag_rate, 0) < 0.5))
     ORDER BY mem.story_id,
       (ic2.clean IS TRUE) DESC,                        -- confirmed-clean photo first
-      coalesce(a2.source_tier, 9) ASC,                 -- then best source
+      coalesce(dr.flag_rate, 0) ASC,                   -- then most-trusted source domain
+      coalesce(a2.source_tier, 9) ASC,                 -- then best source tier
       a2.published_at DESC NULLS LAST                  -- then freshest
   `) as unknown as { sid: string; url: string }[];
   for (const r of rows) m.set(r.sid, r.url);
@@ -185,7 +188,8 @@ export async function getFrontPage(scope: string): Promise<FrontPage> {
            -- over the cluster label (sc.topic is 'OTHER' for most clusters) so sections fill correctly.
            coalesce(nullif(g.headline, ''), sc.representative_title) AS title,
            coalesce(nullif(g.deck, ''), nullif(a.summary_preview, '')) AS deck,
-           CASE WHEN ic.clean IS FALSE THEN NULL ELSE a.thumbnail_url END AS image,
+           CASE WHEN ic.clean IS FALSE OR (ic.clean IS NULL AND coalesce(dr.flag_rate, 0) >= 0.5)
+                THEN NULL ELSE a.thumbnail_url END        AS image,
            a.source_tier                                 AS "repTier",
            ic.clean                                      AS "repClean",
            true                                          AS "hasArticle",
@@ -222,6 +226,7 @@ export async function getFrontPage(scope: string): Promise<FrontPage> {
     LEFT JOIN gen g USING (story_id)
     LEFT JOIN articles a ON a.id = sc.representative_article_id
     LEFT JOIN rigwire.image_checks ic ON ic.thumbnail_url = a.thumbnail_url
+    LEFT JOIN rigwire.domain_reputation dr ON dr.domain = lower(split_part(split_part(a.thumbnail_url, '://', 2), '/', 1))
     WHERE sc.suppression_reason IS NULL
       -- DEDUP GUARD: a cluster merged into another by the cross-window re-join sets redirected_to;
       -- never surface the stale duplicate pile (DB chat contract, 2026-06-21).

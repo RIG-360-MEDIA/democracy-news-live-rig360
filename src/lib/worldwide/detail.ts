@@ -151,7 +151,8 @@ export async function getStoryDetail(id: string): Promise<StoryDetail | null> {
            sc.representative_title,
            g.deck,
            g.body,
-           CASE WHEN ic.clean IS FALSE THEN NULL ELSE a.thumbnail_url END AS image,
+           CASE WHEN ic.clean IS FALSE OR (ic.clean IS NULL AND coalesce(dr.flag_rate, 0) >= 0.5)
+                THEN NULL ELSE a.thumbnail_url END         AS image,
            a.source_tier                                  AS rep_tier,
            g.word_count,
            g.run_id,
@@ -164,6 +165,7 @@ export async function getStoryDetail(id: string): Promise<StoryDetail | null> {
     JOIN analytics.story_clusters_v8 sc ON sc.story_id = g.story_id
     LEFT JOIN articles a ON a.id = sc.representative_article_id
     LEFT JOIN rigwire.image_checks ic ON ic.thumbnail_url = a.thumbnail_url
+    LEFT JOIN rigwire.domain_reputation dr ON dr.domain = lower(split_part(split_part(a.thumbnail_url, '://', 2), '/', 1))
     WHERE g.story_id = ${id}
       AND g.body IS NOT NULL
       -- never render a parse-fail row (unparsed JSON blob body / '(parse-fail)' headline)
@@ -207,10 +209,12 @@ export async function getStoryDetail(id: string): Promise<StoryDetail | null> {
       FROM analytics.story_cluster_members_v8 mem
       JOIN articles a2 ON a2.id = mem.article_id
       LEFT JOIN rigwire.image_checks ic2 ON ic2.thumbnail_url = a2.thumbnail_url
+      LEFT JOIN rigwire.domain_reputation dr ON dr.domain = lower(split_part(split_part(a2.thumbnail_url, '://', 2), '/', 1))
       WHERE mem.story_id = ${id}
         AND a2.thumbnail_url IS NOT NULL AND a2.thumbnail_url <> ''
-        AND coalesce(a2.source_tier, 9) <= 2 AND coalesce(ic2.clean, true) = true
-      ORDER BY coalesce(a2.source_tier, 9) ASC, a2.published_at DESC NULLS LAST
+        AND coalesce(a2.source_tier, 9) <= 2
+        AND (ic2.clean = true OR (ic2.clean IS NULL AND coalesce(dr.flag_rate, 0) < 0.5))
+      ORDER BY (ic2.clean IS TRUE) DESC, coalesce(dr.flag_rate, 0) ASC, coalesce(a2.source_tier, 9) ASC, a2.published_at DESC NULLS LAST
       LIMIT 1
     `) as unknown as { url: string }[];
     if (best?.url) heroImage = best.url;

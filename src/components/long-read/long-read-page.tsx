@@ -97,37 +97,45 @@ export function LongReadPage({ data }: { data: FrontPage }) {
   pool = [...pinnedLead, ...auto];
 
   const heroPool = pool.slice(1); // lead renders pool[0]; the rest fill the grid
-  const sections = data.sections;
-  const aroundTheWorld = data.aroundTheWorld;
-  // Developing storylines (event-hubs) get their OWN "Full coverage" section — not an inline umbrella.
+
+  // ── GLOBAL DE-DUPLICATION: every story appears exactly ONCE on the page. Surfaces claim stories in
+  //    priority order; each later band skips anything already claimed. (Was ~20% duplicate headlines
+  //    because the rails + Democracy band never de-duped against Top Stories.) ──
+  const seen = new Set<string>();
+  pool.slice(0, 15).forEach((c) => seen.add(c.slug));               // 1. Top Stories + More Top Stories grid (CardView.slug === story id)
   const fullCoverage = data.topStories.filter(isHub).map(toHubView);
+  data.topStories.forEach((u) => { if (isHub(u)) u.members.forEach((m) => seen.add(m.id)); }); // 2. Full-coverage timelines
 
-  // Freshest REAL stories for the live ticker (most-recent first) — makes the "LIVE" rail honest.
-  const latestSeen = new Set<string>();
-  const latest = [
+  const takeN = (cards: StoryCard[], n: number): StoryCard[] => {
+    const out: StoryCard[] = [];
+    for (const c of cards) { if (seen.has(c.id)) continue; seen.add(c.id); out.push(c); if (out.length >= n) break; }
+    return out;
+  };
+  const claimAll = (cards: StoryCard[]): StoryCard[] => {
+    const out: StoryCard[] = [];
+    for (const c of cards) { if (seen.has(c.id)) continue; seen.add(c.id); out.push(c); }
+    return out;
+  };
+
+  // 3. Around the World claims BEFORE the rails so the map stays full (one lead per country).
+  const aroundTheWorld = claimAll(data.aroundTheWorld);
+
+  // 4. The two rails draw from every remaining story, unique by id — "freshest / most-covered not
+  //    already featured above" (so the LIVE rail never just mirrors the hero grid).
+  const railUniq = new Set<string>();
+  const railPool: StoryCard[] = [];
+  for (const c of [
     ...data.topStories.flatMap((u) => (isHub(u) ? u.members : [u])),
-    ...data.aroundTheWorld,
     ...data.sections.flatMap((s) => s.stories),
-  ]
-    .filter((c) => (latestSeen.has(c.id) ? false : (latestSeen.add(c.id), true)))
-    .sort((a, b) => (a.publishedSeconds ?? a.freshnessSeconds) - (b.publishedSeconds ?? b.freshnessSeconds))
-    .slice(0, 14)
-    .map(toCardView);
+  ]) if (!railUniq.has(c.id)) { railUniq.add(c.id); railPool.push(c); }
+  const latest = takeN([...railPool].sort((a, b) => (a.publishedSeconds ?? a.freshnessSeconds) - (b.publishedSeconds ?? b.freshnessSeconds)), 8).map(toCardView);
+  const mostCovered = takeN([...railPool].sort((a, b) => b.independentSources - a.independentSources), 6).map(toCardView);
 
-  // "Most covered" = the stories the most independent outlets are reporting (honest breadth signal —
-  // we don't track real readership, so we rank by independent_source_count, not fake read counts).
-  const coveredSeen = new Set<string>();
-  const mostCovered = [
-    ...data.topStories.flatMap((u) => (isHub(u) ? u.members : [u])),
-    ...data.sections.flatMap((s) => s.stories),
-  ]
-    .filter((c) => (coveredSeen.has(c.id) ? false : (coveredSeen.add(c.id), true)))
-    .sort((a, b) => b.independentSources - a.independentSources)
-    .slice(0, 6)
-    .map(toCardView);
-
-  // Democracy theme band (elections, rights, press freedom, authoritarianism…).
-  const democracy = data.democracy.map(toCardView);
+  // 5. Democracy band, then 6. topic sections — each takes only stories not shown anywhere above.
+  const democracy = takeN(data.democracy, 8).map(toCardView);
+  const sections = data.sections
+    .map((s) => ({ ...s, stories: claimAll(s.stories) }))
+    .filter((s) => s.stories.length > 0);
 
   // Empty-state: a thin scope (few generated English articles) shows a clean message, not blank bands.
   if (pool.length === 0) {
