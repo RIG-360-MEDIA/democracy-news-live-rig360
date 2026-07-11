@@ -1,6 +1,5 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import type { ReactNode, SyntheticEvent } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
@@ -11,7 +10,6 @@ import { WorldClock } from '@/components/brand/world-clock';
 import { BreakingTicker } from './breaking-ticker';
 import { isHub, toCardView, toHubView, type CardView, type HubView } from '@/lib/worldwide/to-view';
 
-import { ScopeFilter } from './scope-filter';
 import { AroundTheWorld } from './around-the-world';
 import { isWorldScope } from './worldwide-scope-data';
 import { useEditMode } from './edit-mode';
@@ -35,7 +33,7 @@ const RULE = 'var(--rw-rule)';
 const RULE2 = 'var(--rw-rule-strong)';
 const ACCENT = 'var(--rw-accent)';
 const CREAM = 'var(--rw-cream)';
-const FALLBACK_IMAGE = '/cards/long-read.png';
+const FALLBACK_IMAGE = '/cards/placeholder.png';
 
 /** News-site principle: an image slot is never empty or broken. On load failure, swap to the
  *  brand placeholder once (guarded against a fallback-also-fails loop). */
@@ -112,7 +110,7 @@ export function LongReadPage({ data }: { data: FrontPage }) {
     ...data.sections.flatMap((s) => s.stories),
   ]
     .filter((c) => (latestSeen.has(c.id) ? false : (latestSeen.add(c.id), true)))
-    .sort((a, b) => a.freshnessSeconds - b.freshnessSeconds)
+    .sort((a, b) => (a.publishedSeconds ?? a.freshnessSeconds) - (b.publishedSeconds ?? b.freshnessSeconds))
     .slice(0, 14)
     .map(toCardView);
 
@@ -135,7 +133,7 @@ export function LongReadPage({ data }: { data: FrontPage }) {
   if (pool.length === 0) {
     return (
       <div className="min-h-dvh" style={{ background: 'var(--rw-bg)', color: BODY, fontFamily: 'var(--font-fraunces), Georgia, serif' }}>
-        <TopNav scope={data.scope} />
+        <TopNav />
         <section className="px-5 py-28 md:py-36 text-center mx-auto" style={{ maxWidth: 640 }}>
           <p className="italic" style={{ color: INK, fontSize: 'clamp(1.5rem, 3vw, 2.25rem)', fontWeight: 400, lineHeight: 1.2, fontVariationSettings: "'opsz' 144, 'SOFT' 100", marginBottom: 16 }}>
             No stories in this edition right now.
@@ -149,7 +147,7 @@ export function LongReadPage({ data }: { data: FrontPage }) {
 
   return (
     <div className="min-h-dvh" style={{ background: 'var(--rw-bg)', color: BODY, fontFamily: 'var(--font-fraunces), Georgia, serif' }}>
-      <TopNav scope={data.scope} />
+      <TopNav />
 
       {/* ═══════════ TOP STORIES BAND — 3 columns ═══════════ */}
       <section id="top" className="px-5 md:px-10 lg:px-16 pt-10 pb-14" style={{ scrollMarginTop: 96 }}>
@@ -243,6 +241,38 @@ function ThemedBand({ anchor, title, featured, list, darker }: { anchor: string;
   );
 }
 
+/* ═══════════ QUOTE OF THE DAY — masthead line (democracy / free speech / liberty) ═══════════ */
+// Verified, historically significant quotes. Rotates once per UTC day (stable within the day).
+const QUOTES: ReadonlyArray<{ q: string; who: string }> = [
+  { q: 'Give me the liberty to know, to utter, and to argue freely according to conscience, above all liberties.', who: 'John Milton' },
+  { q: 'If liberty means anything at all, it means the right to tell people what they do not want to hear.', who: 'George Orwell' },
+  { q: 'The only security of all is in a free press.', who: 'Thomas Jefferson' },
+  { q: 'Censorship reflects a society’s lack of confidence in itself.', who: 'Potter Stewart' },
+  { q: 'Freedom of expression is the indispensable condition of nearly every other form of freedom.', who: 'Benjamin N. Cardozo' },
+  { q: 'Those who deny freedom to others deserve it not for themselves.', who: 'Abraham Lincoln' },
+  { q: 'Injustice anywhere is a threat to justice everywhere.', who: 'Martin Luther King Jr.' },
+  { q: 'A popular government without popular information is but a prologue to a farce or a tragedy.', who: 'James Madison' },
+  { q: 'The liberty of the press is essential to the security of the state.', who: 'John Adams' },
+  { q: 'Freedom is never voluntarily given by the oppressor; it must be demanded by the oppressed.', who: 'Martin Luther King Jr.' },
+  { q: 'Where the press is free, and every man able to read, all is safe.', who: 'Thomas Jefferson' },
+  { q: 'Better to die fighting for freedom than be a prisoner all the days of your life.', who: 'Bob Marley' },
+];
+
+function QuoteOfTheDay() {
+  const dayIndex = Math.floor(Date.now() / 86_400_000);
+  const { q, who } = QUOTES[dayIndex % QUOTES.length];
+  return (
+    <figure className="text-right hidden md:block" style={{ maxWidth: 360, marginLeft: 'auto' }}>
+      <blockquote className="italic" style={{ fontFamily: 'var(--font-fraunces), Georgia, serif', color: INK, fontSize: 'clamp(0.8rem, 0.95vw, 0.95rem)', fontWeight: 400, lineHeight: 1.4, letterSpacing: '0.003em', fontVariationSettings: "'opsz' 144, 'SOFT' 100" }}>
+        “{q}”
+      </blockquote>
+      <figcaption style={{ fontFamily: 'var(--font-jakarta), sans-serif', color: ACCENT, fontSize: 10.5, fontWeight: 700, letterSpacing: '0.10em', textTransform: 'uppercase', marginTop: 7 }}>
+        — {who}
+      </figcaption>
+    </figure>
+  );
+}
+
 /* ═══════════ MASTHEAD DATE ═══════════ */
 function MastheadDate() {
   const now = new Date();
@@ -257,7 +287,7 @@ function MastheadDate() {
 }
 
 /* ═══════════ TOP NAV ═══════════ */
-function TopNav({ scope }: { scope: string }) {
+function TopNav() {
   return (
     <header style={{ borderBottom: `1px solid ${RULE}` }}>
       <div className="grid items-center px-5 md:px-8 py-2.5" style={{ gridTemplateColumns: '1fr auto 1fr', fontFamily: 'var(--font-jakarta), sans-serif', fontSize: 11, fontWeight: 600, letterSpacing: '0.06em', color: MUTED, borderBottom: `1px solid ${RULE}` }}>
@@ -265,8 +295,7 @@ function TopNav({ scope }: { scope: string }) {
           <button aria-label="Menu" className="hover:opacity-70" style={{ color: INK }}>
             <svg width="16" height="14" viewBox="0 0 16 14" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><line x1="1" y1="2" x2="15" y2="2" /><line x1="1" y1="7" x2="15" y2="7" /><line x1="1" y1="12" x2="15" y2="12" /></svg>
           </button>
-          <ScopeFilter activeKey={scope} />
-          <span className="hidden lg:inline-flex"><WorldClock /></span>
+          <span className="inline-flex"><WorldClock /></span>
         </div>
         <span className="justify-self-center inline-flex items-center gap-2 whitespace-nowrap" style={{ fontWeight: 800, letterSpacing: '0.14em', color: 'var(--rw-red)', textTransform: 'uppercase', fontSize: 10.5 }}>
           <span className="dnl-pulse" style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--rw-red)', display: 'inline-block' }} />
@@ -295,9 +324,7 @@ function TopNav({ scope }: { scope: string }) {
           Democracy News{' '}
           <span style={{ fontStyle: 'italic', fontWeight: 800, color: 'var(--rw-red)', fontVariationSettings: "'opsz' 144, 'SOFT' 60, 'WONK' 0" }}>Live</span>
         </Link>
-        <p className="text-right italic hidden md:block" style={{ fontFamily: 'var(--font-fraunces), Georgia, serif', color: MUTED, fontSize: 'clamp(0.8rem, 0.95vw, 0.9375rem)', fontWeight: 400, letterSpacing: '0.005em', fontVariationSettings: "'opsz' 144, 'SOFT' 100", lineHeight: 1.4 }}>
-          Democracy, worldwide —<br />watched in real time.
-        </p>
+        <QuoteOfTheDay />
       </div>
       {/* ── Section strip ── */}
       <nav style={{ borderTop: `1px solid ${RULE}`, borderBottom: `2px solid ${INK}` }}>
@@ -492,17 +519,12 @@ function StorylineRow({ hub, divided }: { hub: HubView; divided: boolean }) {
 }
 
 /* ═══════════ LIVE NEWS RAIL — rotating ticker over the freshest REAL stories ═══════════ */
+/* A calm, readable "Top news" rail: a STABLE list of the freshest stories (newest first). No
+   auto-rotation — headlines stay put so they can be read comfortably; the list refreshes on page
+   load / navigation. The live motion on the page is the breaking ticker up top, not this column. */
 function LiveNewsRail({ items }: { items: CardView[] }) {
-  const [offset, setOffset] = useState(0);
-  const len = items.length;
-  useEffect(() => {
-    if (len <= 1) return;
-    const t = setInterval(() => setOffset((o) => (o + 1) % len), 5000);
-    return () => clearInterval(t);
-  }, [len]);
-  if (len === 0) return null;
-  const N = Math.min(9, len);
-  const visible = Array.from({ length: N }, (_, i) => ({ item: items[(len + offset - i) % len], position: i }));
+  if (items.length === 0) return null;
+  const visible = items.slice(0, 8);
   return (
     <div>
       <div className="flex items-center justify-between gap-3" style={{ borderBottom: `2px solid ${INK}`, paddingBottom: 8 }}>
@@ -513,16 +535,12 @@ function LiveNewsRail({ items }: { items: CardView[] }) {
           </span>
           <h2 style={{ color: INK, fontSize: 'clamp(1.5rem, 1.9vw, 1.75rem)', fontWeight: 700, lineHeight: 1, letterSpacing: '-0.018em', fontVariationSettings: "'opsz' 144, 'SOFT' 0" }}>Top news</h2>
         </div>
-        <span style={{ fontFamily: 'var(--font-jakarta), sans-serif', color: MUTED, fontSize: 10.5, fontWeight: 700, letterSpacing: '0.10em', textTransform: 'uppercase' }}>Auto-updating</span>
+        <span style={{ fontFamily: 'var(--font-jakarta), sans-serif', color: MUTED, fontSize: 10.5, fontWeight: 700, letterSpacing: '0.10em', textTransform: 'uppercase' }}>Latest first</span>
       </div>
-      {/* Fixed slots keyed by POSITION — content swaps in place, so headlines can never overlap.
-          The inner div is keyed by story so a changed slot fades in (CSS only, no layout animation). */}
       <ul className="mt-2">
-        {visible.map(({ item, position }) => (
-          <li key={position} style={{ borderBottom: `1px solid ${RULE}`, paddingTop: 14, paddingBottom: 14 }}>
-            <div key={item.slug} className="dnl-live-fade">
-              <LiveNewsItemView item={item} isNew={position === 0} />
-            </div>
+        {visible.map((item, i) => (
+          <li key={item.slug} style={{ borderBottom: `1px solid ${RULE}`, paddingTop: 14, paddingBottom: 14 }}>
+            <LiveNewsItemView item={item} isNew={i === 0} />
           </li>
         ))}
       </ul>

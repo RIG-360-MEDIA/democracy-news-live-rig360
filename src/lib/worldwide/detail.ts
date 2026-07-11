@@ -122,6 +122,7 @@ interface DetailRow {
   image: string | null;
   rep_tier: number | null;
   word_count: number | null;
+  run_id: string | number | null;
   topic: string;
   country: string;
   article_count: number | null;
@@ -151,6 +152,7 @@ export async function getStoryDetail(id: string): Promise<StoryDetail | null> {
            CASE WHEN ic.clean IS FALSE THEN NULL ELSE a.thumbnail_url END AS image,
            a.source_tier                                  AS rep_tier,
            g.word_count,
+           g.run_id,
            coalesce(nullif(sc.topic, ''), 'OTHER')        AS topic,
            coalesce(nullif(sc.subject_country, ''), 'XX') AS country,
            sc.article_count,
@@ -184,7 +186,10 @@ export async function getStoryDetail(id: string): Promise<StoryDetail | null> {
   const words = r.word_count ?? r.body.split(/\s+/).length;
   const readTime = `${Math.max(2, Math.round(words / 200))} min read`;
 
-  const date = new Date(r.last_seen_at).toLocaleDateString('en-GB', {
+  // Date shown = when we PUBLISHED it on our site (generation run = unix epoch), guarded to last-seen.
+  const pub = Number(r.run_id);
+  const publishedMs = pub > 1_000_000_000 && pub < 20_000_000_000 ? pub * 1000 : new Date(r.last_seen_at).getTime();
+  const date = new Date(publishedMs).toLocaleDateString('en-GB', {
     day: 'numeric',
     month: 'short',
     year: 'numeric',

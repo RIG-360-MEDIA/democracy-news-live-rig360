@@ -18,7 +18,8 @@ export interface StoryCard {
   articleCount: number;
   facts: number;
   lastSeenAt: string; // ISO timestamp
-  freshnessSeconds: number;
+  freshnessSeconds: number; // age vs last_seen_at — used for internal editorial freshness rules
+  publishedSeconds?: number; // age vs when we PUBLISHED the story on our site (generation run) — used for the displayed timestamp
   isScoop: boolean; // single-article story
   dominantEntity: string | null; // top entity — the B+ hub grouping key
   pinned?: boolean; // editor pinned this as the top headline (CMS override) — exempt from auto lead rules

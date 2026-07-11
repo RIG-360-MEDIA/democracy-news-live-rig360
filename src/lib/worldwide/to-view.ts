@@ -6,7 +6,7 @@
 
 import type { EventHub, StoryCard } from './types';
 
-const PLACEHOLDER_IMAGE = '/cards/long-read.png'; // mode card art, used when a story has no thumbnail
+const PLACEHOLDER_IMAGE = '/cards/placeholder.png'; // DNL-branded fallback, used when a story has no thumbnail
 
 /** A card as the long-read components expect it (mirrors LongReadItem + a resolved href). */
 export interface CardView {
@@ -71,7 +71,9 @@ export function toCardView(card: StoryCard): CardView {
     authorPhoto: '',
     readTime: estReadTime(card),
     image: card.image ?? PLACEHOLDER_IMAGE,
-    timestamp: relativeTime(card.freshnessSeconds),
+    // Displayed age reflects when we PUBLISHED the story on our site (generation run), not the
+    // source/cluster activity time. Falls back to freshness for manual stories with no run stamp.
+    timestamp: relativeTime(card.publishedSeconds ?? card.freshnessSeconds),
     href: card.hasArticle ? `/long-read/${card.id}` : null,
     topic: card.topic,
     independentSources: card.independentSources,

@@ -64,7 +64,9 @@ interface ScoredRow {
   articleCount: number;
   facts: number;
   lastSeenAt: Date;
+  runId: string | number | null; // generation run = unix epoch we published the story on our site
   repTier: number | null; // representative article's source_tier (1 best) — drives image upgrade
+  repClean: boolean | null; // rep thumbnail's scan verdict (true=clean, false=flagged, null=unscanned)
 }
 
 /** Display-clean a headline: strip leading markdown junk ("** ", "# ", etc. from gen artifacts) and
@@ -99,6 +101,10 @@ function cleanTitle(s: string | null): string {
 
 function toCard(r: ScoredRow, now: number): StoryCard {
   const lastSeen = new Date(r.lastSeenAt).getTime();
+  // "Published on our site" = the generation run timestamp (run_id is a unix epoch, seconds).
+  // Guard a missing/garbage run_id by falling back to last-seen so the age is never nonsensical.
+  const pub = Number(r.runId);
+  const publishedMs = pub > 1_000_000_000 && pub < 20_000_000_000 ? pub * 1000 : lastSeen;
   return {
     id: r.id,
     title: cleanTitle(r.title),
@@ -114,6 +120,7 @@ function toCard(r: ScoredRow, now: number): StoryCard {
     facts: r.facts,
     lastSeenAt: new Date(r.lastSeenAt).toISOString(),
     freshnessSeconds: Math.max(0, Math.round((now - lastSeen) / 1000)),
+    publishedSeconds: Math.max(0, Math.round((now - publishedMs) / 1000)),
     isScoop: r.articleCount === 1,
     dominantEntity: r.dominantEntity,
   };
@@ -123,7 +130,9 @@ function toCard(r: ScoredRow, now: number): StoryCard {
  * Build the Worldwide front page for a scope.
  * @param scope 'world' (no country filter) or an ISO2 country code.
  */
-/** Best tier-≤2, non-flagged thumbnail per cluster (one batched query) — replaces tabloid/blank images. */
+/** Best clean thumbnail from ANY article in the cluster (one batched query). The default is always a
+ *  real cluster photo, never the placeholder, as long as one member has a non-flagged thumbnail.
+ *  Preference: confirmed-clean (scanned) first, then best source tier, then freshest. Never a flagged one. */
 async function bestClusterImages(storyIds: string[]): Promise<Map<string, string>> {
   const m = new Map<string, string>();
   if (storyIds.length === 0) return m;
@@ -134,9 +143,11 @@ async function bestClusterImages(storyIds: string[]): Promise<Map<string, string
     LEFT JOIN rigwire.image_checks ic2 ON ic2.thumbnail_url = a2.thumbnail_url
     WHERE mem.story_id = ANY(${storyIds})
       AND a2.thumbnail_url IS NOT NULL AND a2.thumbnail_url <> ''
-      AND coalesce(a2.source_tier, 9) <= 2
-      AND coalesce(ic2.clean, true) = true
-    ORDER BY mem.story_id, coalesce(a2.source_tier, 9) ASC, a2.published_at DESC NULLS LAST
+      AND coalesce(ic2.clean, true) = true            -- never a flagged-graphic thumbnail
+    ORDER BY mem.story_id,
+      (ic2.clean IS TRUE) DESC,                        -- confirmed-clean photo first
+      coalesce(a2.source_tier, 9) ASC,                 -- then best source
+      a2.published_at DESC NULLS LAST                  -- then freshest
   `) as unknown as { sid: string; url: string }[];
   for (const r of rows) m.set(r.sid, r.url);
   return m;
@@ -164,7 +175,7 @@ export async function getFrontPage(scope: string): Promise<FrontPage> {
       SELECT story_id, count(*)::int AS fc FROM analytics.story_facts_v8 GROUP BY 1
     ),
     gen AS (
-      SELECT DISTINCT ON (story_id) story_id, headline, deck, body, status, strategy, topic
+      SELECT DISTINCT ON (story_id) story_id, headline, deck, body, status, strategy, topic, run_id
       FROM analytics.story_generated_v8 ORDER BY story_id, updated_at DESC
     )
     SELECT sc.story_id                                   AS id,
@@ -176,7 +187,9 @@ export async function getFrontPage(scope: string): Promise<FrontPage> {
            coalesce(nullif(g.deck, ''), nullif(a.summary_preview, '')) AS deck,
            CASE WHEN ic.clean IS FALSE THEN NULL ELSE a.thumbnail_url END AS image,
            a.source_tier                                 AS "repTier",
+           ic.clean                                      AS "repClean",
            true                                          AS "hasArticle",
+           g.run_id                                      AS "runId",
            coalesce(nullif(g.topic, ''), nullif(sc.topic, ''), 'OTHER') AS topic,
            coalesce(nullif(sc.subject_country, ''), 'XX') AS country,
            (SELECT e.key FROM jsonb_each_text(sc.primary_entities) e
@@ -249,7 +262,10 @@ export async function getFrontPage(scope: string): Promise<FrontPage> {
   const manual = await manualStoryCards();
   // Image upgrade: when the representative thumbnail is a tabloid (tier ≥3) or was flagged/blank,
   // swap it for the best tier-1/2 photo in the SAME cluster. Batched over only the rows that need it.
-  const needImg = rows.filter((r) => (r.repTier ?? 9) >= 3 || !r.image).map((r) => r.id);
+  // Upgrade the image whenever the rep is a tabloid tier, blank/flagged (image nulled), OR not
+  // yet confirmed-clean — so a tier-2 junk thumbnail (e.g. an aggregator's logo) is replaced by a
+  // clean cluster photo instead of showing the logo or falling to placeholder.
+  const needImg = rows.filter((r) => (r.repTier ?? 9) >= 3 || !r.image || r.repClean !== true).map((r) => r.id);
   const betterImg = await bestClusterImages(needImg);
   const basePool = [
     ...rows.map((r) => {
