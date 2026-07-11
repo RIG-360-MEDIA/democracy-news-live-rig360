@@ -261,6 +261,8 @@ export async function getFrontPage(scope: string): Promise<FrontPage> {
       -- DEDUP GUARD: a cluster merged into another by the cross-window re-join sets redirected_to;
       -- never surface the stale duplicate pile (DB chat contract, 2026-06-21).
       AND sc.redirected_to IS NULL
+      -- Phase-0 same-event merge: hide clusters folded into a canonical story (only the canonical surfaces).
+      AND NOT EXISTS (SELECT 1 FROM analytics.story_dedup dd WHERE dd.story_id = sc.story_id)
       AND sc.independent_source_count IS NOT NULL
       AND sc.representative_title !~* ${TITLE_FLAG}
       -- FRESHNESS CAP: a "Worldwide today" page never surfaces stories dormant >7 days (no new
