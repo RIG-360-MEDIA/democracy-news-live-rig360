@@ -118,12 +118,18 @@
 /* ── Base ───────────────────────────────────────────── */
 
 html {
+  /* Force a light canvas by default so there is NEVER a flash of dark before CSS/JS run —
+     the browser paints white immediately regardless of the OS theme. Dark opts in below. */
+  color-scheme: light;
+  background-color: #ffffff;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
   font-feature-settings: 'kern' 1, 'liga' 1, 'calt' 1;
   scroll-behavior: smooth;
 }
+:root[data-theme='dark'] { color-scheme: dark; }
+:root[data-theme='dark'] html { background-color: var(--rw-bg); }
 
 body {
   background-color: #ffffff;

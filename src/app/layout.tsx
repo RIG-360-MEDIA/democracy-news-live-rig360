@@ -53,12 +53,13 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor:  '#ffffff',
-  colorScheme: 'light dark',
+  colorScheme: 'light',
 };
 
 // Set the reader theme before first paint (no flash of the wrong theme).
-// Honors the user's saved choice, else the OS preference.
-const THEME_INIT = `(function(){try{var t=localStorage.getItem('rw-theme');if(t!=='dark'&&t!=='light'){t=(window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light';}document.documentElement.setAttribute('data-theme',t);}catch(e){}})();`;
+// Default is ALWAYS light/white — dark only if the user explicitly chose it (saved 'dark').
+// We deliberately do NOT follow the OS prefers-color-scheme, so the site never opens dark by surprise.
+const THEME_INIT = `(function(){try{document.documentElement.setAttribute('data-theme',localStorage.getItem('rw-theme')==='dark'?'dark':'light');}catch(e){}})();`;
 
 export default function RootLayout({
   children,
@@ -68,6 +69,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
+      data-theme="light"
       suppressHydrationWarning
       className={`${fraunces.variable} ${jakarta.variable} ${jetbrainsMono.variable} ${bricolage.variable}`}
     >
