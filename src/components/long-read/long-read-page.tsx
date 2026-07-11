@@ -486,7 +486,7 @@ function FullCoverageSection({ hubs }: { hubs: HubView[] }) {
             Developing
           </span>
           <h2 style={{ color: INK, fontSize: 'clamp(1.6rem, 2.4vw, 2.25rem)', fontWeight: 700, lineHeight: 1, letterSpacing: '-0.02em', fontVariationSettings: "'opsz' 144, 'SOFT' 0" }}>Full coverage</h2>
-          <span style={{ fontFamily: 'var(--font-jakarta), sans-serif', color: MUTED, fontSize: 11.5, fontWeight: 600 }}>big stories — every update as it lands</span>
+          <span style={{ fontFamily: 'var(--font-jakarta), sans-serif', color: MUTED, fontSize: 11.5, fontWeight: 600 }}>the biggest stories, covered from every angle</span>
         </div>
         <div>
           {hubs.map((h, i) => <StorylineRow key={h.hubId} hub={h} divided={i > 0} />)}
@@ -506,7 +506,7 @@ function StorylineRow({ hub, divided }: { hub: HubView; divided: boolean }) {
       style={{ borderTop: divided ? `1px solid ${RULE}` : undefined, paddingTop: divided ? 26 : 4, paddingBottom: 26 }}
     >
       <div>
-        <span style={{ fontFamily: 'var(--font-jakarta), sans-serif', color: ACCENT, fontSize: 10.5, fontWeight: 800, letterSpacing: '0.2em', textTransform: 'uppercase' }}>Full coverage · {hub.memberCount} updates</span>
+        <span style={{ fontFamily: 'var(--font-jakarta), sans-serif', color: ACCENT, fontSize: 10.5, fontWeight: 800, letterSpacing: '0.2em', textTransform: 'uppercase' }}>Full coverage · {hub.memberCount} reports</span>
         <h3 style={{ color: INK, fontSize: 'clamp(1.5rem, 2.4vw, 2.125rem)', fontWeight: 700, lineHeight: 1.04, letterSpacing: '-0.02em', fontVariationSettings: "'opsz' 144, 'SOFT' 0", textWrap: 'balance', marginTop: 8 }}>{entity}</h3>
       </div>
       <ul className="grid gap-x-9 gap-y-6 md:grid-cols-2 xl:grid-cols-3">

@@ -156,6 +156,36 @@ async function bestClusterImages(storyIds: string[]): Promise<Map<string, string
   return m;
 }
 
+/** Token signature of a headline — diacritics stripped, punctuation dropped, for near-dup detection. */
+function dedupSig(title: string): Set<string> {
+  const t = title.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9\s]/g, ' ');
+  return new Set(t.split(/\s+/).filter((w) => w.length >= 3 || /^\d+$/.test(w)));
+}
+function jaccard(a: Set<string>, b: Set<string>): number {
+  let i = 0;
+  for (const x of a) if (b.has(x)) i++;
+  const u = a.size + b.size - i;
+  return u ? i / u : 0;
+}
+/**
+ * Collapse near-identical stories — the SAME event that the clustering fragmented into several clusters
+ * (e.g. seven "15 Indians / speedboat / Phú Quốc" retellings). Keeps the strongest (highest importance)
+ * and drops the rest. Deliberately CONSERVATIVE (same dominant entity + >=0.5 headline-token overlap) so
+ * it never merges genuinely distinct stories. NOTE: this is a display-layer patch — the real fix is the
+ * upstream cluster-merge (these clusters share zero articles yet cover one event), which needs the box's
+ * LaBSE embeddings that aren't replicated to the reader DB.
+ */
+function collapseNearDuplicates(cards: StoryCard[]): StoryCard[] {
+  const kept: { c: StoryCard; s: Set<string> }[] = [];
+  for (const c of [...cards].sort((a, b) => b.importance - a.importance)) {
+    const s = dedupSig(c.title);
+    const dup = kept.some((k) => !!k.c.dominantEntity && k.c.dominantEntity === c.dominantEntity && jaccard(k.s, s) >= 0.5);
+    if (!dup) kept.push({ c, s });
+  }
+  const keep = new Set(kept.map((k) => k.c.id));
+  return cards.filter((c) => keep.has(c.id));
+}
+
 export async function getFrontPage(scope: string): Promise<FrontPage> {
   const isWorld = scope === 'world';
   const scopeFilter = isWorld
@@ -286,7 +316,7 @@ export async function getFrontPage(scope: string): Promise<FrontPage> {
   const weights = await getWeights();
   const tw = weights.topicWeights;
   const cw = weights.countryWeights;
-  const pool = basePool
+  let pool = basePool
     .filter((c) => overrides.get(c.id)?.action !== 'killed')
     .map((c) => {
       const o = overrides.get(c.id);
@@ -306,6 +336,10 @@ export async function getFrontPage(scope: string): Promise<FrontPage> {
       };
     })
     .sort((a, b) => b.importance - a.importance);
+
+  // Collapse re-clustered duplicates of one event (same entity, near-identical headline) so a story never
+  // appears many times across the page as if it were separate coverage. Applied to the whole pool.
+  pool = collapseNearDuplicates(pool);
 
   // Top Stories — group angle-stories into B+ hubs, then diversity-cap (≤2 per real topic; OTHER uncapped).
   // Editor pins stay STANDALONE: never absorbed into a hub (where a fresher hub-mate would replace the
