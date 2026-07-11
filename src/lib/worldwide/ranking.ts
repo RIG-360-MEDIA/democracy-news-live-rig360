@@ -370,9 +370,10 @@ export async function getFrontPage(scope: string): Promise<FrontPage> {
     else shownInTop.add(u.id);
   }
 
-  // Hard freshness cap for sections and ATW: never show a story dormant > 48 h.
-  // Top Stories is exempt (recency gate + hero freshness rules already protect it).
-  const SECTION_MAX_AGE_S = 48 * 3600;
+  // Freshness cap for sections and ATW. Thin topics (Finance/Business/Tech get only ~10 stories a WEEK,
+  // vs Security's ~90) have too few <48h stories to fill a band, so those sections were rendering empty.
+  // A 4-day window keeps sections "recent" while giving low-volume topics enough to show.
+  const SECTION_MAX_AGE_S = 96 * 3600;
   const freshPool = pool.filter((c) => c.freshnessSeconds <= SECTION_MAX_AGE_S);
 
   // Topic sections — top N per topic, excluding anything already in Top Stories, non-empty only.
