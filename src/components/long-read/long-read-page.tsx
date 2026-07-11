@@ -606,6 +606,9 @@ function Kicker({ text, small }: { text: string; small?: boolean }) {
 
 function Byline({ story, small }: { story: CardView; small?: boolean }) {
   const parts = [story.author, story.timestamp, story.readTime].filter(Boolean);
+  // Coverage honesty: mark single-outlet stories on the card face too, so the caveat is visible
+  // before the reader clicks in — never let a single-source filler look like corroborated news.
+  const singleSource = story.independentSources <= 1;
   return (
     <p style={{ fontFamily: 'var(--font-jakarta), sans-serif', color: MUTED, fontSize: small ? 10.5 : 11.5, fontWeight: 600, letterSpacing: '0.04em', marginTop: 8 }}>
       {parts.map((p, i) => (
@@ -613,6 +616,7 @@ function Byline({ story, small }: { story: CardView; small?: boolean }) {
           {i === 0 ? <span style={{ color: INK, fontWeight: 700 }}>By {p}</span> : <><span style={{ margin: '0 8px', opacity: 0.5 }}>·</span><span style={{ textTransform: 'uppercase', letterSpacing: '0.10em' }}>{p}</span></>}
         </span>
       ))}
+      {singleSource && <><span style={{ margin: '0 8px', opacity: 0.5 }}>·</span><span title="Reported by a single outlet — not yet independently corroborated" style={{ textTransform: 'uppercase', letterSpacing: '0.10em', opacity: 0.85 }}>Single source</span></>}
     </p>
   );
 }

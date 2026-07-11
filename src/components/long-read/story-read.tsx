@@ -185,6 +185,18 @@ export function StoryRead({ story }: { story: StoryDetail }) {
                   <div style={{ fontFamily: 'var(--font-jakarta), sans-serif', fontSize: 12.5, fontWeight: 700, color: INK }}>{v}</div>
                 </div>
               ))}
+              {/* Coverage honesty: a story grounded in a single outlet is not multi-source corroborated.
+                  Label it plainly so it never carries the authority of a widely-reported story. */}
+              {story.stats && story.stats.sources <= 1 && (
+                <div>
+                  <div style={{ ...label, fontSize: 9, color: FAINT, marginBottom: 4 }}>Coverage</div>
+                  <div title="Reported by a single outlet — not yet independently corroborated"
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: 'var(--font-jakarta), sans-serif', fontSize: 11, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: MUTED, border: `1px solid ${RULE}`, borderRadius: 3, padding: '3px 7px' }}>
+                    <span style={{ width: 5, height: 5, borderRadius: '50%', background: MUTED, display: 'inline-block' }} />
+                    Single source
+                  </div>
+                </div>
+              )}
             </div>
             <div style={{ display: 'flex', gap: 14 }}>
               {['Share', 'Save'].map((t) => (
