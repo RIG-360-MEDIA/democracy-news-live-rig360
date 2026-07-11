@@ -1,0 +1,2454 @@
+{
+  "meta": {
+    "built": "2026-05-29",
+    "window_days": 7,
+    "threshold_proven": 0.83,
+    "source": "golden-build.js prototype clustering @0.83 + regex FP-bait, hand-adjudicated by Aryan",
+    "total_groups": 134,
+    "tally": {
+      "true_cluster": 83,
+      "blob_negative": 2,
+      "fp_bait_earnings": 5,
+      "fp_bait_template": 4,
+      "grayzone_merge": 19,
+      "grayzone_borderline": 3,
+      "grayzone_separate": 3,
+      "fn_singleton": 2,
+      "singleton": 13
+    },
+    "legend": {
+      "true_cluster": "expected MERGE into one cluster",
+      "blob_negative": "expected SPLIT — single-linkage chain, must NOT be one cluster",
+      "fp_bait_earnings": "expected SEPARATE — different companies, template-similar",
+      "fp_bait_template": "expected SEPARATE — listicle/horoscope/gold-rate templates",
+      "grayzone_merge": "expected MERGE — same story at 0.78–0.83 (cross-lingual)",
+      "grayzone_separate": "expected SEPARATE — same template, different event",
+      "grayzone_borderline": "judgment call — do not hard-fail",
+      "singleton": "expected ALONE",
+      "fn_singleton": "KNOWN cross-lingual miss — should have merged (recall gap)"
+    },
+    "how_to_use": "Re-cluster the article_ids with the candidate clusterer. For each group: merge → all ids in one cluster; separate/split → ids land in >1 cluster; alone → id is a singleton. Score precision/recall + B-cubed against expected."
+  },
+  "groups": [
+    {
+      "id": "true001",
+      "type": "true_cluster",
+      "expected": "merge",
+      "category": "SECURITY",
+      "size": 5,
+      "sources": 5,
+      "ratio": 1,
+      "note": "multi-source same-event cluster — must merge",
+      "article_ids": [
+        "8d238d4e-6363-450b-8ce1-68245cc148eb",
+        "a868c4bb-aa93-4af3-a5a7-b14a3e605d8f",
+        "67c797b7-7440-4448-ab30-89fed4f3fb08",
+        "c1d330ff-b7ee-44a7-835c-2d3ef59763fd",
+        "3a7e6bd6-100c-4d4e-943d-98d216c90707"
+      ],
+      "sample": [
+        "[te/SECURITY|4d8cb3] Harmanpreet Kaur | ‘పద్మ శ్రీ’ స్వీకరించిన భారత కెప్టెన్.. వీడియో..!",
+        "[en/SECURITY|e80241] Harmanpreet Kaur conferred Padma Shri by Prez Murmu",
+        "[hi/SECURITY|cf1cda] Padma Awards: हरमनप्रीत कौर को मिला पद्मश्री, राष्ट्रपति द्रौपदी मुर्मू ने किया सम्मानित",
+        "[en/SECURITY|cad98f] Harmanpreet Kaur Receives Padma Shri for Contributions to Indian Cricket"
+      ]
+    },
+    {
+      "id": "true002",
+      "type": "true_cluster",
+      "expected": "merge",
+      "category": "SECURITY",
+      "size": 5,
+      "sources": 5,
+      "ratio": 1,
+      "note": "multi-source same-event cluster — must merge",
+      "article_ids": [
+        "9264f4a3-0b47-406f-98b8-2cde75c3ce22",
+        "f0afcd83-2194-47a6-89ce-acc0cbf99a47",
+        "198ec9c2-906f-4e49-8dda-a47013fb83b4",
+        "4786e163-0f75-49db-b687-72bff8059b3b",
+        "d071ae10-fd35-4526-80e5-5f45d243bcec"
+      ],
+      "sample": [
+        "[en/SECURITY|a7af6a] Man killed in shark attack off Australia's north-east coast",
+        "[en/OTHER|77f8ef] Man killed in shark attack off Queensland coast in second fatal incident in Australia in t",
+        "[en/SECURITY|41e66d] Australia: Man dies of shark attack on eastern coast",
+        "[en/SECURITY|81a096] Man dies in northeast Australia after shark attack"
+      ]
+    },
+    {
+      "id": "blob003",
+      "type": "blob_negative",
+      "expected": "split",
+      "category": "SECURITY",
+      "size": 14,
+      "sources": 4,
+      "ratio": 3.5,
+      "note": "single-linkage chain blob (article:source 3.5) — must NOT be one cluster",
+      "article_ids": [
+        "075e9ccc-2d08-4d08-ac89-5ba77e275d92",
+        "92a4725e-7d0f-4e9e-8616-d9ee95192746",
+        "0dc2d466-ecb5-4e67-98a7-ad7d05a21dd0",
+        "f106a9fe-9618-47d4-a9d7-ee8677872e7e",
+        "20c02842-4350-4327-a8b9-15ac6cb9010e",
+        "64902bff-8260-4fcf-adaa-ea3a1e506c37",
+        "dd10c729-514c-40d2-96c2-50b531a7ac89",
+        "693a674a-53b5-44cc-9269-dac214952799",
+        "79b18dfb-2153-4abd-96ee-69ac5ac2fdca",
+        "81ae4646-1b28-40c8-b534-1d6e0db7dde5"
+      ],
+      "sample": [
+        "[en/OTHER|25d094] Indian badminton player P. V. Sindhu in action against Nguyen Thuy Linh of Vietnam during ",
+        "[en/FINANCE|cdec16] TGSRTC introduces CCTV surveillance in 175 buses in Adilabad region",
+        "[en/TECHNOLOGY|e87c66] SpaceX launches latest Starship test flight with upgraded system",
+        "[en/SECURITY|e87c66] Indian Army Cheetah helicopter crashes near Leh, officers safe"
+      ]
+    },
+    {
+      "id": "true004",
+      "type": "true_cluster",
+      "expected": "merge",
+      "category": "SECURITY",
+      "size": 5,
+      "sources": 4,
+      "ratio": 1.25,
+      "note": "multi-source same-event cluster — must merge",
+      "article_ids": [
+        "6011b558-17d8-4deb-8d33-51ec626629e5",
+        "ebf48f24-f613-4b01-89c0-1f0ff1f93d7b",
+        "0cdf7bf2-3e45-475d-b3b8-8a869d6f599f",
+        "7e1ccfcc-e2f9-467e-a90c-9032756d1ef5",
+        "22e1954c-bcb5-4678-9214-13eac7440270"
+      ],
+      "sample": [
+        "[en/SECURITY|25d094] NEET paper leak: NTA has not learnt lessons, says SC; issues notices on pleas",
+        "[en/OTHER|28c0d0] NEET paper leak: NTA has not learnt lessons, says SC",
+        "[en/OTHER|a0a3bb] ‘Sad they have not learnt lesson’: Supreme Court on NTA after 2026 NEET paper leak",
+        "[en/SECURITY|e80241] Sad they have not learnt their lesson: SC on NEET-UG 2026 row"
+      ]
+    },
+    {
+      "id": "true005",
+      "type": "true_cluster",
+      "expected": "merge",
+      "category": "SECURITY",
+      "size": 5,
+      "sources": 4,
+      "ratio": 1.25,
+      "note": "multi-source same-event cluster — must merge",
+      "article_ids": [
+        "675402a1-6234-445a-a8e0-805ffb6d0554",
+        "4aaa0504-9d16-4b3d-90d6-7dd4ac1271b0",
+        "701a9609-1d48-400e-9682-8de93e8fea48",
+        "6cd925e6-793b-4da0-852a-9761a9f81104",
+        "3c92a66b-e07f-46cc-af4f-a1d321893cc0"
+      ],
+      "sample": [
+        "[en/SECURITY|25d094] SC issues notices to Centre on PIL seeking ban on employment of children in orchestrax, sp",
+        "[en/SECURITY|25d094] SC seeks Centre’s reply on PIL seeking ban on child employment in spas, dance bars",
+        "[en/OTHER|b47fd2] Supreme Court issues notices to Centre on PIL seeking ban on employment of children in orc",
+        "[en/SECURITY|28c0d0] SC notice to Centre on plea seeking ban on child employment in orchestras, spas"
+      ]
+    },
+    {
+      "id": "blob006",
+      "type": "blob_negative",
+      "expected": "split",
+      "category": "SECURITY",
+      "size": 55,
+      "sources": 4,
+      "ratio": 13.75,
+      "note": "single-linkage chain blob (article:source 13.8) — must NOT be one cluster",
+      "article_ids": [
+        "ce2f33fa-d074-4592-a03b-9fe53216435b",
+        "014ee4b1-ff57-4561-a02d-f66d69c619e4",
+        "fa954f80-4deb-4ae6-87fb-4af9afde66a1",
+        "94d98c87-2c08-4bf5-bcbb-0fced0a036b8",
+        "0b54b670-f01d-41e4-b2b2-34233b3a9051",
+        "6f19f6f3-948f-4b85-a8cb-55a7103e6b54",
+        "b7960520-126e-446a-a071-be8491dcfcb2",
+        "6d894a1f-7f60-4487-bc2a-867826aa8026",
+        "4f6c9343-e617-458f-beee-925dbe5f6c37",
+        "1f68f60c-4a58-456d-9663-9d146d4b3a12"
+      ],
+      "sample": [
+        "[?/SECURITY|93f0b9] Suspected Ebola cases in DR Congo outbreak jump to more than 900",
+        "[?/SECURITY|93f0b9] Photographer bitten by a 'shark or sea lion' during surf competition",
+        "[?/FINANCE|2ca51c] Hollie Armitage, Katie Levick cap dominant Durham win",
+        "[?/SECURITY|2ca51c] Suzie Bates returns to open as New Zealand bat first in decider"
+      ]
+    },
+    {
+      "id": "true007",
+      "type": "true_cluster",
+      "expected": "merge",
+      "category": "OTHER",
+      "size": 27,
+      "sources": 20,
+      "ratio": 1.35,
+      "note": "multi-source same-event cluster — must merge",
+      "article_ids": [
+        "5842020d-40dc-437d-bd78-863f55a3ffc0",
+        "a2041b84-ca76-462f-8a1a-f19b36bc1ee8",
+        "860094c9-56ec-429c-9864-f9b7a15eb55e",
+        "bbc12c34-bf9e-4f84-a57c-63e21ed95c06",
+        "f6357f77-2c10-4adc-948b-3510077c7ea4",
+        "c6c050f4-f059-4555-b330-fdb620611afc",
+        "af95ea23-75fd-44ca-b3d3-296c223affb7",
+        "42c69484-f057-4046-a0d1-b8897a0840f2",
+        "1549c414-444a-482a-8b04-ac54d810148c",
+        "a4638314-088f-4026-8154-719f7b986ef5"
+      ],
+      "sample": [
+        "[en/POLITICS|2e2a52] Moment of gas explosion at China coal mine",
+        "[en/OTHER|fab29f] China lowers death toll in Shanxi coal mine disaster to 82",
+        "[en/POLITICS|4948f7] Anger grows after China’s deadliest coal mining disaster in years",
+        "[en/FINANCE|d9b181] China mine explosion: death toll leaps to 90 after gas blast"
+      ]
+    },
+    {
+      "id": "true008",
+      "type": "true_cluster",
+      "expected": "merge",
+      "category": "OTHER",
+      "size": 42,
+      "sources": 20,
+      "ratio": 2.1,
+      "note": "multi-source same-event cluster — must merge",
+      "article_ids": [
+        "b71540e8-8cdd-427f-ac84-962725eaf0eb",
+        "4379703b-bd2c-4c70-a020-663c2a53c23a",
+        "206d33ca-15e1-4d51-b0bb-ac85beb8710c",
+        "ca0eebb1-d9fb-4bd9-ad25-b21bf0ccac57",
+        "d6d3f0d8-1af6-461f-9635-547342cb80e9",
+        "45a53ea5-34a9-43a5-a4b7-85054ae4aa9b",
+        "a1bae6ce-f543-43e0-919d-c51d0cee2a7c",
+        "d8a7ae75-ca6e-4bb2-b06a-e7c0b6ba3029",
+        "e40d62ff-8bed-4845-b2b2-52fc0be8027f",
+        "e5fefbef-560d-4787-95b7-bf443f6fb869"
+      ],
+      "sample": [
+        "[en/FINANCE|a0a3bb] This city has the most expensive petrol after third fuel hike. Check top 10 places",
+        "[en/FINANCE|a0a3bb] Third hike for petrol, diesel in India amid Iran-US war: Check new rates",
+        "[te/OTHER|fe25e1] Fuel price hike: వాహనదారులకు బిగ్‌ అలర్ట్.. మళ్లీ పెరిగిన పెట్రోల్, డీజిల్ ధరలు",
+        "[en/OTHER|cad98f] Petrol And Diesel Prices Increased For Fourth Time In Ten Days Amid Crude Oil Surge"
+      ]
+    },
+    {
+      "id": "true009",
+      "type": "true_cluster",
+      "expected": "merge",
+      "category": "OTHER",
+      "size": 15,
+      "sources": 13,
+      "ratio": 1.15,
+      "note": "multi-source same-event cluster — must merge",
+      "article_ids": [
+        "f56f7ade-93fd-45e8-a2b6-f7baa57a1a8e",
+        "9d53855d-b462-4306-aa3f-db30c5fd4995",
+        "9787895b-c23c-46fe-829e-97dc7393efc1",
+        "e6f6c493-8c68-42e6-a2f1-61f49c954300",
+        "a34a6f6c-f04e-4914-9fbc-b0fe15e59355",
+        "fc6ee811-7d65-442b-b9cb-445835a25167",
+        "0c6fa1a0-0561-4925-a1be-75bb7c99b68e",
+        "15fd3f99-55f8-4c9e-82eb-cc834ac9e0f3",
+        "e5c815e5-1699-451d-bb8a-15f6efbccba8",
+        "00efb945-7233-4bb4-a6de-d86eb213dbbe"
+      ],
+      "sample": [
+        "[en/SECURITY|2e2a52] Blast targeting train kills at least 20 in Pakistan",
+        "[en/OTHER|fab29f] 24 killed, many injured in blast near railway track in Pakistan’s Balochistan",
+        "[en/OTHER|5ce5e4] Pakistan attack kills at least 24 as explosive-laden car hits train",
+        "[en/SECURITY|41e66d] Deadly blast hits train in Pakistan's Balochistan"
+      ]
+    },
+    {
+      "id": "true010",
+      "type": "true_cluster",
+      "expected": "merge",
+      "category": "OTHER",
+      "size": 22,
+      "sources": 12,
+      "ratio": 1.83,
+      "note": "multi-source same-event cluster — must merge",
+      "article_ids": [
+        "11d5b459-cd98-4bde-81e7-c035beab7cfa",
+        "e5ea23c1-ddba-4de6-9034-de0f118cfd5c",
+        "1f1e6c57-bd69-488c-b8be-84e41a0cd501",
+        "995f962c-15b8-4bdf-8491-61d75e5fe9dc",
+        "cbc274d1-9661-4737-b562-9f53e3371557",
+        "187a4bcc-eb1c-47ac-a53b-df6f7553537f",
+        "406dbe82-2c48-4cd3-a5d8-db0b548ee770",
+        "36e6696f-9a3c-4128-8742-1ce5c0d4c419",
+        "cf2e0036-ac4c-43d0-a4dc-16c8ea64f6b6",
+        "c8e5c51d-948e-44a1-9e1d-8f214803b068"
+      ],
+      "sample": [
+        "[en/OTHER|81a096] Iran war day 87: Trump says US not in rush to sign deal, dashing optimism",
+        "[en/POLITICS|81a096] US, Iran inch closer to deal to end the war: What to know",
+        "[en/OTHER|4948f7] Trump tells US negotiators ‘not to rush’ into deal with Iran",
+        "[en/OTHER|22f4f0] When will Hormuz reopen? The major sticking points in US-Iran talks"
+      ]
+    },
+    {
+      "id": "true011",
+      "type": "true_cluster",
+      "expected": "merge",
+      "category": "OTHER",
+      "size": 17,
+      "sources": 12,
+      "ratio": 1.42,
+      "note": "multi-source same-event cluster — must merge",
+      "article_ids": [
+        "1748bbf0-e1c7-4acf-abf1-3753dc98f4d2",
+        "c8ce33d6-9260-4bdf-8904-823fd35353d2",
+        "4af98c3d-376b-41bf-ac16-4d3d03880ecd",
+        "cd90649b-6a4f-4211-b925-a475295cd6be",
+        "7d66eb17-08d8-491d-b57c-5ddf9855447e",
+        "419172ff-49a4-4063-8414-05d1b58ce47a",
+        "30657a26-e9d2-4419-9fa0-d0ce7ff73220",
+        "1978fdc8-a870-4f7f-b21b-a0304989382a",
+        "3916e39a-5858-4e75-a4ae-43930289399b",
+        "db0f001b-06c8-45cd-b6d7-6756cf2917c2"
+      ],
+      "sample": [
+        "[en/GOVERNANCE|22f4f0] Ebola outbreak outpacing health response, WHO chief says",
+        "[en/OTHER|d9b181] Number of suspected Ebola cases in DR Congo passes 900 as health workers face attacks and ",
+        "[en/HEALTH|fab29f] WHO chief says suspected Ebola deaths at 220 and ‘epidemic is outpacing us’",
+        "[en/POLITICS|e80241] Over 900 suspected cases identified in Congo Ebola response: WHO chief"
+      ]
+    },
+    {
+      "id": "true012",
+      "type": "true_cluster",
+      "expected": "merge",
+      "category": "OTHER",
+      "size": 12,
+      "sources": 10,
+      "ratio": 1.2,
+      "note": "multi-source same-event cluster — must merge",
+      "article_ids": [
+        "62d7847e-1ea0-472f-9275-ed038def189d",
+        "13c1fd37-9071-43e5-9f7a-143f6b6f7766",
+        "800c18d0-a4c7-4992-a40d-e75c5b8b3506",
+        "6ea3d48c-1ee2-4799-8b90-6a318a214411",
+        "c45efbcc-191c-40c9-8791-e97b69537eb1",
+        "0ea91b7a-00ce-4d94-871d-e7e6ece5758a",
+        "cec16949-f72e-4f87-8da4-0107ada3e472",
+        "eb84a97d-7db6-449c-82f7-5ee2849ea218",
+        "02ca68ce-11bc-4742-aad0-bd67e94be008",
+        "66c7051e-ae9a-407e-8519-af7dd3e84187"
+      ],
+      "sample": [
+        "[en/OTHER|62d00f] KKR vs DC Player Ratings, IPL 2026: Ngidi, Rahul impress; check full rankings",
+        "[te/OTHER|27a8af] ఢిల్లీ దెబ్బకు కేకేఆర్ ఖల్లాస్.. లీగ్ చివరి మ్యాచ్‌లోనూ ఓడిన కోల్‌కతా",
+        "[en/OTHER|cefbfd] IPL 2026 Points Table: DC Finish Season On High With 40-Run Victory Over KKR To Surge | Ch",
+        "[en/OTHER|25d094] Delhi Capitals close campaign with commanding win over Kolkata Knight Riders"
+      ]
+    },
+    {
+      "id": "true013",
+      "type": "true_cluster",
+      "expected": "merge",
+      "category": "SPORTS",
+      "size": 20,
+      "sources": 8,
+      "ratio": 2.5,
+      "note": "multi-source same-event cluster — must merge",
+      "article_ids": [
+        "f1729012-366e-401c-ab21-59d391e1fd4e",
+        "ebdfe512-c9e4-4ca2-bf03-da77966d30a6",
+        "992c1e3d-8a82-4ee0-afd4-281a58c5abd4",
+        "a3d892db-96e2-482c-973c-e45917816286",
+        "1376e8e4-2d09-473b-82b0-154325e2f503",
+        "3e503e89-2e6a-4ae1-b3ff-bf4d60280e71",
+        "a959a973-1822-409a-b60c-5eb66ff4d006",
+        "a0c8ff0d-5477-474d-a7f5-1408b9c87542",
+        "512d949f-0c8b-410c-9fe4-584b16b181fe",
+        "5fda6a24-1413-488e-b5dc-2f4439c53de5"
+      ],
+      "sample": [
+        "[en/OTHER|cefbfd] IPL 2026 Qualifier 1: Royal Challengers Bengaluru vs Gujarat Titans — Head-to-Head, Fixtur",
+        "[?/SPORTS|38a10d] \"He has conceded more than 9.5 runs per over\" - Aakash Chopra on RCB's worry after IPL 202",
+        "[te/OTHER|fe25e1] SRH vs RCB : చెలరేగిన హైదరాబాద్ బ్యాటర్స్.. బెంగుళూరు ముందు భారీ టార్గెట్",
+        "[hi/SPORTS|cf1cda] सनराइजर्स हैदराबाद ने 55 रन से जीता अपना आखिरी मुकाबला, हार के बावजूद RCB बनी टेबल टॉपर"
+      ]
+    },
+    {
+      "id": "true014",
+      "type": "true_cluster",
+      "expected": "merge",
+      "category": "SPORTS",
+      "size": 2,
+      "sources": 2,
+      "ratio": 1,
+      "note": "multi-source same-event cluster — must merge",
+      "article_ids": [
+        "f02cb516-04c4-4440-9e01-fbe4555275d0",
+        "c32bbf83-7a82-4597-b011-92ba318a264c"
+      ],
+      "sample": [
+        "[en/SPORTS|0719b2] Sliding Dallin Watene-Zelezniak beats weather for try",
+        "[en/SPORTS|6025cb] Sliding Dallin Watene-Zelezniak beats weather for try"
+      ]
+    },
+    {
+      "id": "true015",
+      "type": "true_cluster",
+      "expected": "merge",
+      "category": "SPORTS",
+      "size": 2,
+      "sources": 2,
+      "ratio": 1,
+      "note": "multi-source same-event cluster — must merge",
+      "article_ids": [
+        "4713d8cc-3dc8-49be-8244-ff027331ccef",
+        "b6fad8f5-618e-4ba2-9eb2-d4645d2dceb6"
+      ],
+      "sample": [
+        "[en/SPORTS|0719b2] Moore suffers injury while rucking",
+        "[en/OTHER|6025cb] Moore suffers injury while rucking"
+      ]
+    },
+    {
+      "id": "true016",
+      "type": "true_cluster",
+      "expected": "merge",
+      "category": "SPORTS",
+      "size": 2,
+      "sources": 2,
+      "ratio": 1,
+      "note": "multi-source same-event cluster — must merge",
+      "article_ids": [
+        "733bbf05-8c7f-47ae-a5af-6280053e6505",
+        "263f131c-8e80-493f-8c3e-43a277077031"
+      ],
+      "sample": [
+        "[en/SPORTS|8696a3] Super Chess Classic: Praggnanandhaa draws with Vachier-Lagrave",
+        "[en/OTHER|62d00f] Super Chess Classic: Praggnanandhaa draws with Vachier-Lagrave"
+      ]
+    },
+    {
+      "id": "true017",
+      "type": "true_cluster",
+      "expected": "merge",
+      "category": "SPORTS",
+      "size": 2,
+      "sources": 2,
+      "ratio": 1,
+      "note": "multi-source same-event cluster — must merge",
+      "article_ids": [
+        "cff7d432-6e49-4f05-afb7-7d91ea26cf5e",
+        "ba824975-a589-4af7-a159-d4a75bf86152"
+      ],
+      "sample": [
+        "[en/SPORTS|0719b2] Scott Pendlebury runs out for record breaking game",
+        "[en/OTHER|6025cb] Scott Pendlebury runs out for record breaking game"
+      ]
+    },
+    {
+      "id": "true018",
+      "type": "true_cluster",
+      "expected": "merge",
+      "category": "SPORTS",
+      "size": 2,
+      "sources": 2,
+      "ratio": 1,
+      "note": "multi-source same-event cluster — must merge",
+      "article_ids": [
+        "90a840ab-3c3f-484c-a6b5-f69c6a779a5f",
+        "53c29653-2501-49f0-b6d5-bd6d3c481205"
+      ],
+      "sample": [
+        "[en/SPORTS|0719b2] Are you not entertained? NRL walking a fine line between integrity and mass appeal",
+        "[en/OTHER|6025cb] Are you not entertained? NRL walking a fine line between integrity and mass appeal"
+      ]
+    },
+    {
+      "id": "true019",
+      "type": "true_cluster",
+      "expected": "merge",
+      "category": "FINANCE",
+      "size": 3,
+      "sources": 3,
+      "ratio": 1,
+      "note": "multi-source same-event cluster — must merge",
+      "article_ids": [
+        "58a58e8d-23bc-40a5-86b6-74daecf90e95",
+        "34da4240-2f03-4339-a0d0-946ba62e3631",
+        "ffd58e63-3c73-4730-8465-7f842cb03734"
+      ],
+      "sample": [
+        "[en/FINANCE|cad98f] Manipur Police Identifies Over 5,000 Communal Posts Amid Ongoing Violence",
+        "[en/SECURITY|b47fd2] Manipur DGP says 5,406 communal posts identified; 3,200 taken down",
+        "[en/OTHER|a0a3bb] 5,406 communal posts identified, 3,200 taken down after ethnic violence erupted: Manipur D"
+      ]
+    },
+    {
+      "id": "true020",
+      "type": "true_cluster",
+      "expected": "merge",
+      "category": "FINANCE",
+      "size": 3,
+      "sources": 3,
+      "ratio": 1,
+      "note": "multi-source same-event cluster — must merge",
+      "article_ids": [
+        "4f9d707d-163c-4c88-b691-2a3fe43e8566",
+        "12d49ffe-2956-4e1c-8c0f-e50b8f5d2f47",
+        "748971c4-bf06-44d1-b8fb-9e5d1df15cec"
+      ],
+      "sample": [
+        "[en/FINANCE|0c714b] Morocco's king pardons Senegalese football fans jailed over AFCON hooliganism",
+        "[en/OTHER|3b2cc0] Senegal football fans return home after royal pardon for Cup of Nations chaos",
+        "[en/SPORTS|81a096] Senegal football fans return home after royal pardon in Morocco"
+      ]
+    },
+    {
+      "id": "true021",
+      "type": "true_cluster",
+      "expected": "merge",
+      "category": "FINANCE",
+      "size": 2,
+      "sources": 2,
+      "ratio": 1,
+      "note": "multi-source same-event cluster — must merge",
+      "article_ids": [
+        "c97b33cc-9634-460c-b116-b879c5e305db",
+        "274dbcea-538c-46ea-abd6-03e88e150b22"
+      ],
+      "sample": [
+        "[en/FINANCE|a0a3bb] RBI approves record  ₹2.87 lakh crore dividend transfer to Centre for FY26",
+        "[en/POLITICS|04e9a9] RBI transfers record  ₹2.87 trillion dividend to Centre, raises risk buffers"
+      ]
+    },
+    {
+      "id": "true022",
+      "type": "true_cluster",
+      "expected": "merge",
+      "category": "FINANCE",
+      "size": 2,
+      "sources": 2,
+      "ratio": 1,
+      "note": "multi-source same-event cluster — must merge",
+      "article_ids": [
+        "324e7287-91a8-4d7f-9157-8bcab9d50195",
+        "fc6d26fa-b0dd-4765-82bc-f7217f6d7f9e"
+      ],
+      "sample": [
+        "[en/FINANCE|74b23b] Overseas travel spending by Indians falls to $1.09 billion in March",
+        "[en/FINANCE|b47fd2] Overseas travel spending by Indians falls to $1.09 billion in March"
+      ]
+    },
+    {
+      "id": "true023",
+      "type": "true_cluster",
+      "expected": "merge",
+      "category": "FINANCE",
+      "size": 2,
+      "sources": 2,
+      "ratio": 1,
+      "note": "multi-source same-event cluster — must merge",
+      "article_ids": [
+        "a7e8a6ac-e68a-4858-9c56-e3038993b02d",
+        "170ba7a2-4666-46f1-83bf-5f4c973328a5"
+      ],
+      "sample": [
+        "[te/FINANCE|31327f] Pakistan Cuts Petrol and Diesel Prices: పాక్‌లో భారీగా తగ్గిన పెట్రోల్, డీజిల్ ధరలు.. వరుస",
+        "[en/FINANCE|25d094] Petrol, diesel prices hiked again in Hyderabad amid global crude surge"
+      ]
+    },
+    {
+      "id": "true024",
+      "type": "true_cluster",
+      "expected": "merge",
+      "category": "FINANCE",
+      "size": 2,
+      "sources": 2,
+      "ratio": 1,
+      "note": "multi-source same-event cluster — must merge",
+      "article_ids": [
+        "e4121800-8c6c-4371-a6e6-52209999914e",
+        "6e49711e-bd55-45bf-b029-3926491c0c96"
+      ],
+      "sample": [
+        "[en/FINANCE|93db71] Malami emerges ADC guber candidate in Kebbi",
+        "[en/OTHER|1a6212] 2027: ADC affirms Malami Kebbi gov candidate"
+      ]
+    },
+    {
+      "id": "true025",
+      "type": "true_cluster",
+      "expected": "merge",
+      "category": "POLITICS",
+      "size": 30,
+      "sources": 23,
+      "ratio": 1.3,
+      "note": "multi-source same-event cluster — must merge",
+      "article_ids": [
+        "7ff405c6-621c-4523-8fe7-25283b3de477",
+        "3ed02fa2-9058-49ac-af78-f02e71724cbd",
+        "b415111f-7248-4b5f-961d-73cf77d1cad8",
+        "6bfe62c0-a256-4a02-ab02-4183d59987a0",
+        "25310439-1063-481e-a1cd-4de944ed7d88",
+        "07885b7a-7d4a-4233-8049-1266697cf018",
+        "850d2496-1b0d-477f-bfec-886e9d3ecbfd",
+        "e660c7f7-8508-45d5-b58c-239c0a6c73b3",
+        "02e95cdc-3f09-414c-840b-ece116878d60",
+        "35294f1d-64bf-4175-9cb7-82e79a80913c"
+      ],
+      "sample": [
+        "[en/OTHER|ecc148] 'My husband Abraham Williams has been my rock': Tulsi Gabbard's emotional resignation lett",
+        "[en/OTHER|ecc148] Does Tulsi Gabbard have children? Inside her family as husband Abraham Williams is diagnos",
+        "[en/GOVERNANCE|ecc148] Tulsi Gabbard resigns as US director of national intelligence",
+        "[en/OTHER|04e9a9] Tulsi Gabbard resigns as Director of National Intelligence, marking another high-profile e"
+      ]
+    },
+    {
+      "id": "true026",
+      "type": "true_cluster",
+      "expected": "merge",
+      "category": "POLITICS",
+      "size": 3,
+      "sources": 3,
+      "ratio": 1,
+      "note": "multi-source same-event cluster — must merge",
+      "article_ids": [
+        "3cba69eb-8f50-404d-bb97-85ad684cb678",
+        "96bb96e4-cb73-4ad2-9696-c006d706869c",
+        "13dea388-ab21-496f-90c9-cadc7cf20b41"
+      ],
+      "sample": [
+        "[en/POLITICS|a7af6a] The Papers: 'We'll axe tax on overtime' and 'Brolly hot, isn't it'",
+        "[en/OTHER|06f125] Andrew Mountbatten-Windsor faces police investigation into ‘alleged inappropriate behaviou",
+        "[en/LEGAL|fab29f] U.K. police renew call for witnesses as they broaden inquiry into Former Prince Andrew"
+      ]
+    },
+    {
+      "id": "true027",
+      "type": "true_cluster",
+      "expected": "merge",
+      "category": "POLITICS",
+      "size": 4,
+      "sources": 3,
+      "ratio": 1.33,
+      "note": "multi-source same-event cluster — must merge",
+      "article_ids": [
+        "ac015e89-81ae-4e37-ad2b-65395bc3ee98",
+        "f103a27c-3373-463a-8e5a-f056c7dce627",
+        "1b12dc71-ba95-4bd2-bec7-bcc7e1416268",
+        "03e52848-220f-4785-86a4-4b5f67c482ad"
+      ],
+      "sample": [
+        "[en/POLITICS|ecc148] Trump prioritizes Iran over son Don Jr.'s weekend wedding: 'Not good timing'",
+        "[en/SECURITY|ecc148] Is Trump banned from the Bahamas? Don Jr.’s wedding absence sparks bizarre theories; here'",
+        "[en/POLITICS|22f4f0] Trump skips son's wedding due to his 'love of the United States'",
+        "[en/OTHER|77f8ef] Donald Trump Jr ties the knot in intimate Bahamas ceremony - without his father"
+      ]
+    },
+    {
+      "id": "true028",
+      "type": "true_cluster",
+      "expected": "merge",
+      "category": "POLITICS",
+      "size": 3,
+      "sources": 3,
+      "ratio": 1,
+      "note": "multi-source same-event cluster — must merge",
+      "article_ids": [
+        "faa29502-df84-422f-8040-8c8b31d41304",
+        "3efd6776-e48f-4573-aaea-21a2478503b1",
+        "914020b0-bb03-4cde-ae62-09c3d6970f64"
+      ],
+      "sample": [
+        "[en/SECURITY|435498] Payback With Fury: Russia Hammers Ukraine With Oreshnik, Iskander and Kinzhal Missiles",
+        "[en/POLITICS|b70777] Russia uses Oreshnik weapon to strike Ukrainian military command posts",
+        "[en/POLITICS|21f773] Oreshnik strike a retaliation for Kiev’s ‘terrorist attacks’ – Moscow"
+      ]
+    },
+    {
+      "id": "true029",
+      "type": "true_cluster",
+      "expected": "merge",
+      "category": "POLITICS",
+      "size": 3,
+      "sources": 3,
+      "ratio": 1,
+      "note": "multi-source same-event cluster — must merge",
+      "article_ids": [
+        "bc224a6d-5c17-40f0-8833-fe8886b740da",
+        "bc263576-4067-45af-9bf1-0a004e9613f5",
+        "8278b73d-028f-4690-b4fe-44fb2e554a35"
+      ],
+      "sample": [
+        "[en/OTHER|04e9a9] Trump administration clarifies new green card policy for H-1B visa holders: 'Applications ",
+        "[en/POLITICS|81a096] US says temporary visa holders should leave to apply for Green Cards",
+        "[en/POLITICS|4948f7] US says temporary visa holders should leave to apply for Green Cards"
+      ]
+    },
+    {
+      "id": "true030",
+      "type": "true_cluster",
+      "expected": "merge",
+      "category": "POLITICS",
+      "size": 3,
+      "sources": 3,
+      "ratio": 1,
+      "note": "multi-source same-event cluster — must merge",
+      "article_ids": [
+        "48a78043-11c7-4aec-94b0-ccc6d5bdef54",
+        "79933012-8533-4d2a-be01-0cd8c3c9f59a",
+        "3d98c65e-33f0-4519-9259-4efd5f959494"
+      ],
+      "sample": [
+        "[en/POLITICS|b47fd2] Bengal CM on first visit to Delhi after taking charge, meets President, Prime Minister and",
+        "[en/OTHER|a0a3bb] Bengal CM meets PM Modi, President Murmu in first Delhi visit after BJP’s win",
+        "[en/POLITICS|04e9a9] West Bengal CM Suvendu Adhikari meets President Murmu, PM Modi, Amit Shah in Delhi"
+      ]
+    },
+    {
+      "id": "true031",
+      "type": "true_cluster",
+      "expected": "merge",
+      "category": "BUSINESS",
+      "size": 6,
+      "sources": 5,
+      "ratio": 1.2,
+      "note": "multi-source same-event cluster — must merge",
+      "article_ids": [
+        "f2ca9ddb-5938-4b96-987c-9e76f0229e3c",
+        "98aeb92a-36ea-4338-b2d1-85613504e475",
+        "ae89d367-7ea7-4e3f-bec3-40bd03ac949a",
+        "9265e5d1-9769-4816-b4fd-7a4bebe384d6",
+        "ff490826-6070-4636-8109-c329c50d92e6",
+        "98f8a4d6-c9a2-4d45-bf8d-66aa23f9df66"
+      ],
+      "sample": [
+        "[en/FINANCE|344bc7] ଗ୍ରାହକଙ୍କ ପାଇଁ ଆଶ୍ଵସ୍ତି: ଟଳିଲା ଷ୍ଟ୍ରାଇକ୍, ମେ ୨୫ ଓ ୨୬ରେ ସ୍ଵାଭାବିକ ରହିବ ଷ୍ଟେଟ୍ ବ୍ୟାଙ୍କ କାର୍ଯ",
+        "[te/GOVERNANCE|4d8cb3] ఎస్బీఐ ఉద్యోగుల సమ్మె వాయిదా",
+        "[hi/BUSINESS|cf1cda] टल गई SBI की हड़ताल, 25 और 26 मई को खुले रहेंगे बैंक ",
+        "[en/BUSINESS|e80241] SBI staff strike deferred, banking services to continue uninterrupted"
+      ]
+    },
+    {
+      "id": "true032",
+      "type": "true_cluster",
+      "expected": "merge",
+      "category": "BUSINESS",
+      "size": 3,
+      "sources": 2,
+      "ratio": 1.5,
+      "note": "multi-source same-event cluster — must merge",
+      "article_ids": [
+        "7c4709e9-3ff2-497f-a82d-522e5669cf6a",
+        "391b37ac-84f7-40bd-a2c5-b5b79065e782",
+        "b6cdaa2c-24c4-4d00-ae24-22e58b2b0624"
+      ],
+      "sample": [
+        "[te/FINANCE|fe25e1] పొదుపు చేయాలనుకునేవారికి గుడ్‌న్యూస్‌! LIC నుంచి రెండు కొత్త ప్లాన్లు!",
+        "[te/BUSINESS|31327f] LIC: ఎల్‌ఐసీ నుంచి జీవన్ సాథి పేరుతో రెండు కొత్త ప్లాన్‌లు.. మార్కెట్ రిస్క్ లేకుండా గ్యార",
+        "[te/BUSINESS|fe25e1] LIC: ఒక్కసారి పెట్టుబడి పెడితే మీ డబ్బులు డబుల్.. ఎల్‌ఐసీ నుంచి బిగ్ అప్డేట్.."
+      ]
+    },
+    {
+      "id": "true033",
+      "type": "true_cluster",
+      "expected": "merge",
+      "category": "BUSINESS",
+      "size": 2,
+      "sources": 2,
+      "ratio": 1,
+      "note": "multi-source same-event cluster — must merge",
+      "article_ids": [
+        "d1e8529f-551c-4cdb-930c-31fd44da1fcb",
+        "598b19b9-73f9-4e8a-82cc-c65b4ae04a1d"
+      ],
+      "sample": [
+        "[en/BUSINESS|6025cb] I mentioned quolls. Not one person knew what they were",
+        "[en/BUSINESS|0719b2] I mentioned quolls. Not one person knew what they were"
+      ]
+    },
+    {
+      "id": "true034",
+      "type": "true_cluster",
+      "expected": "merge",
+      "category": "BUSINESS",
+      "size": 2,
+      "sources": 2,
+      "ratio": 1,
+      "note": "multi-source same-event cluster — must merge",
+      "article_ids": [
+        "786c2873-121d-471b-94a5-59c591f0190e",
+        "9393ef7b-839a-41f5-9830-9a9f8547ab9d"
+      ],
+      "sample": [
+        "[en/BUSINESS|6025cb] Natalie’s redundancy was gut-wrenching. Her story is becoming more common",
+        "[en/BUSINESS|0719b2] Natalie’s redundancy was gut-wrenching. Her story is becoming more common"
+      ]
+    },
+    {
+      "id": "true035",
+      "type": "true_cluster",
+      "expected": "merge",
+      "category": "BUSINESS",
+      "size": 2,
+      "sources": 2,
+      "ratio": 1,
+      "note": "multi-source same-event cluster — must merge",
+      "article_ids": [
+        "0c3744d4-89f3-457b-9ef5-c75cad9f12d6",
+        "a0b05810-5c21-4bd1-98e7-5b47a6b0f059"
+      ],
+      "sample": [
+        "[en/BUSINESS|6025cb] Striking gold is the dream for thousands of Australians. But there’s a ‘paradox’ holding t",
+        "[en/BUSINESS|0719b2] Striking gold is the dream for thousands of Australians. But there’s a ‘paradox’ holding t"
+      ]
+    },
+    {
+      "id": "true036",
+      "type": "true_cluster",
+      "expected": "merge",
+      "category": "BUSINESS",
+      "size": 2,
+      "sources": 2,
+      "ratio": 1,
+      "note": "multi-source same-event cluster — must merge",
+      "article_ids": [
+        "e3f6d998-4ba4-450f-a35b-8c7ec2af7c2c",
+        "8cc38efe-00c3-4e4c-87d6-a2ebcdac6e58"
+      ],
+      "sample": [
+        "[en/BUSINESS|74b23b] Piyush Goyal to visit Canada with 150 business leaders to boost trade ties",
+        "[en/BUSINESS|9a1052] Piyush Goyal to visit Canada with 150 business leaders to boost trade ties"
+      ]
+    },
+    {
+      "id": "true037",
+      "type": "true_cluster",
+      "expected": "merge",
+      "category": "GOVERNANCE",
+      "size": 3,
+      "sources": 3,
+      "ratio": 1,
+      "note": "multi-source same-event cluster — must merge",
+      "article_ids": [
+        "4b32f502-01cd-4469-93b6-450c393d107e",
+        "7205ad89-3589-42ce-98b2-3d12950edaa6",
+        "5473af5a-d457-4771-93de-053281739e33"
+      ],
+      "sample": [
+        "[en/GOVERNANCE|74b23b] Centre notifies Draft Rules under VB–G RAM G Act, seeks public feedback by June 20",
+        "[en/GOVERNANCE|04e9a9] VB-G RAM G draft rules published for public consultation ahead of its implementation from ",
+        "[en/OTHER|b47fd2] Centre publishes draft rules for VB-G RAM G, invites feedback"
+      ]
+    },
+    {
+      "id": "true038",
+      "type": "true_cluster",
+      "expected": "merge",
+      "category": "GOVERNANCE",
+      "size": 3,
+      "sources": 3,
+      "ratio": 1,
+      "note": "multi-source same-event cluster — must merge",
+      "article_ids": [
+        "8c1776b2-cdcf-4d03-8990-88d1e944435d",
+        "0b3f5bfd-5a02-491d-9d4e-98e2890f52eb",
+        "9e35cf2a-74c4-4f2e-aeee-db0dd7181b25"
+      ],
+      "sample": [
+        "[en/GOVERNANCE|04e9a9] India on alert over Ebola, health minister Nadda reviews preparedness",
+        "[en/GOVERNANCE|cefbfd] Ebola Alert in India: Health Minister Nadda Reviews India’s Preparedness Amid Rising Afric",
+        "[en/POLITICS|a0a3bb] No Ebola case reported in India so far, says health minister Nadda; reviews preparedness"
+      ]
+    },
+    {
+      "id": "true039",
+      "type": "true_cluster",
+      "expected": "merge",
+      "category": "GOVERNANCE",
+      "size": 2,
+      "sources": 2,
+      "ratio": 1,
+      "note": "multi-source same-event cluster — must merge",
+      "article_ids": [
+        "0b457901-5a67-43fe-9f95-ec5eba5a4425",
+        "fddf69b0-d67f-4979-9299-330535d0f6ba"
+      ],
+      "sample": [
+        "[en/GOVERNANCE|4e231d] Vijay Shankar retires from domestic and IPL cricket",
+        "[en/FINANCE|62d00f] I am happy with my journey: Vijay Shankar calls time on domestic and IPL career"
+      ]
+    },
+    {
+      "id": "true040",
+      "type": "true_cluster",
+      "expected": "merge",
+      "category": "GOVERNANCE",
+      "size": 2,
+      "sources": 2,
+      "ratio": 1,
+      "note": "multi-source same-event cluster — must merge",
+      "article_ids": [
+        "4cf6287e-0f9a-40dd-8cda-fb32a34dd25d",
+        "57b58587-6b11-404c-b418-a855a07f8a0f"
+      ],
+      "sample": [
+        "[en/GOVERNANCE|0c714b] Trump comments spark speculation about his intentions towards Cuba",
+        "[en/OTHER|77f8ef] Is Cuba next? US warns Havana is ‘a national security threat’ as Trump ramps up pressure"
+      ]
+    },
+    {
+      "id": "true041",
+      "type": "true_cluster",
+      "expected": "merge",
+      "category": "GOVERNANCE",
+      "size": 2,
+      "sources": 2,
+      "ratio": 1,
+      "note": "multi-source same-event cluster — must merge",
+      "article_ids": [
+        "f8b54367-3761-4b81-94ca-87f89a6d7e50",
+        "cc5ac846-82bb-4808-81ec-5ee739e3b9c0"
+      ],
+      "sample": [
+        "[en/GOVERNANCE|6025cb] Australian who died in hiking accident in Peru remembered as selfless",
+        "[en/SOCIAL|0719b2] Australian who died in hiking accident in Peru remembered as selfless"
+      ]
+    },
+    {
+      "id": "true042",
+      "type": "true_cluster",
+      "expected": "merge",
+      "category": "GOVERNANCE",
+      "size": 2,
+      "sources": 2,
+      "ratio": 1,
+      "note": "multi-source same-event cluster — must merge",
+      "article_ids": [
+        "a1d660a0-acd9-478c-be72-c2c231e20bcf",
+        "59fd0f01-9baa-44a6-9bd2-6c67a3d6b1f8"
+      ],
+      "sample": [
+        "[en/GOVERNANCE|28c0d0] Transfers in revenue department, Hyderabad gets new district revenue officer",
+        "[te/LEGAL|4d8cb3] Transfers | రాష్ట్రంలో 16 మంది స్పెషల్‌ గ్రేడ్‌ డిప్యూటీ కలెక్టర్లు, డిప్యూటీ కలెక్టర్ల బద"
+      ]
+    },
+    {
+      "id": "true043",
+      "type": "true_cluster",
+      "expected": "merge",
+      "category": "SOCIAL",
+      "size": 2,
+      "sources": 2,
+      "ratio": 1,
+      "note": "multi-source same-event cluster — must merge",
+      "article_ids": [
+        "b3114b80-dcf2-4f50-9420-080ffa91d93a",
+        "89ed5364-b21a-4b53-9ae2-f81cb23d51c4"
+      ],
+      "sample": [
+        "[en/SOCIAL|0719b2] Should you spend double the amount on a gift for friends with twins?",
+        "[en/SOCIAL|6025cb] Should you spend double the amount on a gift for friends with twins?"
+      ]
+    },
+    {
+      "id": "true044",
+      "type": "true_cluster",
+      "expected": "merge",
+      "category": "SOCIAL",
+      "size": 3,
+      "sources": 2,
+      "ratio": 1.5,
+      "note": "multi-source same-event cluster — must merge",
+      "article_ids": [
+        "79afbe69-ec77-48ae-a8f8-722ddfd2b6f3",
+        "40240c99-73fa-47c1-b7ce-5b6875bc2aa3",
+        "21db16cf-697c-4f2e-b905-6bff9d8cc641"
+      ],
+      "sample": [
+        "[te/SOCIAL|4d8cb3] Rukmini Vasanth | బికినీలో రుక్మిణి వసంత్.. రియలా? AI డీప్‌ఫేకా?",
+        "[te/SOCIAL|4d8cb3] Rukmini Vasanth | అవ‌న్నీ ఫేక్.. బికినీ ఫొటోలపై స్పందించిన నటి రుక్మిణి వసంత్",
+        "[te/OTHER|0ce83d] Rukmini Vasanth: బికినీలో రుక్మిణీ వసంత్.. కళ్లు చెదిరిపోయేలా ఉంది వర్మ"
+      ]
+    },
+    {
+      "id": "true045",
+      "type": "true_cluster",
+      "expected": "merge",
+      "category": "SOCIAL",
+      "size": 2,
+      "sources": 2,
+      "ratio": 1,
+      "note": "multi-source same-event cluster — must merge",
+      "article_ids": [
+        "2db85612-a7e9-4f1d-866c-ec8779eb7ec9",
+        "daa32aab-0769-49a1-85c3-d37c5a4cc92c"
+      ],
+      "sample": [
+        "[te/SOCIAL|4d8cb3] Kangana Ranaut | మంగళసూత్రం ఫోటోలతో వైరల్ అయిన పెళ్లి వార్తలు.. అసలు నిజం చెప్పిన కంగనా రన",
+        "[te/OTHER|31327f] Kangana Ranaut : సీక్రెట్‌గా పెళ్లి.. క్లారిటీ ఇచ్చిన కంగనా"
+      ]
+    },
+    {
+      "id": "true046",
+      "type": "true_cluster",
+      "expected": "merge",
+      "category": "INFRASTRUCTURE",
+      "size": 3,
+      "sources": 3,
+      "ratio": 1,
+      "note": "multi-source same-event cluster — must merge",
+      "article_ids": [
+        "4eab0276-3338-4abd-871c-a6ea631d9e42",
+        "a778d5db-07ae-49a5-826f-2907caaa2e4e",
+        "b903e686-b44b-4ca1-afcf-e710d62e51f9"
+      ],
+      "sample": [
+        "[en/INFRASTRUCTURE|b47fd2] Karnataka govt. extends viability gap funding of ₹28.47 crore to resume flights from Benga",
+        "[en/INFRASTRUCTURE|25d094] Flights to Bidar, Kalaburagi set to resume from June: Karnataka minister",
+        "[en/INFRASTRUCTURE|74b23b] Bengaluru-Bidar, Kalaburagi flights to resume from June; Ktaka extends ₹28.47 crore suppor"
+      ]
+    },
+    {
+      "id": "true047",
+      "type": "true_cluster",
+      "expected": "merge",
+      "category": "INFRASTRUCTURE",
+      "size": 4,
+      "sources": 2,
+      "ratio": 2,
+      "note": "multi-source same-event cluster — must merge",
+      "article_ids": [
+        "cde81c9e-65ca-4f73-89d4-f9cfdea4d710",
+        "18c58ba6-a030-4e40-97ec-b623248be2ad",
+        "5232618f-e0da-4cb4-89c9-7e468ae0f486",
+        "d8df882c-9a98-472c-8a8f-9b999deffde2"
+      ],
+      "sample": [
+        "[en/POLITICS|cefbfd] US Memorial Day 2026: Is McDonald’s Open Today [May 25] in US? Check Opening ＆ Closing Tim",
+        "[en/SECURITY|ecc148] Is McDonald's open on Memorial Day 2026? How to check hours",
+        "[en/INFRASTRUCTURE|ecc148] Memorial Day 2026: Is it is federal holiday? Here's what's open and closed in US",
+        "[en/INFRASTRUCTURE|cefbfd] Memorial Day 2026: Check Significance, Facts, Why ＆ How to Celebrate ＆ All You Need to Kno"
+      ]
+    },
+    {
+      "id": "true048",
+      "type": "true_cluster",
+      "expected": "merge",
+      "category": "INFRASTRUCTURE",
+      "size": 2,
+      "sources": 2,
+      "ratio": 1,
+      "note": "multi-source same-event cluster — must merge",
+      "article_ids": [
+        "0681d958-1833-414d-94ed-883d0da08bf8",
+        "e711dbef-dbda-4b9a-9881-0f7d51245c9e"
+      ],
+      "sample": [
+        "[en/INFRASTRUCTURE|6025cb] Sunshine restaurant serves up last sizzling steak before making way for airport rail super",
+        "[en/OTHER|0719b2] Sunshine restaurant serves up last sizzling steak before making way for airport rail super"
+      ]
+    },
+    {
+      "id": "true049",
+      "type": "true_cluster",
+      "expected": "merge",
+      "category": "INFRASTRUCTURE",
+      "size": 3,
+      "sources": 2,
+      "ratio": 1.5,
+      "note": "multi-source same-event cluster — must merge",
+      "article_ids": [
+        "d1b619a2-f806-4c49-a32e-4eb260eaa457",
+        "67277ab4-4c1e-42d4-85f5-057b4aa88007",
+        "336ff7d4-497d-4040-be29-4d89c659b6f0"
+      ],
+      "sample": [
+        "[en/INFRASTRUCTURE|412e50] East Africa wants to curb imports of used clothes. But it's not easy",
+        "[en/BUSINESS|4948f7] East Africa wants to curb imports of used clothes, but it’s not easy",
+        "[en/OTHER|4948f7] East Africa wants to curb imports of used clothes. But it’s not easy"
+      ]
+    },
+    {
+      "id": "true050",
+      "type": "true_cluster",
+      "expected": "merge",
+      "category": "INFRASTRUCTURE",
+      "size": 2,
+      "sources": 2,
+      "ratio": 1,
+      "note": "multi-source same-event cluster — must merge",
+      "article_ids": [
+        "ef293435-e5a2-464d-84a8-1d75be759055",
+        "3180a9c9-81bb-430e-a548-91e71ca31887"
+      ],
+      "sample": [
+        "[en/INFRASTRUCTURE|6025cb] Former home of Fairfax Media remains a stunning building (and an excellent hotel)",
+        "[en/INFRASTRUCTURE|0719b2] Former home of Fairfax Media remains a stunning building (and an excellent hotel)"
+      ]
+    },
+    {
+      "id": "true051",
+      "type": "true_cluster",
+      "expected": "merge",
+      "category": "INFRASTRUCTURE",
+      "size": 2,
+      "sources": 2,
+      "ratio": 1,
+      "note": "multi-source same-event cluster — must merge",
+      "article_ids": [
+        "2181af1c-0fa7-401e-83f5-97ee31eb0ea4",
+        "37a772e7-89a9-455f-8e8a-71b6e9173a17"
+      ],
+      "sample": [
+        "[en/INFRASTRUCTURE|6025cb] Revealed: The plan to unlock Sydney’s forgotten inner-city landmark",
+        "[en/OTHER|0719b2] Revealed: The plan to unlock Sydney’s forgotten inner-city landmark"
+      ]
+    },
+    {
+      "id": "true052",
+      "type": "true_cluster",
+      "expected": "merge",
+      "category": "TECHNOLOGY",
+      "size": 3,
+      "sources": 3,
+      "ratio": 1,
+      "note": "multi-source same-event cluster — must merge",
+      "article_ids": [
+        "5fbc349f-5adc-498d-a6bb-b9cbce4755fb",
+        "6a465a6d-0055-40df-83d5-a2f51ab40f3a",
+        "6552b327-54c6-4359-8a95-4bf2fae8af5b"
+      ],
+      "sample": [
+        "[te/TECHNOLOGY|31327f] Motorola Edge 70 Pro+: మోటరోలా ఎడ్జ్ 70 ప్రో+ త్వరలో భారత్ లో విడుదల.. 50MP ట్రిపుల్ రియర్",
+        "[en/OTHER|04e9a9] Motorola Edge 70 Pro+ India launch date set, 50MP Sony LYTIA 710 camera, colour variants r",
+        "[hi/SECURITY|cf1cda] प्रो-लेवल फोटोग्राफी फीचर्स के साथ आ रहा Motorola Edge 70 Pro+, इस दिन होगा लॉन्च"
+      ]
+    },
+    {
+      "id": "true053",
+      "type": "true_cluster",
+      "expected": "merge",
+      "category": "TECHNOLOGY",
+      "size": 3,
+      "sources": 3,
+      "ratio": 1,
+      "note": "multi-source same-event cluster — must merge",
+      "article_ids": [
+        "5fd434fb-5630-44c5-8416-070865082cc7",
+        "ddf780f9-c132-4e86-9074-7fab2319ece2",
+        "8c9befae-8343-4276-b94d-8be7a0894897"
+      ],
+      "sample": [
+        "[en/TECHNOLOGY|28c0d0] Hyderabad to soon get Tesla showroom: IT Minister Sridhar Babu",
+        "[en/OTHER|b34061] Tesla to Open Sales and Service Centre in Hyderabad",
+        "[en/SECURITY|25d094] Tesla to open sales and service centre in Hyderabad"
+      ]
+    },
+    {
+      "id": "true054",
+      "type": "true_cluster",
+      "expected": "merge",
+      "category": "TECHNOLOGY",
+      "size": 2,
+      "sources": 2,
+      "ratio": 1,
+      "note": "multi-source same-event cluster — must merge",
+      "article_ids": [
+        "4b106c0b-466e-4f3e-9aa9-cd3fed132369",
+        "dd419a9e-0d9a-4ddc-9b62-38517254cb92"
+      ],
+      "sample": [
+        "[en/TECHNOLOGY|a0a3bb] Child rights group urges NCPCR to set up WhatsApp helpline for abused children",
+        "[en/SOCIAL|b47fd2] Child rights group urges NCPCR to set up WhatsApp helpline for abused children"
+      ]
+    },
+    {
+      "id": "true055",
+      "type": "true_cluster",
+      "expected": "merge",
+      "category": "TECHNOLOGY",
+      "size": 3,
+      "sources": 2,
+      "ratio": 1.5,
+      "note": "multi-source same-event cluster — must merge",
+      "article_ids": [
+        "c310aa6a-48d3-449f-98e1-6d86b32984f2",
+        "d4d6d510-81d5-44e2-889b-6cfa314c987e",
+        "c5dc15d9-597a-43cf-9e4e-7d090a44cdfb"
+      ],
+      "sample": [
+        "[en/TECHNOLOGY|b47fd2] President Droupadi Murmu confers Padma awards",
+        "[en/OTHER|e80241] President Murmu honours Dharmendra, Harmanpreet Kaur, Uday Kotak with Padma Awards",
+        "[en/SECURITY|e80241] Hema Malini has emotional moment as she receives Dharmendra's posthumous Padma Vibhushan"
+      ]
+    },
+    {
+      "id": "true056",
+      "type": "true_cluster",
+      "expected": "merge",
+      "category": "TECHNOLOGY",
+      "size": 2,
+      "sources": 2,
+      "ratio": 1,
+      "note": "multi-source same-event cluster — must merge",
+      "article_ids": [
+        "f9c610c0-7d78-41fd-b0ec-94351a54db90",
+        "6cf46918-5013-4822-8dee-f7376def0c6b"
+      ],
+      "sample": [
+        "[en/TECHNOLOGY|a0a3bb] ‘Smart border’ along Pakistan, B’desh to curb infiltration: Shah",
+        "[en/TECHNOLOGY|25d094] Amit Shah announces ‘smart border’ project for Pakistan, Bangladesh frontiers"
+      ]
+    },
+    {
+      "id": "true057",
+      "type": "true_cluster",
+      "expected": "merge",
+      "category": "TECHNOLOGY",
+      "size": 2,
+      "sources": 2,
+      "ratio": 1,
+      "note": "multi-source same-event cluster — must merge",
+      "article_ids": [
+        "193e1b38-ad4b-498e-af5d-825ea38fddfd",
+        "81fb483f-aa1b-4b37-b475-d9822f16a04d"
+      ],
+      "sample": [
+        "[en/TECHNOLOGY|870a6b] SpaceX’s money-losing rockets are biggest asset in AI dream",
+        "[en/TECHNOLOGY|04e9a9] SpaceX’s Money-Losing Rockets Are Biggest Asset in AI Dream"
+      ]
+    },
+    {
+      "id": "true058",
+      "type": "true_cluster",
+      "expected": "merge",
+      "category": "ENVIRONMENT",
+      "size": 3,
+      "sources": 3,
+      "ratio": 1,
+      "note": "multi-source same-event cluster — must merge",
+      "article_ids": [
+        "dc899265-b4ca-4cf5-98ac-2d6c5b6db877",
+        "2d965467-f653-48e8-b3c0-7060ae6f150a",
+        "2eb58747-be7c-4f57-892a-3b221d718a8d"
+      ],
+      "sample": [
+        "[en/ENVIRONMENT|b47fd2] Man reaches Mathura civic body office dressed as cockroach to draw attention to Yamuna pol",
+        "[en/ENVIRONMENT|a0a3bb] UP man reaches Mathura civic body office dressed as cockroach to draw attention to Yamuna ",
+        "[en/ENVIRONMENT|28c0d0] Man dressed as cockroach protests Yamuna pollution at Mathura civic office"
+      ]
+    },
+    {
+      "id": "true059",
+      "type": "true_cluster",
+      "expected": "merge",
+      "category": "ENVIRONMENT",
+      "size": 2,
+      "sources": 2,
+      "ratio": 1,
+      "note": "multi-source same-event cluster — must merge",
+      "article_ids": [
+        "60289c16-7836-4058-9a46-5f0db88bcf2e",
+        "70700225-eb34-44f7-8add-e3f43d3e590d"
+      ],
+      "sample": [
+        "[en/ENVIRONMENT|6025cb] From the highest volcanoes to the world’s least visited country: 10 places to visit this y",
+        "[en/ENVIRONMENT|0719b2] From the highest volcanoes to the world’s least visited country: 10 places to visit this y"
+      ]
+    },
+    {
+      "id": "true060",
+      "type": "true_cluster",
+      "expected": "merge",
+      "category": "ENVIRONMENT",
+      "size": 2,
+      "sources": 2,
+      "ratio": 1,
+      "note": "multi-source same-event cluster — must merge",
+      "article_ids": [
+        "3eb07246-1b94-4813-adb0-4b3d39112516",
+        "f318af5e-1175-4543-84b5-7a4444eb2919"
+      ],
+      "sample": [
+        "[en/ENVIRONMENT|6025cb] The Sri Lankan holiday tip architecture aficionados follow",
+        "[en/ENVIRONMENT|0719b2] The Sri Lankan holiday tip architecture aficionados follow"
+      ]
+    },
+    {
+      "id": "true061",
+      "type": "true_cluster",
+      "expected": "merge",
+      "category": "ENVIRONMENT",
+      "size": 2,
+      "sources": 2,
+      "ratio": 1,
+      "note": "multi-source same-event cluster — must merge",
+      "article_ids": [
+        "f64894b7-de15-4c1d-8034-f67f71faedf5",
+        "5b91a1bf-7e97-4c59-8b0c-640ec1ca899d"
+      ],
+      "sample": [
+        "[en/ENVIRONMENT|6025cb] How the world’s greatest light show became a $1 billion bucket-list item",
+        "[en/ENVIRONMENT|0719b2] How the world’s greatest light show became a $1 billion bucket-list item"
+      ]
+    },
+    {
+      "id": "true062",
+      "type": "true_cluster",
+      "expected": "merge",
+      "category": "ENVIRONMENT",
+      "size": 2,
+      "sources": 2,
+      "ratio": 1,
+      "note": "multi-source same-event cluster — must merge",
+      "article_ids": [
+        "8aa8f54a-0456-464d-b771-5bb1f04af23c",
+        "d06b64a8-b0e0-4471-884a-269d2a16f92f"
+      ],
+      "sample": [
+        "[en/ENVIRONMENT|6025cb] Forget the food – the highlight of this Italian city is actually its architecture",
+        "[en/ENVIRONMENT|0719b2] Forget the food – the highlight of this Italian city is actually its architecture"
+      ]
+    },
+    {
+      "id": "true063",
+      "type": "true_cluster",
+      "expected": "merge",
+      "category": "ENVIRONMENT",
+      "size": 2,
+      "sources": 2,
+      "ratio": 1,
+      "note": "multi-source same-event cluster — must merge",
+      "article_ids": [
+        "f2c2d8e8-a7ed-4562-b78d-d0cc1cd5f865",
+        "7ba7c990-eef6-4524-9177-0c62d9da3df4"
+      ],
+      "sample": [
+        "[en/ENVIRONMENT|0719b2] Manly’s penguin colony is precarious. What would it take to save it?",
+        "[en/ENVIRONMENT|6025cb] Manly’s penguin colony is precarious. What would it take to save it?"
+      ]
+    },
+    {
+      "id": "true064",
+      "type": "true_cluster",
+      "expected": "merge",
+      "category": "INTERNATIONAL",
+      "size": 28,
+      "sources": 15,
+      "ratio": 1.87,
+      "note": "multi-source same-event cluster — must merge",
+      "article_ids": [
+        "1054cdbf-6c34-4610-bd14-1910406917d1",
+        "bc630514-5ff0-45fa-a3c0-76dada9a7346",
+        "9a0c9551-fb11-4805-878a-bdb30506da60",
+        "58ce64e5-5628-4d3e-ac8a-aac74cf71e92",
+        "f919a8a4-413f-4a80-b3a1-2c32e1a27b46",
+        "d8f31bd9-2ad4-4809-962e-6806f3207d6b",
+        "179b1046-8e23-41f1-b7a5-33c72b81dceb",
+        "76992941-7d11-4d53-8fd5-d5df3bcbc8ee",
+        "dd57e0a8-a26b-4890-9d52-6fc1f320f47c",
+        "02fd6024-978f-4ec7-aed7-b3a4268d7dd1"
+      ],
+      "sample": [
+        "[en/INTERNATIONAL|a7af6a] Rubio visits India to sell energy as Iran oil shock persists",
+        "[en/TECHNOLOGY|cad98f] US Secretary of State Rubio Arrives in Kolkata for First Official Visit to India",
+        "[en/OTHER|fab29f] As Quad Foreign Ministers meet, India-U.S. tensions, U.S.-China re-engagement and Iran war",
+        "[hi/OTHER|cf1cda] दिल्ली-मुंबई छोड़ कोलकाता क्यों पहुंचे मार्को रूबियो? 14 साल बाद ‘सिटी ऑफ जॉय’ में अमेरिकी"
+      ]
+    },
+    {
+      "id": "true065",
+      "type": "true_cluster",
+      "expected": "merge",
+      "category": "INTERNATIONAL",
+      "size": 5,
+      "sources": 4,
+      "ratio": 1.25,
+      "note": "multi-source same-event cluster — must merge",
+      "article_ids": [
+        "9e4444c1-0405-414e-9a47-d1be5689f6b8",
+        "9cb3dce4-994c-41f8-95ba-8892ffb0ab27",
+        "76cc29f6-d0f3-46a4-9ed0-b164ecc2ee2e",
+        "3ab3747b-b654-4b51-aa7d-229a4d47ad82",
+        "bbccd41e-924e-4010-8ebc-cd5119773f4c"
+      ],
+      "sample": [
+        "[en/SECURITY|fab29f] Pakistan military chief Asim Munir arrives in Tehran in push to end Iran war",
+        "[en/OTHER|04e9a9] US-Iran peace talks: Pakistan’s Asim Munir arrives in Tehran for second visit as Rubio hin",
+        "[en/INTERNATIONAL|b70777] Pakistani army commander arrives in Tehran to mediate between Iran, US",
+        "[en/INTERNATIONAL|81a096] Iran war day 85: Tehran says major gaps remain in US talks"
+      ]
+    },
+    {
+      "id": "true066",
+      "type": "true_cluster",
+      "expected": "merge",
+      "category": "INTERNATIONAL",
+      "size": 4,
+      "sources": 4,
+      "ratio": 1,
+      "note": "multi-source same-event cluster — must merge",
+      "article_ids": [
+        "4825397f-28b8-4dd9-9f0b-3c327777bf57",
+        "d65782f8-ebcf-4b3f-817f-38bd3d02de27",
+        "72abeaf6-be4b-4536-ac42-7d5ad6efcc4d",
+        "fb872ea4-51cd-46b1-b1ca-1402f49f0c6e"
+      ],
+      "sample": [
+        "[en/INTERNATIONAL|28c0d0] India’s Major Abhilasha Barak serving in Lebanon wins UN gender award",
+        "[te/INTERNATIONAL|4d8cb3] Major Abhilasha Barak: 2025 యూఎన్ మిలిట‌రీ జెండ‌ర్ అవార్డు గెలుచుకున్న మేజ‌ర్ అభిలాష",
+        "[en/OTHER|cad98f] UN Honours India’s Major Abhilasha Barak For Championing Women In Peacekeeping Missions",
+        "[hi/OTHER|cf1cda] इंडियन आर्मी की मेजर अभिलाषा बराक को मिला यूएन मिलिट्री जेंडर एडवोकेट अवॉर्ड 2025, लेबनान "
+      ]
+    },
+    {
+      "id": "true067",
+      "type": "true_cluster",
+      "expected": "merge",
+      "category": "INTERNATIONAL",
+      "size": 2,
+      "sources": 2,
+      "ratio": 1,
+      "note": "multi-source same-event cluster — must merge",
+      "article_ids": [
+        "1ce86d9c-12b9-47d4-9936-2a28e2751ef8",
+        "425c3bbd-21c9-4e23-b7f5-ca09908f03cb"
+      ],
+      "sample": [
+        "[en/INTERNATIONAL|6025cb] Holidays have become dirt cheap – but only if you book them right",
+        "[en/INTERNATIONAL|0719b2] Holidays have become dirt cheap – but only if you book them right"
+      ]
+    },
+    {
+      "id": "true068",
+      "type": "true_cluster",
+      "expected": "merge",
+      "category": "INTERNATIONAL",
+      "size": 2,
+      "sources": 2,
+      "ratio": 1,
+      "note": "multi-source same-event cluster — must merge",
+      "article_ids": [
+        "20039cac-4d51-452a-9080-2b7f5e6bf429",
+        "827f420d-0217-4856-b247-edc12e1bef7d"
+      ],
+      "sample": [
+        "[en/INTERNATIONAL|93db71] Nigerians affected as Trump orders green card applicants to visit home countries",
+        "[en/INTERNATIONAL|1a6212] Trump directs Nigerians, others applying for green cards to visit home countries"
+      ]
+    },
+    {
+      "id": "true069",
+      "type": "true_cluster",
+      "expected": "merge",
+      "category": "INTERNATIONAL",
+      "size": 2,
+      "sources": 2,
+      "ratio": 1,
+      "note": "multi-source same-event cluster — must merge",
+      "article_ids": [
+        "4c12a5b3-6560-4531-83bc-aae278c551e3",
+        "61f37f98-eaff-4a04-83db-dfa2ddc9abc6"
+      ],
+      "sample": [
+        "[en/INTERNATIONAL|ecc148] 8 US representatives move resolution against Trump over ‘racist’ remarks on Indian America",
+        "[en/POLITICS|04e9a9] Democratic lawmakers call out Trump's ‘racist rhetoric’ against Indian, Chinese Americans "
+      ]
+    },
+    {
+      "id": "true070",
+      "type": "true_cluster",
+      "expected": "merge",
+      "category": "HEALTH",
+      "size": 5,
+      "sources": 5,
+      "ratio": 1,
+      "note": "multi-source same-event cluster — must merge",
+      "article_ids": [
+        "5a52a2df-abb9-4100-9286-950b0d7f8fe0",
+        "77cb677f-4e23-4919-a156-ebadc6e6cc9d",
+        "d9d958bb-8a43-41b2-836a-b3614650c27b",
+        "2d89b85a-c4b8-4077-aac7-3848641efbeb",
+        "dcfe1d7d-45ff-44a6-bc8b-02ec5f6f0c2e"
+      ],
+      "sample": [
+        "[en/HEALTH|412e50] DR Congo players told to isolate before World Cup",
+        "[en/OTHER|1a6212] Congo World Cup squad must isolate before entry to US — Official",
+        "[en/INTERNATIONAL|8696a3] Congo World Cup squad must isolate before entry to US: official",
+        "[en/HEALTH|62d00f] U.S. says DR Congo squad must isolate as Ebola precaution before arriving for FIFA World C"
+      ]
+    },
+    {
+      "id": "true071",
+      "type": "true_cluster",
+      "expected": "merge",
+      "category": "HEALTH",
+      "size": 2,
+      "sources": 2,
+      "ratio": 1,
+      "note": "multi-source same-event cluster — must merge",
+      "article_ids": [
+        "6e502ac8-9ee3-4d72-840e-dd13cc3ca5cc",
+        "b5c55a04-450b-436d-b230-c449b20b8997"
+      ],
+      "sample": [
+        "[te/HEALTH|31327f] Telangana Heatwave: షాకింగ్.. తెలంగాణలో వడ దెబ్బతో 34 మంది మృతి.. 18 జిల్లాల ప్రజలు జాగ్రత",
+        "[te/OTHER|0ce83d] Telangana Weather Alert: తెలంగాణలో నిప్పుల కొలిమి: 18 జిల్లాలకు 'రెడ్ అలర్ట్'.. వడదెబ్బతో "
+      ]
+    },
+    {
+      "id": "true072",
+      "type": "true_cluster",
+      "expected": "merge",
+      "category": "HEALTH",
+      "size": 3,
+      "sources": 2,
+      "ratio": 1.5,
+      "note": "multi-source same-event cluster — must merge",
+      "article_ids": [
+        "adf460f2-9822-4c20-8cdf-69aec36eaf66",
+        "0d4f18ca-fcec-428a-af51-8b8edc7d765d",
+        "31d595a9-78e5-49b7-8c66-84cad9630ef0"
+      ],
+      "sample": [
+        "[te/HEALTH|4d8cb3] BRS Dharna | జంటనగరాల్లో తాగునీటి సమస్యను పరిష్కరించాలని బీఆర్ఎస్ ధర్నా",
+        "[te/BUSINESS|0ce83d] Hyderabad: నగరంలో తాగునీటి కష్టాలు కేపాసిటీ తగ్గించి ట్యాంకర్ల వ్యాపారమా!",
+        "[te/OTHER|4d8cb3] BRS | తాగునీటి సమస్యలపై జలమండలి కార్యాలయం ఎదుట బీఆర్ఎస్ ధర్నా"
+      ]
+    },
+    {
+      "id": "true073",
+      "type": "true_cluster",
+      "expected": "merge",
+      "category": "HEALTH",
+      "size": 2,
+      "sources": 2,
+      "ratio": 1,
+      "note": "multi-source same-event cluster — must merge",
+      "article_ids": [
+        "a97ef4e4-6c66-4231-926b-78ae38445d5b",
+        "45683b83-9ef2-4c01-9ac5-d2a564877cea"
+      ],
+      "sample": [
+        "[en/HEALTH|12fe1a] US temporarily bans green-card holders from entering country from African nations",
+        "[en/OTHER|fab29f] U.S. extends Ebola travel ban to Green Card holders"
+      ]
+    },
+    {
+      "id": "true074",
+      "type": "true_cluster",
+      "expected": "merge",
+      "category": "HEALTH",
+      "size": 2,
+      "sources": 2,
+      "ratio": 1,
+      "note": "multi-source same-event cluster — must merge",
+      "article_ids": [
+        "a121cfdc-bc50-4043-8dc1-2c6b52239ba3",
+        "d848caeb-30b6-448c-b45f-e68145d9698e"
+      ],
+      "sample": [
+        "[en/HEALTH|0719b2] ‘Serious situation’: Health minister wants to keep portfolio in event of cabinet reshuffle",
+        "[en/HEALTH|6025cb] ‘Serious situation’: Health minister wants to keep portfolio in event of cabinet reshuffle"
+      ]
+    },
+    {
+      "id": "true075",
+      "type": "true_cluster",
+      "expected": "merge",
+      "category": "HEALTH",
+      "size": 2,
+      "sources": 2,
+      "ratio": 1,
+      "note": "multi-source same-event cluster — must merge",
+      "article_ids": [
+        "ea506e6e-9650-405a-9c5c-e6f7b8d10de5",
+        "a7cc9ed6-261c-44cc-b9e5-93b9b05fe3da"
+      ],
+      "sample": [
+        "[en/HEALTH|0719b2] Health minister confirms there will be no cuts to mental health levy",
+        "[en/HEALTH|6025cb] Health minister confirms there will be no cuts to mental health levy"
+      ]
+    },
+    {
+      "id": "true076",
+      "type": "true_cluster",
+      "expected": "merge",
+      "category": "LEGAL",
+      "size": 5,
+      "sources": 5,
+      "ratio": 1,
+      "note": "multi-source same-event cluster — must merge",
+      "article_ids": [
+        "e5340fc9-0822-425f-85cd-d916ea4b1f25",
+        "d1d4d740-8ba5-4f69-8c4d-5afd3a5ad8c9",
+        "39f71ae3-4ae7-4a3b-8f69-b49471d764b9",
+        "11432415-aa47-4099-a09a-9e78c1a383d8",
+        "330368d6-039f-415c-9727-d628d350b9d9"
+      ],
+      "sample": [
+        "[en/OTHER|4948f7] Judge dismisses criminal case against Kilmar Abrego Garcia",
+        "[en/LEGAL|a7af6a] Judge dismisses criminal case against Kilmar Abrego Garcia",
+        "[en/OTHER|81a096] US judge dismisses indictment against Kilmar Abrego Garcia",
+        "[en/LEGAL|d9b181] US judge dismisses criminal indictment against Kilmar Ábrego García"
+      ]
+    },
+    {
+      "id": "true077",
+      "type": "true_cluster",
+      "expected": "merge",
+      "category": "LEGAL",
+      "size": 4,
+      "sources": 4,
+      "ratio": 1,
+      "note": "multi-source same-event cluster — must merge",
+      "article_ids": [
+        "6154a417-d2c3-4c98-a915-5e259f1026cb",
+        "696e016c-ae29-4793-99d8-a46914a86c4c",
+        "c47ca01b-9249-4115-9935-fdbd01baf9c0",
+        "086445f0-baa2-4f86-bb8c-20e36c5fc826"
+      ],
+      "sample": [
+        "[te/GOVERNANCE|4d8cb3] ఆకునూరి మురళి రాజీనామా!",
+        "[en/OTHER|28c0d0] Telangana Education Commission Chairman Akunuri Murali resigns",
+        "[te/LEGAL|31327f] Education Commission Chairman: విద్యా కమిషన్ చైర్మన్ పదవికి ఆకునూరి మురళి రాజీనామా.. సీఎస్",
+        "[te/LEGAL|27a8af] విద్యా కమిషన్‌ చైర్మన్‌ పదవికి ఆకునూరి మురళి రాజీనామా"
+      ]
+    },
+    {
+      "id": "true078",
+      "type": "true_cluster",
+      "expected": "merge",
+      "category": "LEGAL",
+      "size": 3,
+      "sources": 2,
+      "ratio": 1.5,
+      "note": "multi-source same-event cluster — must merge",
+      "article_ids": [
+        "d703f29f-8ef0-47e0-b5be-8f54b33388b5",
+        "810092d0-cca2-4f25-a82e-3a4864d29ce3",
+        "de27421b-7732-4675-8fbb-c507c200be3e"
+      ],
+      "sample": [
+        "[en/GOVERNANCE|a0a3bb] Twisha dowry death case: Husband surrenders; HC orders 2nd autopsy",
+        "[en/LEGAL|25d094] Twisha Sharma case: Husband surrenders, Madhya Pradesh HC orders second autopsy",
+        "[en/LEGAL|a0a3bb] Twisha Sharma case LIVE: Absconding husband Samarth Singh in custody; AIIMS Delhi team rea"
+      ]
+    },
+    {
+      "id": "true079",
+      "type": "true_cluster",
+      "expected": "merge",
+      "category": "LEGAL",
+      "size": 2,
+      "sources": 2,
+      "ratio": 1,
+      "note": "multi-source same-event cluster — must merge",
+      "article_ids": [
+        "d9c12d29-a70c-4cf1-b4f6-efedcffd196f",
+        "faaad034-166d-472b-af5e-59f1cf851e9b"
+      ],
+      "sample": [
+        "[en/LEGAL|81a096] Senegal PM slams West’s ‘homosexual tyranny’, defends LGBTQ crackdown",
+        "[en/POLITICS|0c714b] Senegal PM says tyrannical West wants to 'impose' homosexuality"
+      ]
+    },
+    {
+      "id": "true080",
+      "type": "true_cluster",
+      "expected": "merge",
+      "category": "LEGAL",
+      "size": 2,
+      "sources": 2,
+      "ratio": 1,
+      "note": "multi-source same-event cluster — must merge",
+      "article_ids": [
+        "e92a7867-abbb-4bb7-a78c-8cb9070f087c",
+        "9700a3c5-e2fa-499d-8359-39d001ec629e"
+      ],
+      "sample": [
+        "[en/LEGAL|26a92b] Stewardship, Not Seizure: What Union Bank Case Is Really About",
+        "[en/OTHER|1a6212] Beyond public debate: What Union Bank case is really about"
+      ]
+    },
+    {
+      "id": "true081",
+      "type": "true_cluster",
+      "expected": "merge",
+      "category": "LEGAL",
+      "size": 2,
+      "sources": 2,
+      "ratio": 1,
+      "note": "multi-source same-event cluster — must merge",
+      "article_ids": [
+        "01fb864c-fa78-4e7a-aba0-b6bd4978b3ea",
+        "2d5a892a-6d97-4473-b767-45a598f1320c"
+      ],
+      "sample": [
+        "[en/LEGAL|0719b2] Qld teacher barred over sexual comments, race-based reprimand",
+        "[en/LEGAL|6025cb] Qld teacher barred over sexual comments, race-based reprimand"
+      ]
+    },
+    {
+      "id": "true082",
+      "type": "true_cluster",
+      "expected": "merge",
+      "category": "AGRICULTURE",
+      "size": 2,
+      "sources": 2,
+      "ratio": 1,
+      "note": "multi-source same-event cluster — must merge",
+      "article_ids": [
+        "e8651018-64ff-4aa7-8e08-c184afd49413",
+        "1efd2b86-6035-4d39-8996-48ddfd7856e5"
+      ],
+      "sample": [
+        "[en/AGRICULTURE|e80241] 'Trust PM Modi, trust govt': June 21 NEET-UG 2026 will be error-free, says Dharmendra Prad",
+        "[en/OTHER|25d094] Trust PM Modi: NEET-UG 2026 retest to be error-free, says Dharmendra Pradhan"
+      ]
+    },
+    {
+      "id": "true083",
+      "type": "true_cluster",
+      "expected": "merge",
+      "category": "AGRICULTURE",
+      "size": 2,
+      "sources": 2,
+      "ratio": 1,
+      "note": "multi-source same-event cluster — must merge",
+      "article_ids": [
+        "5a9f6937-a174-4ae0-9139-c97de4a559d9",
+        "62816d25-d712-4575-8927-f4565a8c7303"
+      ],
+      "sample": [
+        "[en/AGRICULTURE|1a6212] Barau to distribute 53,040 bags of fertiliser in Kano",
+        "[en/AGRICULTURE|93db71] Barau to distribute over 50,000 bags of fertiliser to farmers, others in Kano North"
+      ]
+    },
+    {
+      "id": "fp084",
+      "type": "fp_bait_earnings",
+      "expected": "separate",
+      "note": "different companies' earnings — template-similar, must stay SEPARATE",
+      "article_ids": [
+        "d0084942-26e4-49f3-bf8a-d435cf14accd",
+        "8bc22d15-90e9-4b18-88c3-d31ef9daecb0",
+        "1a5a1377-e22c-4e43-89c7-0d99c83eeef5"
+      ],
+      "sample": [
+        "[en/FINANCE|357d32] NTPC Green Energy Q4 Results: Cons PAT declines 15% YoY to Rs 197 crore despite 47% revenu",
+        "[en/OTHER|357d32] Hindalco shares decline 2% as Q4 profit falls 51%. Here’s what Nuvama and other brokerages",
+        "[en/OTHER|357d32] Pine Labs Q4 Results: Co turns to black, logs Rs 59 crore profit on 17% revenue jump"
+      ]
+    },
+    {
+      "id": "true085",
+      "type": "true_cluster",
+      "expected": "merge",
+      "note": "same-company earnings — must merge",
+      "article_ids": [
+        "5310fda7-8088-4fe9-89ba-216c33f777c5",
+        "530412a4-978b-473a-bf77-968a401955d9",
+        "06139e2c-69a1-4bc6-b2d3-fef40583e459"
+      ],
+      "sample": [
+        "[en/GOVERNANCE|870a6b] Pine Labs posts ₹113 crore profit in FY26",
+        "[en/OTHER|870a6b] Pine Labs posts ₹113 crore profit in FY26",
+        "[en/OTHER|cddd27] Pine Labs Q4 revenues up 24% to Rs 515 crore, net profit at Rs 67 crore"
+      ]
+    },
+    {
+      "id": "fp086",
+      "type": "fp_bait_earnings",
+      "expected": "separate",
+      "note": "different companies' earnings — template-similar, must stay SEPARATE",
+      "article_ids": [
+        "3dc4d324-55b5-47f7-b914-85e25a080438",
+        "5f2e6b7e-b08e-445d-bbbb-06dbaf363be4"
+      ],
+      "sample": [
+        "[en/FINANCE|9fd67e] Pine Labs Posts ₹59 Cr Profit In Q4, Revenue Up 15% YoY",
+        "[en/OTHER|9fd67e] Awfis Q4: Profit Doubles YoY To ₹23 Cr, Revenue Up 23%"
+      ]
+    },
+    {
+      "id": "true087",
+      "type": "true_cluster",
+      "expected": "merge",
+      "note": "same-company earnings — must merge",
+      "article_ids": [
+        "e6e207b1-a37f-47da-a73d-9d74d22ceb0b",
+        "8b80fc7c-74c3-48eb-b9a8-a2357730efca"
+      ],
+      "sample": [
+        "[en/OTHER|357d32] Eicher Motors shares rally 5% after Q4 results. What Goldman Sachs, Morgan Stanley, others",
+        "[en/OTHER|870a6b] Eicher Motors Q4 net profit jumps to ₹1,520 crore"
+      ]
+    },
+    {
+      "id": "fp088",
+      "type": "fp_bait_earnings",
+      "expected": "separate",
+      "note": "different companies' earnings — template-similar, must stay SEPARATE",
+      "article_ids": [
+        "b509ed14-e2bf-473e-827e-7fa342cd34c4",
+        "322e8064-5ef8-489f-9b96-bbc60bf2c601"
+      ],
+      "sample": [
+        "[en/OTHER|74b23b] TVS Supply Chain Solutions reports consolidated PAT of ₹18 crore in Q4FY26",
+        "[en/OTHER|870a6b] Swelect Energy Q4 PAT at ₹11 crore, net profit jumps to ₹57 crore"
+      ]
+    },
+    {
+      "id": "fp089",
+      "type": "fp_bait_earnings",
+      "expected": "separate",
+      "note": "different companies' earnings — template-similar, must stay SEPARATE",
+      "article_ids": [
+        "ffb58a3c-f7d2-44e9-963b-e7631e349ec9",
+        "34c7127d-d816-4675-8f2c-9de71b508604"
+      ],
+      "sample": [
+        "[en/OTHER|357d32] RVNL Q4 Results: PAT plunges 43% YoY to Rs 212 crore; revenue up 5%",
+        "[en/OTHER|357d32] Aditya Birla Fashion Q4 net loss widens to Rs 163.8 cr"
+      ]
+    },
+    {
+      "id": "fp090",
+      "type": "fp_bait_earnings",
+      "expected": "separate",
+      "note": "different companies' earnings — template-similar, must stay SEPARATE",
+      "article_ids": [
+        "e8367919-13a5-47b9-b369-d4342fdad894",
+        "4e3892e5-84a6-4d1a-838c-21390705bc10"
+      ],
+      "sample": [
+        "[en/OTHER|5dc4ea] NTPC Q4 Results: Cons PAT jumps 34% YoY to Rs 10,615 crore; Rs 3.5/share dividend announce",
+        "[en/BUSINESS|5dc4ea] RInfra Q4 net profit falls to Rs 918 cr; company appoints Vijesh Babu Thota as CEO"
+      ]
+    },
+    {
+      "id": "fp091",
+      "type": "fp_bait_template",
+      "expected": "separate",
+      "note": "template/listicle (store-hours / gold-rate / horoscope) — must NOT cluster as news",
+      "article_ids": [
+        "51dc0853-a764-4213-822e-7124169701ea",
+        "4db5911a-eba7-4d86-9284-46a184117f41",
+        "cde81c9e-65ca-4f73-89d4-f9cfdea4d710",
+        "c3ad6164-31c7-4376-b83f-da347e687881",
+        "16599d1d-13e9-43a5-a9ad-305e8300fe8b",
+        "523d54c1-9bf5-47b3-b91a-7c8e0a02dbdc",
+        "18c58ba6-a030-4e40-97ec-b623248be2ad",
+        "5232618f-e0da-4cb4-89c9-7e468ae0f486",
+        "2525a1d2-a38b-4afe-83ac-c3d71395ea50",
+        "b953ce02-9058-4092-a29d-3efa1054c37a"
+      ],
+      "sample": [
+        "[en/OTHER|cefbfd] UK Spring Holiday 2026: Ikea Supermarket Opening ＆ Closing Times – Are Stores Open or Clos",
+        "[en/BUSINESS|cefbfd] UK Spring Holiday 2026: Aldi Supermarket Opening ＆ Closing Times – Are Stores Open or Clos",
+        "[en/POLITICS|cefbfd] US Memorial Day 2026: Is McDonald’s Open Today [May 25] in US? Check Opening ＆ Closing Tim",
+        "[en/SECURITY|cefbfd] UK Spring Bank Holiday Monday 2026: Check Opening ＆ Closing Times for Morrisons, Aldi, Lid"
+      ]
+    },
+    {
+      "id": "fp092",
+      "type": "fp_bait_template",
+      "expected": "separate",
+      "note": "template/listicle (store-hours / gold-rate / horoscope) — must NOT cluster as news",
+      "article_ids": [
+        "4f26643b-38dc-4f6d-86a6-6e1eb812c1f3",
+        "14791c88-c81c-4cfc-a0f0-cd10c94d34e2"
+      ],
+      "sample": [
+        "[en/SECURITY|cefbfd] Gold Rate Today (25 May, 2026) LIVE Updates: Gold Rates Edges Lower to $4,509, Mild Pressu",
+        "[en/OTHER|cefbfd] Gold Rate Today [23 May, 2026] LIVE Updates: Gold Rates Edges Lower to $4,508, Inflation W"
+      ]
+    },
+    {
+      "id": "fp093",
+      "type": "fp_bait_template",
+      "expected": "separate",
+      "note": "template/listicle (store-hours / gold-rate / horoscope) — must NOT cluster as news",
+      "article_ids": [
+        "ffd2ad51-6cdc-421d-9cd5-2e826835dcab",
+        "4fa5782f-e8be-464f-b7b9-61a471a8efad"
+      ],
+      "sample": [
+        "[en/OTHER|e99750] Horoscope today, May 23, 2026: Check your astrological predictions here",
+        "[te/OTHER|4d8cb3] Horoscope | 23-05-2026 శ‌నివారం…. మీ రాశిఫలాలు"
+      ]
+    },
+    {
+      "id": "fp094",
+      "type": "fp_bait_template",
+      "expected": "separate",
+      "note": "template/listicle (store-hours / gold-rate / horoscope) — must NOT cluster as news",
+      "article_ids": [
+        "10f9735f-3357-4281-8dbc-2e006ac0ed9f",
+        "ea1b9336-7379-4169-8f8d-47d1f35b61db"
+      ],
+      "sample": [
+        "[en/OTHER|344bc7] ରାଶିଫଳ: ସୋମବାର, ମେ ୨୫ ତାରିଖ – Daily Horoscope",
+        "[en/SECURITY|344bc7] ରାଶିଫଳ: ମଙ୍ଗଳବାର, ମେ  ୨୬ ତାରିଖ – Daily Horoscope"
+      ]
+    },
+    {
+      "id": "gz095",
+      "type": "grayzone_merge",
+      "expected": "merge",
+      "sim": 0.82,
+      "note": "same story across the 0.78–0.83 gap (often cross-lingual) — should merge",
+      "article_ids": [
+        "527356e3-a99b-45b3-b7c7-8c8ab26f0a72",
+        "2038488e-8c0c-424b-bc78-432de4a4c4bc"
+      ],
+      "sample": [
+        "[en/SECURITY|5ce5e4] Trump says Iran deal should include additional countries joining Abraham Accords",
+        "[en/SECURITY|04e9a9] Trump wants Iran to join the Abraham Accords: What are they?"
+      ]
+    },
+    {
+      "id": "gz096",
+      "type": "grayzone_merge",
+      "expected": "merge",
+      "sim": 0.82,
+      "note": "same story across the 0.78–0.83 gap (often cross-lingual) — should merge",
+      "article_ids": [
+        "ca0eebb1-d9fb-4bd9-ad25-b21bf0ccac57",
+        "531412b8-ddf7-4c8b-8282-dda7297038f0"
+      ],
+      "sample": [
+        "[en/OTHER|cad98f] Petrol And Diesel Prices Increased For Fourth Time In Ten Days Amid Crude Oil Surge",
+        "[te/OTHER|fe25e1] Fuel Price: దేశంలో మరోసారి భారీగా పెరిగిన పెట్రోల్, డీజిల్ ధరలు.. లీటర్‌పై ఎంతంటే?"
+      ]
+    },
+    {
+      "id": "gz097",
+      "type": "grayzone_borderline",
+      "expected": "borderline",
+      "sim": 0.82,
+      "note": "borderline — same theme, arguably different event",
+      "article_ids": [
+        "e40d62ff-8bed-4845-b2b2-52fc0be8027f",
+        "e93fa119-d341-462b-862c-0dcb415888ad"
+      ],
+      "sample": [
+        "[en/FINANCE|74b23b] One more hike: Petrol prices by ₹0.87, diesel by ₹0.91 a litre",
+        "[en/OTHER|b47fd2] Fuel prices in Kerala rise by around ₹8 in less than a fortnight"
+      ]
+    },
+    {
+      "id": "gz098",
+      "type": "grayzone_merge",
+      "expected": "merge",
+      "sim": 0.82,
+      "note": "same story across the 0.78–0.83 gap (often cross-lingual) — should merge",
+      "article_ids": [
+        "b84fa8f1-9a41-4f22-af9a-d178311bc507",
+        "26630af1-e4ce-4ef4-8bac-26fcbc558606"
+      ],
+      "sample": [
+        "[en/SECURITY|2e2a52] At least 19 people taken to hospital after 'strong smell' reported at Tokyo mall",
+        "[en/OTHER|36cd1e] About 20 people injured after man sprays unknown substance near ATM in Tokyo mall"
+      ]
+    },
+    {
+      "id": "gz099",
+      "type": "grayzone_merge",
+      "expected": "merge",
+      "sim": 0.82,
+      "note": "same story across the 0.78–0.83 gap (often cross-lingual) — should merge",
+      "article_ids": [
+        "d619ffab-ded3-47ac-b956-0bf6f841e19b",
+        "71d4afb3-ec5e-4a86-8337-fbe13652e1a0"
+      ],
+      "sample": [
+        "[en/SECURITY|28c0d0] Telangana: Ex Sarpanch, BRS leader murdered in Suryapet",
+        "[te/SECURITY|4d8cb3] Suryapet | సూర్యాపేట జిల్లాలో బీఆర్‌ఎస్‌ నేత చింతలపాటి మధు దారుణ హత్య"
+      ]
+    },
+    {
+      "id": "gz100",
+      "type": "grayzone_merge",
+      "expected": "merge",
+      "sim": 0.82,
+      "note": "same story across the 0.78–0.83 gap (often cross-lingual) — should merge",
+      "article_ids": [
+        "1537a57c-abe0-442f-b89f-cf27b779244e",
+        "12f65ebf-5cb9-43eb-95ea-e08440a285a6"
+      ],
+      "sample": [
+        "[en/OTHER|8696a3] 10.09 seconds of pure history: Gurindervir Singh becomes fastest Indian ever on the track",
+        "[en/SPORTS|a0a3bb] ‘Fair winds, fast feet’: Indian Navy hails officer Gurindervir Singh as he becomes India’s"
+      ]
+    },
+    {
+      "id": "gz101",
+      "type": "grayzone_merge",
+      "expected": "merge",
+      "sim": 0.82,
+      "note": "same story across the 0.78–0.83 gap (often cross-lingual) — should merge",
+      "article_ids": [
+        "91031cbe-38d0-4e39-900d-a0ed545c342b",
+        "c581667b-58e3-4e71-ba62-49d8da646388"
+      ],
+      "sample": [
+        "[te/OTHER|31327f] NEET UG 2026: నీట్ యూజీ 2026 ఫీజు రీఫండ్ పోర్టల్ ప్రారంభం.. చివరి తేదీని ప్రకటించిన ఎన్‌టీ",
+        "[en/OTHER|25933c] NEET UG 2026 fee refund portal activated; Check steps to raise claim, last date to apply"
+      ]
+    },
+    {
+      "id": "gz102",
+      "type": "grayzone_merge",
+      "expected": "merge",
+      "sim": 0.82,
+      "note": "same story across the 0.78–0.83 gap (often cross-lingual) — should merge",
+      "article_ids": [
+        "d7320165-483b-4701-b796-88c5dfdbd4e7",
+        "6aa603cd-f724-4f09-b087-35d6264225d7"
+      ],
+      "sample": [
+        "[en/SECURITY|25d094] Telangana Government secures up to Rs.13,600 crore refinancing support for Hyderabad Metro",
+        "[en/OTHER|b47fd2] Telangana secures ₹13,600 crore refinancing deal for Hyderabad Metro Phase-I"
+      ]
+    },
+    {
+      "id": "gz103",
+      "type": "grayzone_merge",
+      "expected": "merge",
+      "sim": 0.82,
+      "note": "same story across the 0.78–0.83 gap (often cross-lingual) — should merge",
+      "article_ids": [
+        "b303cffe-34c2-4421-ac8d-ad01906569c9",
+        "65af1b69-9963-45d8-8a5f-6bdebf81a49b"
+      ],
+      "sample": [
+        "[te/HEALTH|de969b] దేశంలోనే అరుదైన రికార్డు నమోదు చేసిన నిమ్స్",
+        "[te/OTHER|fe25e1] Hyderabad NIMS: రికార్డు సృష్టించిన నిమ్స్.. 2 వేల కిడ్నీ మార్పిడులతో సంచలనం!"
+      ]
+    },
+    {
+      "id": "gz104",
+      "type": "grayzone_merge",
+      "expected": "merge",
+      "sim": 0.82,
+      "note": "same story across the 0.78–0.83 gap (often cross-lingual) — should merge",
+      "article_ids": [
+        "cd1cfe88-2d14-4581-b8b7-46c8a1b1ed38",
+        "6599b78a-510d-4756-a44e-5451dd275352"
+      ],
+      "sample": [
+        "[en/OTHER|6025cb] ‘Don’t listen to the losers’: Trump says there is no rush on Iran deal as details start to",
+        "[te/OTHER|27a8af] డీల్కు తొందరేం లేదు .. ఇరాన్తో ఒప్పందంపై డొనాల్డ్ ట్రంప్"
+      ]
+    },
+    {
+      "id": "gz105",
+      "type": "grayzone_merge",
+      "expected": "merge",
+      "sim": 0.82,
+      "note": "same story across the 0.78–0.83 gap (often cross-lingual) — should merge",
+      "article_ids": [
+        "39ea2e6f-3eae-4d3d-be73-8ef75184536e",
+        "6599b78a-510d-4756-a44e-5451dd275352"
+      ],
+      "sample": [
+        "[en/OTHER|0719b2] ‘Don’t listen to the losers’: Trump says there is no rush on Iran deal as details start to",
+        "[te/OTHER|27a8af] డీల్కు తొందరేం లేదు .. ఇరాన్తో ఒప్పందంపై డొనాల్డ్ ట్రంప్"
+      ]
+    },
+    {
+      "id": "gz106",
+      "type": "grayzone_merge",
+      "expected": "merge",
+      "sim": 0.82,
+      "note": "same story across the 0.78–0.83 gap (often cross-lingual) — should merge",
+      "article_ids": [
+        "4e928d41-9ab2-43e4-b91e-56b15dd50e41",
+        "dcbb3e2b-cd3c-4481-adcb-1e1c8e018272"
+      ],
+      "sample": [
+        "[en/OTHER|21f773] West planning to use former ISIS militants against Iran – FSB chief",
+        "[?/OTHER|b70777] FSB chief warns of threat of people from CIS being drawn into proxy forces against Iran"
+      ]
+    },
+    {
+      "id": "gz107",
+      "type": "grayzone_borderline",
+      "expected": "borderline",
+      "sim": 0.82,
+      "note": "borderline — same theme, arguably different event",
+      "article_ids": [
+        "8b96c6c2-0585-404e-adf6-ebaafae54273",
+        "d307e747-bb9d-41b3-bf56-f9cc70d2eb67"
+      ],
+      "sample": [
+        "[en/HEALTH|d9b181] Israeli strikes in Lebanon killed 10, including six paramedics, health ministry says",
+        "[en/OTHER|b70777] 11 civilians killed in Israel’s strike on Nabatieh — Lebanon’s health ministry"
+      ]
+    },
+    {
+      "id": "gz108",
+      "type": "grayzone_merge",
+      "expected": "merge",
+      "sim": 0.82,
+      "note": "same story across the 0.78–0.83 gap (often cross-lingual) — should merge",
+      "article_ids": [
+        "eacc07e5-b168-4bd5-a37b-e48198c1c2ec",
+        "d4e9a081-3a82-4884-9053-460647509907"
+      ],
+      "sample": [
+        "[en/OTHER|d9b181] Oil prices fall below $100 a barrel on hopes of Iran peace deal",
+        "[en/OTHER|1a6212] Oil prices may plunge on Iran-US peace talks"
+      ]
+    },
+    {
+      "id": "gz109",
+      "type": "grayzone_borderline",
+      "expected": "borderline",
+      "sim": 0.82,
+      "note": "borderline — same theme, arguably different event",
+      "article_ids": [
+        "873c53e2-cf9c-40ea-8b8a-b7fe5a8c53d8",
+        "0daff9eb-b4de-42b7-b7c7-e59fbe5acaad"
+      ],
+      "sample": [
+        "[en/OTHER|7dc976] Mercedes duo clash as Piastri pulls off stunning overtake on Hamilton",
+        "[?/SPORTS|38a10d] \"I never doubted myself\": George Russell reacts to beating Kimi Antonelli for the first ti"
+      ]
+    },
+    {
+      "id": "gz110",
+      "type": "grayzone_merge",
+      "expected": "merge",
+      "sim": 0.82,
+      "note": "same story across the 0.78–0.83 gap (often cross-lingual) — should merge",
+      "article_ids": [
+        "49f2f58d-9c60-444c-97ea-e3f6356ef15a",
+        "224bc1e3-5a39-4795-a62b-de7fe1706605"
+      ],
+      "sample": [
+        "[en/OTHER|344bc7] Petrol-Diesel Price Hike: ଗ୍ରାହକଙ୍କୁ ଜୋରଦାର ଝଟକା, ୧୦ ଦିନରେ ପୁଣିଥରେ ବଢିଳା ତୈଳ ଦର",
+        "[hi/OTHER|cf1cda] थम नहीं रही तेल की मार, 25 मई को फिर बढ़े पेट्रोल-डीजल के भाव, चेक करें लेटेस्ट रेट लिस्ट "
+      ]
+    },
+    {
+      "id": "gz111",
+      "type": "grayzone_merge",
+      "expected": "merge",
+      "sim": 0.819,
+      "note": "same story across the 0.78–0.83 gap (often cross-lingual) — should merge",
+      "article_ids": [
+        "98fd4eeb-0ebe-4c40-a136-bdb577f3f477",
+        "f2b2ff95-3dfd-4033-ad95-dfa44e7715c7"
+      ],
+      "sample": [
+        "[en/SECURITY|25d094] Harish Rao asks Revanth Reddy to slash VAT on petrol and diesel",
+        "[te/SECURITY|4d8cb3] Harish Rao | ప్రతిపక్షాలపై అడ్డగోలుగా మాటలు దంచుడు కాదు.. దమ్ముంటే పెట్రోల్, డీజిల్‌పై వ్య"
+      ]
+    },
+    {
+      "id": "gz112",
+      "type": "grayzone_merge",
+      "expected": "merge",
+      "sim": 0.819,
+      "note": "same story across the 0.78–0.83 gap (often cross-lingual) — should merge",
+      "article_ids": [
+        "77d92920-15f7-49ac-b1f2-8c555a630f5d",
+        "a2d1c1bd-16e6-4f6e-af15-8a27197fc69e"
+      ],
+      "sample": [
+        "[en/OTHER|a0a3bb] US making progress with Iran on Strait of Hormuz, but Trump remains cautious: Rubio",
+        "[en/POLITICS|a7af6a] Rubio says 'solid' Iran deal may come on Monday"
+      ]
+    },
+    {
+      "id": "gz113",
+      "type": "grayzone_separate",
+      "expected": "separate",
+      "sim": 0.819,
+      "note": "same-template different-event (different match / region) — must stay separate",
+      "article_ids": [
+        "9f8209d6-8630-42f3-a9fd-aae257225065",
+        "16001d18-417b-495f-a74c-81cc55bb9b19"
+      ],
+      "sample": [
+        "[en/OTHER|0719b2] Rapid Recap | MW38: Man City vs Aston Villa",
+        "[en/OTHER|6025cb] Rapid Recap | MW38: Spurs vs Everton"
+      ]
+    },
+    {
+      "id": "gz114",
+      "type": "grayzone_separate",
+      "expected": "separate",
+      "sim": 0.819,
+      "note": "same-template different-event (different match / region) — must stay separate",
+      "article_ids": [
+        "bd529dec-7012-41fd-98ef-a5f3cbf06014",
+        "6a8ffcb0-5a54-4290-8451-a9034f14bcac"
+      ],
+      "sample": [
+        "[en/OTHER|0719b2] Rapid Recap | MW38: Spurs vs Everton",
+        "[en/OTHER|6025cb] Rapid Recap | MW38: Man City vs Aston Villa"
+      ]
+    },
+    {
+      "id": "gz115",
+      "type": "grayzone_separate",
+      "expected": "separate",
+      "sim": 0.819,
+      "note": "same-template different-event (different match / region) — must stay separate",
+      "article_ids": [
+        "9c9921cd-9177-4222-a022-2480849df615",
+        "7bc4b92e-8736-453b-aac7-249042585aba"
+      ],
+      "sample": [
+        "[en/SECURITY|b47fd2] IMD issues heatwave alert for Vidarbha; Western Maharashtra and Marathwada to witness ligh",
+        "[en/OTHER|04e9a9] Delhi, UP, multiple states on IMD's heatwave alert: Mercury crosses 45°C at 29 locations —"
+      ]
+    },
+    {
+      "id": "gz116",
+      "type": "grayzone_merge",
+      "expected": "merge",
+      "sim": 0.819,
+      "note": "same story across the 0.78–0.83 gap (often cross-lingual) — should merge",
+      "article_ids": [
+        "3bb22c00-c5af-435f-b522-b99f5b41ff07",
+        "08fe8c77-6a1e-421c-a11e-a0c320644375"
+      ],
+      "sample": [
+        "[en/OTHER|04e9a9] US-Iran peace deal: Our relationship with Iran is becoming a much more professional one, s",
+        "[en/OTHER|28c0d0] Trump says ‘no rush’ on Iran nuclear deal as blockade stays in force"
+      ]
+    },
+    {
+      "id": "gz117",
+      "type": "grayzone_merge",
+      "expected": "merge",
+      "sim": 0.819,
+      "note": "same story across the 0.78–0.83 gap (often cross-lingual) — should merge",
+      "article_ids": [
+        "f6ffaae5-c423-4bf3-b77a-639c36306db9",
+        "465a780e-af1a-4206-a13e-d1f4e62ba66b"
+      ],
+      "sample": [
+        "[en/POLITICS|2e2a52] India's parody 'cockroach party' claims website has been blocked",
+        "[en/SECURITY|04e9a9] Website down, X handle withheld, Instagram hacked: What next for Cockroach Janta Party? He"
+      ]
+    },
+    {
+      "id": "gz118",
+      "type": "grayzone_merge",
+      "expected": "merge",
+      "sim": 0.819,
+      "note": "same story across the 0.78–0.83 gap (often cross-lingual) — should merge",
+      "article_ids": [
+        "e10149cb-cb01-46fd-88d4-49b7007f2f94",
+        "a3be3a91-c4ce-40b8-ae07-c35272eeec44"
+      ],
+      "sample": [
+        "[en/SECURITY|6025cb] Trump demands Arab allies sign peace deals with Israel as part of Iran talks",
+        "[en/SECURITY|a12ae5] Trump demands widespread sign-up to Abraham Accords as part of Iran peace deal"
+      ]
+    },
+    {
+      "id": "gz119",
+      "type": "grayzone_merge",
+      "expected": "merge",
+      "sim": 0.819,
+      "note": "same story across the 0.78–0.83 gap (often cross-lingual) — should merge",
+      "article_ids": [
+        "a3be3a91-c4ce-40b8-ae07-c35272eeec44",
+        "43ab4201-c2ae-4e3b-b1aa-da00b6bafda2"
+      ],
+      "sample": [
+        "[en/SECURITY|a12ae5] Trump demands widespread sign-up to Abraham Accords as part of Iran peace deal",
+        "[en/OTHER|0719b2] Trump demands Arab allies sign peace deals with Israel as part of Iran talks"
+      ]
+    },
+    {
+      "id": "fn120",
+      "type": "fn_singleton",
+      "expected": "should_have_merged",
+      "note": "cross-lingual FALSE NEGATIVE — should have joined an existing cluster (Kannada coal-mine / Russia strike)",
+      "article_ids": [
+        "73368913-17c3-427c-80be-5b0a33c8c7b5"
+      ],
+      "sample": [
+        "[en/OTHER|435498] Russia’s Retaliatory Strike Delivers ‘Convincing Message’ to Ukraine and Its NATO Backers "
+      ]
+    },
+    {
+      "id": "sing121",
+      "type": "singleton",
+      "expected": "alone",
+      "note": "genuine single-source story — must stay alone",
+      "article_ids": [
+        "4b6a3e2b-d2a8-42b7-b40c-74e644d0b52c"
+      ],
+      "sample": [
+        "[en/TECHNOLOGY|b47fd2] Innovation begins with understanding the fundamentals: Prakash Balasubramanian"
+      ]
+    },
+    {
+      "id": "fn122",
+      "type": "fn_singleton",
+      "expected": "should_have_merged",
+      "note": "cross-lingual FALSE NEGATIVE — should have joined an existing cluster (Kannada coal-mine / Russia strike)",
+      "article_ids": [
+        "35bbfbbc-8919-43e6-a85f-9534183c0372"
+      ],
+      "sample": [
+        "[kn/OTHER|b9517d] ಚೀನಾದ ಕಲ್ಲಿದ್ದಲು ಗಣಿಯಲ್ಲಿ ಸ್ಫೋಟ: 82 ಕಾರ್ಮಿಕರ ಸಾವು"
+      ]
+    },
+    {
+      "id": "sing123",
+      "type": "singleton",
+      "expected": "alone",
+      "note": "genuine single-source story — must stay alone",
+      "article_ids": [
+        "9a06e062-95ba-4d1a-bbea-8f3371ac46a5"
+      ],
+      "sample": [
+        "[en/OTHER|93db71] ADC FCT Primaries: Aspirant Alleges Electoral Materials Were Moved To Private Office"
+      ]
+    },
+    {
+      "id": "sing124",
+      "type": "singleton",
+      "expected": "alone",
+      "note": "genuine single-source story — must stay alone",
+      "article_ids": [
+        "fb5c706d-0b47-41d0-8bfe-c2b0a09329c2"
+      ],
+      "sample": [
+        "[en/TECHNOLOGY|22f4f0] Elon Musk and Sam Altman's rivalry moves from the courtroom to Wall Street"
+      ]
+    },
+    {
+      "id": "sing125",
+      "type": "singleton",
+      "expected": "alone",
+      "note": "genuine single-source story — must stay alone",
+      "article_ids": [
+        "7ed94ec7-a1f9-4389-9ec7-b0d441443269"
+      ],
+      "sample": [
+        "[te/OTHER|de969b] 80% ఎక్కడో చూపాలి"
+      ]
+    },
+    {
+      "id": "sing126",
+      "type": "singleton",
+      "expected": "alone",
+      "note": "genuine single-source story — must stay alone",
+      "article_ids": [
+        "1be9e1ab-bd6a-45c1-9e2f-87f0e2f60160"
+      ],
+      "sample": [
+        "[te/OTHER|0ce83d] Prakasam: సంచలనం సృష్టించిన చీమకుర్తి భారీ చోరీ కేసు ఛేదించిన పోలీసులు"
+      ]
+    },
+    {
+      "id": "sing127",
+      "type": "singleton",
+      "expected": "alone",
+      "note": "genuine single-source story — must stay alone",
+      "article_ids": [
+        "e8bc45bc-654a-470d-9ed2-357b3544ca2f"
+      ],
+      "sample": [
+        "[te/SOCIAL|4d8cb3] Kavya Maran | కావ్య మారన్ పెళ్లి వార్తలు వైరల్.. మ్యూజిక్ డైరెక్ట‌ర్‌తో వివాహం అంటూ జోరుగా"
+      ]
+    },
+    {
+      "id": "sing128",
+      "type": "singleton",
+      "expected": "alone",
+      "note": "genuine single-source story — must stay alone",
+      "article_ids": [
+        "ce24e12a-777b-4102-9ac7-6f8102486e34"
+      ],
+      "sample": [
+        "[te/OTHER|4d8cb3] పదేండ్లుగా పాతుకుపోయారు.. విద్యుత్తు సౌధలోనే 103 మంది జెన్‌కో ఇంజినీర్లు, సిబ్బంది"
+      ]
+    },
+    {
+      "id": "sing129",
+      "type": "singleton",
+      "expected": "alone",
+      "note": "genuine single-source story — must stay alone",
+      "article_ids": [
+        "eaf5fac1-319f-4715-a365-9c21f17ec464"
+      ],
+      "sample": [
+        "[en/OTHER|344bc7] ପୋଲିସକୁ ବଡ଼ ସଫଳତା: ବିପୁଳ ପରିମାଣର ଗଞ୍ଜେଇ ସହ ବେଆଇନ ବନ୍ଧୁକ-ଗୁଳି ଜବତ"
+      ]
+    },
+    {
+      "id": "sing130",
+      "type": "singleton",
+      "expected": "alone",
+      "note": "genuine single-source story — must stay alone",
+      "article_ids": [
+        "b7620127-9a34-4c54-8e1b-3c3d0bb661d9"
+      ],
+      "sample": [
+        "[te/SECURITY|0ce83d] Revanth Reddy: సచివాలయంలో రేవంత్ రెడ్డితో లెఫ్ట్ పార్టీల భేటీ.. వడ్ల కొనుగోళ్లు, మూసీ ప్రా"
+      ]
+    },
+    {
+      "id": "sing131",
+      "type": "singleton",
+      "expected": "alone",
+      "note": "genuine single-source story — must stay alone",
+      "article_ids": [
+        "65527dc3-b0bf-42f2-86b9-c0b859cccff5"
+      ],
+      "sample": [
+        "[en/OTHER|357d32] Bain Capital-backed Dhoot Transmission files updated DRHP with Sebi for IPO, to raise Rs 1"
+      ]
+    },
+    {
+      "id": "sing132",
+      "type": "singleton",
+      "expected": "alone",
+      "note": "genuine single-source story — must stay alone",
+      "article_ids": [
+        "dca3821c-0ada-45b6-9ec3-fdaa05e22b39"
+      ],
+      "sample": [
+        "[en/OTHER|4948f7] Delta Air Lines marks 20 years in Ghana, poised to offer travel options amid World Cup tra"
+      ]
+    },
+    {
+      "id": "sing133",
+      "type": "singleton",
+      "expected": "alone",
+      "note": "genuine single-source story — must stay alone",
+      "article_ids": [
+        "693b29dd-a269-4b7f-9a89-6023d26ccb52"
+      ],
+      "sample": [
+        "[en/SECURITY|28c0d0] Durefishan Saleem and Bilal Abbas perform Haj, spark nikah rumours"
+      ]
+    },
+    {
+      "id": "sing134",
+      "type": "singleton",
+      "expected": "alone",
+      "note": "genuine single-source story — must stay alone",
+      "article_ids": [
+        "1a9ceb0e-e338-4c6d-9830-f7a47e201593"
+      ],
+      "sample": [
+        "[?/OTHER|38a10d] FFWS 2026 Nepal Spring Finals: Winner, prize pool distribution, and summary"
+      ]
+    }
+  ]
+}

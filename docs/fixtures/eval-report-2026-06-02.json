@@ -1,0 +1,739 @@
+{
+  "tag": "clustering-2026-06-02.csv",
+  "generatedFrom": "computed",
+  "coverage": {
+    "fixtureArticles": 1000,
+    "presentInClustering": 1000,
+    "rate": 1
+  },
+  "bcubed": {
+    "precision": 0.947720138256416,
+    "recall": 0.4122746422028256,
+    "f1": 0.5745918830308129,
+    "scored": 951,
+    "truthArticles": 951
+  },
+  "mustLink": {
+    "rate": 0.12237835133219364,
+    "pairs": 95932,
+    "satisfied": 11740,
+    "groups": 94
+  },
+  "falseMerge": {
+    "rate": 0.3103448275862069,
+    "violated": 18,
+    "pairs": 58,
+    "offenders": [
+      {
+        "key": "fp084",
+        "a": "d0084942-26e4-49f3-bf8a-d435cf14accd",
+        "b": "1a5a1377-e22c-4e43-89c7-0d99c83eeef5",
+        "cluster": "06139e2c-69a1-4bc6-b2d3-fef40583e459"
+      },
+      {
+        "key": "fp091",
+        "a": "cde81c9e-65ca-4f73-89d4-f9cfdea4d710",
+        "b": "523d54c1-9bf5-47b3-b91a-7c8e0a02dbdc",
+        "cluster": "18c58ba6-a030-4e40-97ec-b623248be2ad"
+      },
+      {
+        "key": "fp091",
+        "a": "cde81c9e-65ca-4f73-89d4-f9cfdea4d710",
+        "b": "18c58ba6-a030-4e40-97ec-b623248be2ad",
+        "cluster": "18c58ba6-a030-4e40-97ec-b623248be2ad"
+      },
+      {
+        "key": "fp091",
+        "a": "cde81c9e-65ca-4f73-89d4-f9cfdea4d710",
+        "b": "5232618f-e0da-4cb4-89c9-7e468ae0f486",
+        "cluster": "18c58ba6-a030-4e40-97ec-b623248be2ad"
+      },
+      {
+        "key": "fp091",
+        "a": "cde81c9e-65ca-4f73-89d4-f9cfdea4d710",
+        "b": "2525a1d2-a38b-4afe-83ac-c3d71395ea50",
+        "cluster": "18c58ba6-a030-4e40-97ec-b623248be2ad"
+      },
+      {
+        "key": "fp091",
+        "a": "c3ad6164-31c7-4376-b83f-da347e687881",
+        "b": "16599d1d-13e9-43a5-a9ad-305e8300fe8b",
+        "cluster": "16599d1d-13e9-43a5-a9ad-305e8300fe8b"
+      },
+      {
+        "key": "fp091",
+        "a": "c3ad6164-31c7-4376-b83f-da347e687881",
+        "b": "b953ce02-9058-4092-a29d-3efa1054c37a",
+        "cluster": "16599d1d-13e9-43a5-a9ad-305e8300fe8b"
+      },
+      {
+        "key": "fp091",
+        "a": "16599d1d-13e9-43a5-a9ad-305e8300fe8b",
+        "b": "b953ce02-9058-4092-a29d-3efa1054c37a",
+        "cluster": "16599d1d-13e9-43a5-a9ad-305e8300fe8b"
+      },
+      {
+        "key": "fp091",
+        "a": "523d54c1-9bf5-47b3-b91a-7c8e0a02dbdc",
+        "b": "18c58ba6-a030-4e40-97ec-b623248be2ad",
+        "cluster": "18c58ba6-a030-4e40-97ec-b623248be2ad"
+      },
+      {
+        "key": "fp091",
+        "a": "523d54c1-9bf5-47b3-b91a-7c8e0a02dbdc",
+        "b": "5232618f-e0da-4cb4-89c9-7e468ae0f486",
+        "cluster": "18c58ba6-a030-4e40-97ec-b623248be2ad"
+      },
+      {
+        "key": "fp091",
+        "a": "523d54c1-9bf5-47b3-b91a-7c8e0a02dbdc",
+        "b": "2525a1d2-a38b-4afe-83ac-c3d71395ea50",
+        "cluster": "18c58ba6-a030-4e40-97ec-b623248be2ad"
+      },
+      {
+        "key": "fp091",
+        "a": "18c58ba6-a030-4e40-97ec-b623248be2ad",
+        "b": "5232618f-e0da-4cb4-89c9-7e468ae0f486",
+        "cluster": "18c58ba6-a030-4e40-97ec-b623248be2ad"
+      },
+      {
+        "key": "fp091",
+        "a": "18c58ba6-a030-4e40-97ec-b623248be2ad",
+        "b": "2525a1d2-a38b-4afe-83ac-c3d71395ea50",
+        "cluster": "18c58ba6-a030-4e40-97ec-b623248be2ad"
+      },
+      {
+        "key": "fp091",
+        "a": "5232618f-e0da-4cb4-89c9-7e468ae0f486",
+        "b": "2525a1d2-a38b-4afe-83ac-c3d71395ea50",
+        "cluster": "18c58ba6-a030-4e40-97ec-b623248be2ad"
+      },
+      {
+        "key": "fp092",
+        "a": "4f26643b-38dc-4f6d-86a6-6e1eb812c1f3",
+        "b": "14791c88-c81c-4cfc-a0f0-cd10c94d34e2",
+        "cluster": "14791c88-c81c-4cfc-a0f0-cd10c94d34e2"
+      },
+      {
+        "key": "gz113",
+        "a": "9f8209d6-8630-42f3-a9fd-aae257225065",
+        "b": "16001d18-417b-495f-a74c-81cc55bb9b19",
+        "cluster": "16001d18-417b-495f-a74c-81cc55bb9b19"
+      },
+      {
+        "key": "gz114",
+        "a": "bd529dec-7012-41fd-98ef-a5f3cbf06014",
+        "b": "6a8ffcb0-5a54-4290-8451-a9034f14bcac",
+        "cluster": "16001d18-417b-495f-a74c-81cc55bb9b19"
+      },
+      {
+        "key": "gz115",
+        "a": "9c9921cd-9177-4222-a022-2480849df615",
+        "b": "7bc4b92e-8736-453b-aac7-249042585aba",
+        "cluster": "7bc4b92e-8736-453b-aac7-249042585aba"
+      }
+    ]
+  },
+  "antiBlob": {
+    "blobsHeld": true,
+    "blobResults": [
+      {
+        "key": "blob003",
+        "articles": 10,
+        "distinctClusters": 10,
+        "split": true
+      },
+      {
+        "key": "blob006",
+        "articles": 10,
+        "distinctClusters": 10,
+        "split": true
+      }
+    ],
+    "maxArticleSourceRatio": 3.763157894736842,
+    "oversized": [],
+    "ratioMeasured": true
+  },
+  "singleton": {
+    "rate": 1,
+    "ok": 13,
+    "scored": 13,
+    "violated": []
+  },
+  "mustLinkPerGroup": [
+    {
+      "key": "true001+true055+recall:harmanpreet_padma",
+      "pairs": 78,
+      "satisfied": 13,
+      "rate": 0.16666666666666666
+    },
+    {
+      "key": "true002",
+      "pairs": 10,
+      "satisfied": 10,
+      "rate": 1
+    },
+    {
+      "key": "true004+true008+true023+true058+gz096+gz101+gz108+gz110+gz111+recall:petrol_diesel_hike+recall:france_bengvir+recall:neet_paper_leak",
+      "pairs": 89253,
+      "satisfied": 9113,
+      "rate": 0.10210301054306298
+    },
+    {
+      "key": "true005",
+      "pairs": 10,
+      "satisfied": 10,
+      "rate": 1
+    },
+    {
+      "key": "true007+recall:china_coal_mine+recall:california_chem_tank",
+      "pairs": 3570,
+      "satisfied": 913,
+      "rate": 0.2557422969187675
+    },
+    {
+      "key": "true009+recall:pakistan_train_blast",
+      "pairs": 561,
+      "satisfied": 237,
+      "rate": 0.42245989304812837
+    },
+    {
+      "key": "true010",
+      "pairs": 45,
+      "satisfied": 45,
+      "rate": 1
+    },
+    {
+      "key": "true011",
+      "pairs": 45,
+      "satisfied": 28,
+      "rate": 0.6222222222222222
+    },
+    {
+      "key": "true012",
+      "pairs": 45,
+      "satisfied": 28,
+      "rate": 0.6222222222222222
+    },
+    {
+      "key": "true013",
+      "pairs": 45,
+      "satisfied": 15,
+      "rate": 0.3333333333333333
+    },
+    {
+      "key": "true014",
+      "pairs": 1,
+      "satisfied": 0,
+      "rate": 0
+    },
+    {
+      "key": "true015",
+      "pairs": 1,
+      "satisfied": 0,
+      "rate": 0
+    },
+    {
+      "key": "true016",
+      "pairs": 1,
+      "satisfied": 1,
+      "rate": 1
+    },
+    {
+      "key": "true017",
+      "pairs": 1,
+      "satisfied": 0,
+      "rate": 0
+    },
+    {
+      "key": "true018",
+      "pairs": 1,
+      "satisfied": 1,
+      "rate": 1
+    },
+    {
+      "key": "true019",
+      "pairs": 3,
+      "satisfied": 3,
+      "rate": 1
+    },
+    {
+      "key": "true020",
+      "pairs": 3,
+      "satisfied": 3,
+      "rate": 1
+    },
+    {
+      "key": "true021",
+      "pairs": 1,
+      "satisfied": 1,
+      "rate": 1
+    },
+    {
+      "key": "true022",
+      "pairs": 1,
+      "satisfied": 1,
+      "rate": 1
+    },
+    {
+      "key": "true024",
+      "pairs": 1,
+      "satisfied": 1,
+      "rate": 1
+    },
+    {
+      "key": "true025+recall:gabbard_resign",
+      "pairs": 946,
+      "satisfied": 528,
+      "rate": 0.5581395348837209
+    },
+    {
+      "key": "true026",
+      "pairs": 3,
+      "satisfied": 1,
+      "rate": 0.3333333333333333
+    },
+    {
+      "key": "true027",
+      "pairs": 6,
+      "satisfied": 6,
+      "rate": 1
+    },
+    {
+      "key": "true028",
+      "pairs": 3,
+      "satisfied": 3,
+      "rate": 1
+    },
+    {
+      "key": "true029",
+      "pairs": 3,
+      "satisfied": 3,
+      "rate": 1
+    },
+    {
+      "key": "true030",
+      "pairs": 3,
+      "satisfied": 3,
+      "rate": 1
+    },
+    {
+      "key": "true031+recall:sbi_strike",
+      "pairs": 45,
+      "satisfied": 28,
+      "rate": 0.6222222222222222
+    },
+    {
+      "key": "true032",
+      "pairs": 3,
+      "satisfied": 3,
+      "rate": 1
+    },
+    {
+      "key": "true033",
+      "pairs": 1,
+      "satisfied": 1,
+      "rate": 1
+    },
+    {
+      "key": "true034",
+      "pairs": 1,
+      "satisfied": 1,
+      "rate": 1
+    },
+    {
+      "key": "true035",
+      "pairs": 1,
+      "satisfied": 1,
+      "rate": 1
+    },
+    {
+      "key": "true036",
+      "pairs": 1,
+      "satisfied": 1,
+      "rate": 1
+    },
+    {
+      "key": "true037",
+      "pairs": 3,
+      "satisfied": 1,
+      "rate": 0.3333333333333333
+    },
+    {
+      "key": "true038",
+      "pairs": 3,
+      "satisfied": 3,
+      "rate": 1
+    },
+    {
+      "key": "true039",
+      "pairs": 1,
+      "satisfied": 1,
+      "rate": 1
+    },
+    {
+      "key": "true040",
+      "pairs": 1,
+      "satisfied": 1,
+      "rate": 1
+    },
+    {
+      "key": "true041",
+      "pairs": 1,
+      "satisfied": 0,
+      "rate": 0
+    },
+    {
+      "key": "true042",
+      "pairs": 1,
+      "satisfied": 0,
+      "rate": 0
+    },
+    {
+      "key": "true043",
+      "pairs": 1,
+      "satisfied": 1,
+      "rate": 1
+    },
+    {
+      "key": "true044",
+      "pairs": 3,
+      "satisfied": 0,
+      "rate": 0
+    },
+    {
+      "key": "true045",
+      "pairs": 1,
+      "satisfied": 1,
+      "rate": 1
+    },
+    {
+      "key": "true046",
+      "pairs": 3,
+      "satisfied": 3,
+      "rate": 1
+    },
+    {
+      "key": "true047",
+      "pairs": 6,
+      "satisfied": 6,
+      "rate": 1
+    },
+    {
+      "key": "true048",
+      "pairs": 1,
+      "satisfied": 1,
+      "rate": 1
+    },
+    {
+      "key": "true049",
+      "pairs": 3,
+      "satisfied": 3,
+      "rate": 1
+    },
+    {
+      "key": "true050",
+      "pairs": 1,
+      "satisfied": 1,
+      "rate": 1
+    },
+    {
+      "key": "true051",
+      "pairs": 1,
+      "satisfied": 1,
+      "rate": 1
+    },
+    {
+      "key": "true052",
+      "pairs": 3,
+      "satisfied": 3,
+      "rate": 1
+    },
+    {
+      "key": "true053",
+      "pairs": 3,
+      "satisfied": 3,
+      "rate": 1
+    },
+    {
+      "key": "true054",
+      "pairs": 1,
+      "satisfied": 1,
+      "rate": 1
+    },
+    {
+      "key": "true056",
+      "pairs": 1,
+      "satisfied": 1,
+      "rate": 1
+    },
+    {
+      "key": "true057+recall:spacex_starship",
+      "pairs": 861,
+      "satisfied": 496,
+      "rate": 0.5760743321718932
+    },
+    {
+      "key": "true059",
+      "pairs": 1,
+      "satisfied": 1,
+      "rate": 1
+    },
+    {
+      "key": "true060",
+      "pairs": 1,
+      "satisfied": 1,
+      "rate": 1
+    },
+    {
+      "key": "true061",
+      "pairs": 1,
+      "satisfied": 1,
+      "rate": 1
+    },
+    {
+      "key": "true062",
+      "pairs": 1,
+      "satisfied": 1,
+      "rate": 1
+    },
+    {
+      "key": "true063",
+      "pairs": 1,
+      "satisfied": 1,
+      "rate": 1
+    },
+    {
+      "key": "true064",
+      "pairs": 45,
+      "satisfied": 13,
+      "rate": 0.28888888888888886
+    },
+    {
+      "key": "true065",
+      "pairs": 10,
+      "satisfied": 10,
+      "rate": 1
+    },
+    {
+      "key": "true066",
+      "pairs": 6,
+      "satisfied": 6,
+      "rate": 1
+    },
+    {
+      "key": "true067",
+      "pairs": 1,
+      "satisfied": 1,
+      "rate": 1
+    },
+    {
+      "key": "true068",
+      "pairs": 1,
+      "satisfied": 1,
+      "rate": 1
+    },
+    {
+      "key": "true069",
+      "pairs": 1,
+      "satisfied": 1,
+      "rate": 1
+    },
+    {
+      "key": "true070",
+      "pairs": 10,
+      "satisfied": 10,
+      "rate": 1
+    },
+    {
+      "key": "true071",
+      "pairs": 1,
+      "satisfied": 1,
+      "rate": 1
+    },
+    {
+      "key": "true072",
+      "pairs": 3,
+      "satisfied": 3,
+      "rate": 1
+    },
+    {
+      "key": "true073",
+      "pairs": 1,
+      "satisfied": 1,
+      "rate": 1
+    },
+    {
+      "key": "true074",
+      "pairs": 1,
+      "satisfied": 1,
+      "rate": 1
+    },
+    {
+      "key": "true075",
+      "pairs": 1,
+      "satisfied": 1,
+      "rate": 1
+    },
+    {
+      "key": "true076",
+      "pairs": 10,
+      "satisfied": 10,
+      "rate": 1
+    },
+    {
+      "key": "true077",
+      "pairs": 6,
+      "satisfied": 1,
+      "rate": 0.16666666666666666
+    },
+    {
+      "key": "true078",
+      "pairs": 3,
+      "satisfied": 1,
+      "rate": 0.3333333333333333
+    },
+    {
+      "key": "true079",
+      "pairs": 1,
+      "satisfied": 1,
+      "rate": 1
+    },
+    {
+      "key": "true080",
+      "pairs": 1,
+      "satisfied": 1,
+      "rate": 1
+    },
+    {
+      "key": "true081",
+      "pairs": 1,
+      "satisfied": 1,
+      "rate": 1
+    },
+    {
+      "key": "true082",
+      "pairs": 1,
+      "satisfied": 1,
+      "rate": 1
+    },
+    {
+      "key": "true083",
+      "pairs": 1,
+      "satisfied": 1,
+      "rate": 1
+    },
+    {
+      "key": "true085",
+      "pairs": 3,
+      "satisfied": 3,
+      "rate": 1
+    },
+    {
+      "key": "true087",
+      "pairs": 1,
+      "satisfied": 1,
+      "rate": 1
+    },
+    {
+      "key": "gz095",
+      "pairs": 1,
+      "satisfied": 1,
+      "rate": 1
+    },
+    {
+      "key": "gz098+recall:tokyo_mall_spray",
+      "pairs": 21,
+      "satisfied": 21,
+      "rate": 1
+    },
+    {
+      "key": "gz099",
+      "pairs": 1,
+      "satisfied": 0,
+      "rate": 0
+    },
+    {
+      "key": "gz100",
+      "pairs": 1,
+      "satisfied": 1,
+      "rate": 1
+    },
+    {
+      "key": "gz102",
+      "pairs": 1,
+      "satisfied": 1,
+      "rate": 1
+    },
+    {
+      "key": "gz103",
+      "pairs": 1,
+      "satisfied": 1,
+      "rate": 1
+    },
+    {
+      "key": "gz104+gz105",
+      "pairs": 3,
+      "satisfied": 1,
+      "rate": 0.3333333333333333
+    },
+    {
+      "key": "gz106",
+      "pairs": 1,
+      "satisfied": 0,
+      "rate": 0
+    },
+    {
+      "key": "gz112",
+      "pairs": 1,
+      "satisfied": 1,
+      "rate": 1
+    },
+    {
+      "key": "gz116",
+      "pairs": 1,
+      "satisfied": 1,
+      "rate": 1
+    },
+    {
+      "key": "gz117",
+      "pairs": 1,
+      "satisfied": 1,
+      "rate": 1
+    },
+    {
+      "key": "gz118+gz119",
+      "pairs": 3,
+      "satisfied": 3,
+      "rate": 1
+    },
+    {
+      "key": "recall:pope_slavery_apology",
+      "pairs": 45,
+      "satisfied": 16,
+      "rate": 0.35555555555555557
+    },
+    {
+      "key": "recall:laos_cave",
+      "pairs": 10,
+      "satisfied": 10,
+      "rate": 1
+    },
+    {
+      "key": "recall:philippines_collapse",
+      "pairs": 136,
+      "satisfied": 78,
+      "rate": 0.5735294117647058
+    }
+  ],
+  "gate": {
+    "verdict": "GREEN",
+    "checks": [
+      {
+        "name": "anti_blob_held",
+        "pass": true,
+        "detail": "blob003:10cl blob006:10cl"
+      }
+    ]
+  }
+}

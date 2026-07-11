@@ -1,0 +1,353 @@
+// src/lib/worldwide/ranking.ts
+//
+// The Worldwide front-page ranking — ports the validated scratch/worldwide/sections.sql
+// (Stage-3, all edge-checks PASS) onto the live _v8 keeper. Read-only via sqlAnalytics.
+//
+// Importance = ln(independent sources) + capped facts + recency decay + tier-1 scoop bonus.
+// Diversity: ≤2 per real topic in Top Stories; OTHER never capped.
+
+import { sqlAnalytics } from '@/lib/db';
+
+import { manualStoryCards } from '@/lib/studio/manual-feed';
+import { getOverrides } from '@/lib/studio/overrides';
+import { getWeights } from '@/lib/studio/weights';
+
+import { groupIntoHubs } from './eventhub';
+
+import type { EventHub, FrontPage, StoryCard, TopicSection } from './types';
+
+// Topics that get their own front-page section (matches sections.sql EC8 set).
+const SECTION_TOPICS = [
+  'POLITICS', 'SPORTS', 'SECURITY', 'ENVIRONMENT', 'HEALTH',
+  'BUSINESS', 'FINANCE', 'LEGAL', 'TECHNOLOGY', 'SOCIETY',
+] as const;
+
+// The generator emits ~16 topic labels; the page renders the sections above.
+// Map every label onto a section so no story is orphaned. `null` = the label has
+// no section of its own (it can still surface in Top Stories / Around the World).
+const TOPIC_TO_SECTION: Record<string, (typeof SECTION_TOPICS)[number] | null> = {
+  POLITICS: 'POLITICS', GOVERNANCE: 'POLITICS',
+  SPORTS: 'SPORTS',
+  SECURITY: 'SECURITY',
+  ENVIRONMENT: 'ENVIRONMENT',
+  HEALTH: 'HEALTH',
+  BUSINESS: 'BUSINESS', INFRASTRUCTURE: 'BUSINESS',
+  FINANCE: 'FINANCE',
+  LEGAL: 'LEGAL',
+  TECHNOLOGY: 'TECHNOLOGY', SCIENCE: 'TECHNOLOGY', TECH: 'TECHNOLOGY',
+  AGRICULTURE: 'ENVIRONMENT',
+  CULTURE: 'SOCIETY', SOCIETY: 'SOCIETY', SOCIAL: 'SOCIETY',
+  INTERNATIONAL: null, OTHER: null,
+};
+const sectionOf = (topic: string): (typeof SECTION_TOPICS)[number] | null =>
+  TOPIC_TO_SECTION[topic] ?? null;
+
+const TITLE_FLAG =
+  '(share price|top picks|result 20[0-9]{2}|gainers (and|&) losers|dream ?11|sensex|nifty|share market)';
+
+const TOP_STORIES_MAX = 12;
+const TOPIC_SECTION_MAX = 6;
+const ATW_MIN_COUNTRY_STORIES = 1; // a country must have ≥this many surfaced stories to feature
+const POOL_LIMIT = 600; // top-by-importance pool the front page is assembled from
+
+interface ScoredRow {
+  id: string;
+  title: string;
+  deck: string | null;
+  image: string | null;
+  hasArticle: boolean;
+  dominantEntity: string | null;
+  topic: string;
+  country: string;
+  importance: string; // numeric from pg
+  independentSources: number;
+  articleCount: number;
+  facts: number;
+  lastSeenAt: Date;
+  repTier: number | null; // representative article's source_tier (1 best) — drives image upgrade
+}
+
+/** Display-clean a headline: strip leading markdown junk ("** ", "# ", etc. from gen artifacts) and
+ *  sentence-case an all-lowercase title (raw representative_title fallback). Returns '' if nothing
+ *  usable remains — caller drops those rows so a titleless card never surfaces. (Root casing/extraction
+ *  fix is DB-side; this is the front-end safety net the validation suite enforces.) */
+// A CMS filename / URL slug that leaked in as a headline (e.g. "131703766.cms", "article-71109915.ece",
+// or a bare numeric slug) — title extraction grabbed the URL, not the <h1>. Reject so it never surfaces.
+function isJunkTitle(t: string): boolean {
+  if (/\.(cms|html?|php|aspx?|jsp|ece|amp|stm)\b/i.test(t)) return true; // ends/contains a web file extension
+  if (!/\s/.test(t) && /\d/.test(t) && !/\p{L}{4,}/u.test(t)) return true; // no spaces, digit-heavy, no real word
+  return false;
+}
+
+// The Worldwide edition is English. Articled stories carry an English generated headline (passes);
+// only non-articled fallbacks to a regional-language representative_title are non-English — drop those
+// so the page never shows a Malayalam/Odia/Japanese headline in the English edition.
+function isEnglishTitle(t: string): boolean {
+  const letters = (t.match(/\p{L}/gu) || []).length;
+  if (letters === 0) return false;
+  const latin = (t.match(/[A-Za-z]/g) || []).length;
+  return latin / letters >= 0.5;
+}
+
+function cleanTitle(s: string | null): string {
+  const t = (s ?? '').replace(/^[\s*>#_`\-]+/, '').trim();
+  if (!t || isJunkTitle(t)) return '';
+  // Sentence-case an all-lowercase title by capitalizing the first ALPHABETIC char (skip a leading
+  // quote/number/₹ — e.g. ‘beautiful…' or ₹2,400 crore…), so no card shows an all-lowercase headline.
+  return t === t.toLowerCase() ? t.replace(/\p{L}/u, (ch) => ch.toUpperCase()) : t;
+}
+
+function toCard(r: ScoredRow, now: number): StoryCard {
+  const lastSeen = new Date(r.lastSeenAt).getTime();
+  return {
+    id: r.id,
+    title: cleanTitle(r.title),
+    // strip leading gen markdown ("**", "#") from decks too, so no card renders raw markdown
+    deck: r.deck ? r.deck.replace(/^[\s*>#_`-]+/, '').trim() || null : r.deck,
+    image: r.image,
+    hasArticle: r.hasArticle,
+    topic: r.topic,
+    country: r.country,
+    importance: Number(r.importance),
+    independentSources: r.independentSources,
+    articleCount: r.articleCount,
+    facts: r.facts,
+    lastSeenAt: new Date(r.lastSeenAt).toISOString(),
+    freshnessSeconds: Math.max(0, Math.round((now - lastSeen) / 1000)),
+    isScoop: r.articleCount === 1,
+    dominantEntity: r.dominantEntity,
+  };
+}
+
+/**
+ * Build the Worldwide front page for a scope.
+ * @param scope 'world' (no country filter) or an ISO2 country code.
+ */
+/** Best tier-≤2, non-flagged thumbnail per cluster (one batched query) — replaces tabloid/blank images. */
+async function bestClusterImages(storyIds: string[]): Promise<Map<string, string>> {
+  const m = new Map<string, string>();
+  if (storyIds.length === 0) return m;
+  const rows = (await sqlAnalytics`
+    SELECT DISTINCT ON (mem.story_id) mem.story_id AS sid, a2.thumbnail_url AS url
+    FROM analytics.story_cluster_members_v8 mem
+    JOIN articles a2 ON a2.id = mem.article_id
+    LEFT JOIN rigwire.image_checks ic2 ON ic2.thumbnail_url = a2.thumbnail_url
+    WHERE mem.story_id = ANY(${storyIds})
+      AND a2.thumbnail_url IS NOT NULL AND a2.thumbnail_url <> ''
+      AND coalesce(a2.source_tier, 9) <= 2
+      AND coalesce(ic2.clean, true) = true
+    ORDER BY mem.story_id, coalesce(a2.source_tier, 9) ASC, a2.published_at DESC NULLS LAST
+  `) as unknown as { sid: string; url: string }[];
+  for (const r of rows) m.set(r.sid, r.url);
+  return m;
+}
+
+export async function getFrontPage(scope: string): Promise<FrontPage> {
+  const isWorld = scope === 'world';
+  const scopeFilter = isWorld
+    ? sqlAnalytics``
+    : sqlAnalytics`AND sc.subject_country = ${scope}`;
+
+  // Editorial overrides win on read (epic 002). Fetch them BEFORE the pool query so an editor who
+  // Published or Pinned a machine-HELD story can force it into the pool — the base SQL only keeps
+  // PUBLISHABLE rows, so without this the override would have nothing to attach to (silent no-op).
+  const overrides = await getOverrides();
+  const forcedIds = [...overrides.values()]
+    .filter((o) => o.action === 'live' || o.action === 'pinned')
+    .map((o) => o.storyId);
+  const forcedClause = forcedIds.length
+    ? sqlAnalytics`OR (sc.story_id = ANY(${forcedIds}) AND length(g.body) >= 400 AND g.body NOT ILIKE '%no facts available%')`
+    : sqlAnalytics``;
+
+  const rows = (await sqlAnalytics`
+    WITH facts AS (
+      SELECT story_id, count(*)::int AS fc FROM analytics.story_facts_v8 GROUP BY 1
+    ),
+    gen AS (
+      SELECT DISTINCT ON (story_id) story_id, headline, deck, body, status, strategy, topic
+      FROM analytics.story_generated_v8 ORDER BY story_id, updated_at DESC
+    )
+    SELECT sc.story_id                                   AS id,
+           -- Every row here is an articled, substantive story (see the WHERE clause), so use the
+           -- generated headline/deck directly, falling back to the source title/summary only if the
+           -- generator left one blank. topic prefers the article's own classify_topic label (g.topic)
+           -- over the cluster label (sc.topic is 'OTHER' for most clusters) so sections fill correctly.
+           coalesce(nullif(g.headline, ''), sc.representative_title) AS title,
+           coalesce(nullif(g.deck, ''), nullif(a.summary_preview, '')) AS deck,
+           CASE WHEN ic.clean IS FALSE THEN NULL ELSE a.thumbnail_url END AS image,
+           a.source_tier                                 AS "repTier",
+           true                                          AS "hasArticle",
+           coalesce(nullif(g.topic, ''), nullif(sc.topic, ''), 'OTHER') AS topic,
+           coalesce(nullif(sc.subject_country, ''), 'XX') AS country,
+           (SELECT e.key FROM jsonb_each_text(sc.primary_entities) e
+             ORDER BY (e.value)::int DESC LIMIT 1)        AS "dominantEntity",
+           sc.independent_source_count                  AS "independentSources",
+           sc.article_count                             AS "articleCount",
+           coalesce(f.fc, 0)                            AS facts,
+           sc.last_seen_at                              AS "lastSeenAt",
+           round((
+                -- base = breadth + substance + scoop
+                (1.0 * ln(1 + sc.independent_source_count)
+                 + 0.5 * ln(1 + least(coalesce(f.fc, 0), 15))
+                 + (CASE coalesce(a.source_tier, 2) WHEN 1 THEN 1.0 WHEN 2 THEN 0.3 ELSE 0.0 END))
+                -- RECENCY GATE: multiply (not add) so a huge-but-old story cannot lead. Anchored to
+                -- real now() (NOT max(last_seen_at) — future-dated source rows threw that ~76h ahead
+                -- and flattened the curve so stale mega-stories froze the feed). Age clamped ≥ 0 so a
+                -- future-dated row can't game it. floor 0.03 + decay (halflife 1.0d): a 3-day-old story
+                -- keeps ~7% of its base, so fresh stories reliably rotate to the top.
+                * (0.03 + 0.97 * exp(-greatest(0, extract(epoch FROM (now() - sc.last_seen_at))) / 86400.0 / 1.0))
+                -- PILE DEMOTION: a confirmed multi-event pile (Guard-C SEVERAL -> HELD stub) is not a
+                -- single readable story -> keep it out of the lead (it belongs in an event-hub, B+).
+                * (CASE WHEN g.strategy = 'stub' AND g.status ILIKE '%HELD%' THEN 0.25 ELSE 1.0 END)
+                -- TOPIC WEIGHT: sport is heavily covered (high breadth) but rarely the most important
+                -- world story -> hard-demote so it never leads. 0.4 means a cricket match needs 2.5×
+                -- more sources than a political story to outscore it.
+                * (CASE WHEN coalesce(nullif(g.topic, ''), sc.topic) ILIKE 'sports' THEN 0.4 ELSE 1.0 END)
+                )::numeric, 2)                          AS importance
+    FROM analytics.story_clusters_v8 sc
+    LEFT JOIN facts f USING (story_id)
+    LEFT JOIN gen g USING (story_id)
+    LEFT JOIN articles a ON a.id = sc.representative_article_id
+    LEFT JOIN rigwire.image_checks ic ON ic.thumbnail_url = a.thumbnail_url
+    WHERE sc.suppression_reason IS NULL
+      -- DEDUP GUARD: a cluster merged into another by the cross-window re-join sets redirected_to;
+      -- never surface the stale duplicate pile (DB chat contract, 2026-06-21).
+      AND sc.redirected_to IS NULL
+      AND sc.independent_source_count IS NOT NULL
+      AND sc.representative_title !~* ${TITLE_FLAG}
+      -- FRESHNESS CAP: a "Worldwide today" page never surfaces stories dormant >7 days (no new
+      -- coverage in a week). 68% of articled-surfaceable stories are >7d — drop them everywhere.
+      AND sc.last_seen_at >= now() - interval '7 days'
+      -- POOL = ARTICLED stories only. Without this, LIMIT is spent on high-source article-less
+      -- clusters (importance rewards breadth/recency, not articledness), so the handful of readable
+      -- stories rank below the cut and the page starves. Substance = a fact-ledger OR a real body:
+      -- v2 writes verified prose but no legacy story_facts_v8 row, so facts>0 alone hid all of it.
+      AND g.body IS NOT NULL
+      -- GARBAGE GUARD: a parse-fail generation row (model returned an unparsed JSON blob) has
+      -- headline '(parse-fail)' and a body that starts with '{'. Never surface it — real prose
+      -- never begins with a brace. The generator should mark these HELD; this is defence-in-depth.
+      AND g.headline NOT ILIKE '%(parse-fail)%'
+      AND left(btrim(g.body), 1) <> '{'
+      AND (
+        -- machine-publishable: verified prose with substance (fact-ledger OR a real body).
+        (g.status LIKE 'PUBLISHABLE%' AND g.strategy <> 'stub'
+         AND (coalesce(f.fc, 0) > 0 OR (length(g.body) >= 800 AND g.body NOT ILIKE '%no facts available%')))
+        -- OR editor force-surfaced (Published/Pinned a held story) — the editor overrides the hold.
+        ${forcedClause}
+      )
+      ${scopeFilter}
+    ORDER BY importance DESC
+    LIMIT ${POOL_LIMIT}
+  `) as unknown as ScoredRow[];
+
+  const now = Date.now();
+  // Drop rows with no usable title (titleless "**"/empty gen) so a broken card never surfaces.
+  // Surface ONLY clickable stories — a card with no generated article (hasArticle=false) can't open,
+  // so it never appears anywhere (top stories, sections, hubs, around-the-world). Everything you see opens.
+  // Editor-authored manual stories join the automated pool (epic 002) and flow through the same
+  // override/weight/sort/section logic below.
+  const manual = await manualStoryCards();
+  // Image upgrade: when the representative thumbnail is a tabloid (tier ≥3) or was flagged/blank,
+  // swap it for the best tier-1/2 photo in the SAME cluster. Batched over only the rows that need it.
+  const needImg = rows.filter((r) => (r.repTier ?? 9) >= 3 || !r.image).map((r) => r.id);
+  const betterImg = await bestClusterImages(needImg);
+  const basePool = [
+    ...rows.map((r) => {
+      const up = betterImg.get(r.id);
+      return toCard(up ? { ...r, image: up } : r, now);
+    }),
+    ...manual,
+  ].filter((c) => c.title.length > 0 && isEnglishTitle(c.title) && c.hasArticle);
+
+  // ── Editorial overrides win on read (epic 002) — empty table => reader feed is pure automation. ──
+  //   killed → hide everywhere · edited_* → replace headline/deck · importance_delta → re-rank ·
+  //   pinned → large boost (top of Top Stories) · live → force-surface a held story (fetched above).
+  const weights = await getWeights();
+  const tw = weights.topicWeights;
+  const cw = weights.countryWeights;
+  const pool = basePool
+    .filter((c) => overrides.get(c.id)?.action !== 'killed')
+    .map((c) => {
+      const o = overrides.get(c.id);
+      // editor ranking knobs: per-section topic weight × per-country weight (default 1 → no change)
+      const section = sectionOf(c.topic);
+      const wMul = (section ? tw[section] ?? 1 : 1) * (cw[c.country] ?? 1);
+      const pinBoost = o?.action === 'pinned' ? 10000 - (o.pinnedRank ?? 1) : 0;
+      const importance = c.importance * wMul + (o?.importanceDelta ?? 0) + pinBoost;
+      if (importance === c.importance && !o?.editedHeadline && !o?.editedDek && !o?.editedImage) return c;
+      return {
+        ...c,
+        image: o?.editedImage ?? c.image,
+        title: o?.editedHeadline ?? c.title,
+        deck: o?.editedDek ?? c.deck,
+        importance,
+        pinned: o?.action === 'pinned',
+      };
+    })
+    .sort((a, b) => b.importance - a.importance);
+
+  // Top Stories — group angle-stories into B+ hubs, then diversity-cap (≤2 per real topic; OTHER uncapped).
+  // Editor pins stay STANDALONE: never absorbed into a hub (where a fresher hub-mate would replace the
+  // pinned story as the displayed card) and exempt from the diversity cap. They lead via +pinBoost.
+  const pinnedUnits = pool.filter((c) => c.pinned);
+  const rest = pinnedUnits.length ? pool.filter((c) => !c.pinned) : pool;
+  const units = [...pinnedUnits, ...groupIntoHubs(rest)].sort((a, b) => b.importance - a.importance);
+  const perTopic = new Map<string, number>();
+  const topStories: Array<StoryCard | EventHub> = [];
+  for (const u of units) {
+    const isPinned = !('kind' in u) && u.pinned === true;
+    if (!isPinned && u.topic !== 'OTHER') {
+      const n = perTopic.get(u.topic) ?? 0;
+      if (n >= 2) continue;
+      perTopic.set(u.topic, n + 1);
+    }
+    topStories.push(u);
+    if (topStories.length >= TOP_STORIES_MAX) break;
+  }
+
+  // Ids already surfaced in Top Stories (incl. hub members) — dedupe BOTH the topic sections and
+  // Around the World against these, so no story ever appears twice on one screen.
+  const shownInTop = new Set<string>();
+  for (const u of topStories) {
+    if ('kind' in u) u.members.forEach((m) => shownInTop.add(m.id));
+    else shownInTop.add(u.id);
+  }
+
+  // Hard freshness cap for sections and ATW: never show a story dormant > 48 h.
+  // Top Stories is exempt (recency gate + hero freshness rules already protect it).
+  const SECTION_MAX_AGE_S = 48 * 3600;
+  const freshPool = pool.filter((c) => c.freshnessSeconds <= SECTION_MAX_AGE_S);
+
+  // Topic sections — top N per topic, excluding anything already in Top Stories, non-empty only.
+  const sections: TopicSection[] = SECTION_TOPICS.map((section) => ({
+    topic: section,
+    stories: freshPool.filter((c) => sectionOf(c.topic) === section && !shownInTop.has(c.id)).slice(0, TOPIC_SECTION_MAX),
+  })).filter((s) => s.stories.length > 0);
+
+  // Around the World — one (not-already-shown) story per country, eligible countries only.
+  const countryCounts = new Map<string, number>();
+  for (const c of freshPool) {
+    if (c.country !== 'XX') countryCounts.set(c.country, (countryCounts.get(c.country) ?? 0) + 1);
+  }
+  const seenCountry = new Set<string>();
+  const aroundTheWorld: StoryCard[] = [];
+  for (const c of freshPool) {
+    if (c.country === 'XX' || seenCountry.has(c.country) || shownInTop.has(c.id)) continue;
+    if ((countryCounts.get(c.country) ?? 0) < ATW_MIN_COUNTRY_STORIES) continue;
+    seenCountry.add(c.country);
+    aroundTheWorld.push(c);
+  }
+
+  // Democracy — a cross-cutting theme (not a machine topic): stories about elections, protest,
+  // press freedom, authoritarianism, rights and rule-of-law. Keyword/entity match over the pool.
+  const democracy = pool
+    .filter((c) => DEMOCRACY_RE.test(`${c.title} ${c.deck ?? ''}`))
+    .slice(0, DEMOCRACY_MAX);
+
+  return { scope, topStories, aroundTheWorld, sections, democracy };
+}
+
+// Democracy-theme signals — deliberately broad; refine later with an LLM tag at generation time.
+const DEMOCRACY_RE =
+  /\b(democra\w*|electio\w*|\bvote\b|voting|ballot|referendum|parliament\w*|opposition|dissident|protest\w*|censor\w*|press freedom|journalist\w*|free speech|freedom of speech|authoritari\w*|autocra\w*|dictator\w*|regime|junta|coup|crackdown|repress\w*|suppress\w*|human rights|civil rights|rule of law|martial law|impeach\w*|sanction\w*|corruption|whistleblow\w*|activist\w*|exile|detain\w*|jailed)\b/i;
+const DEMOCRACY_MAX = 8;

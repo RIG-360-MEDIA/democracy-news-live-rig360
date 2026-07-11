@@ -1,0 +1,49 @@
+# dependencies
+node_modules
+.pnp
+.pnp.js
+
+# testing
+coverage
+
+# next.js
+.next/
+out/
+build
+dist
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# stray redirect output (e.g. `npm install > install.log`)
+install
+install.*
+*.err
+*.out
+
+# local env files
+.env*.local
+.env.local
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# editor
+.vscode/
+.idea/
+*.swp
+
+# claude — local overrides (committed sister files stay tracked)
+CLAUDE.local.md
+.claude/settings.local.json

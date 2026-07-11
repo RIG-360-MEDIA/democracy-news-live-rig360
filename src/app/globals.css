@@ -1,0 +1,289 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ═══ Worldwide reader — theme palette (light default + dark). The reader
+   components read these via var(--rw-*); the toggle flips data-theme on <html>. ═══ */
+:root {
+  --rw-bg: #ffffff;
+  --rw-cream: #f7f5ef;
+  --rw-ink: #0a0a0a;
+  --rw-body: #2b2b2b;
+  --rw-muted: #6e6e6e;
+  --rw-faint: #999999;
+  --rw-rule: #dcdcdc;
+  --rw-rule-strong: #111111;
+  --rw-accent: #264e78;
+  --rw-red: #a8141a;
+}
+:root[data-theme='dark'] {
+  --rw-bg: #08080a;
+  --rw-cream: #121216;
+  --rw-ink: #faf9f5;
+  --rw-body: #dedcd6;
+  --rw-muted: #adaba5;
+  --rw-faint: #7c7a75;
+  --rw-rule: #3c3c42;
+  --rw-rule-strong: #6f6f78;
+  --rw-accent: #93b6ea;
+  --rw-red: #f5333f;
+}
+:root[data-theme='dark'] body { background: var(--rw-bg); }
+
+/* ═══ Breaking-news ticker marquee (Democracy News Live) ═══ */
+@keyframes dnl-scroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+.dnl-ticker-track { animation: dnl-scroll 240s linear infinite; will-change: transform; }
+.dnl-ticker-track:hover { animation-play-state: paused; }
+@keyframes dnl-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
+.dnl-pulse { animation: dnl-pulse 1.2s ease-in-out infinite; }
+/* Blinking clock separators — the "alive" tick. */
+@keyframes dnl-blink { 0%, 49% { opacity: 1; } 50%, 100% { opacity: 0.2; } }
+.dnl-blink { animation: dnl-blink 1s step-end infinite; }
+/* Dark mode: give the breaking flag an ember glow so it reads glamorous, not faded. */
+:root[data-theme='dark'] .dnl-breaking-flag { box-shadow: 0 0 20px -3px rgba(245, 51, 63, 0.6); }
+/* Live rail: a changed slot fades in — CSS only, contained in its slot, cannot overlap. */
+@keyframes dnl-fadein { from { opacity: 0; } to { opacity: 1; } }
+.dnl-live-fade { animation: dnl-fadein 0.5s ease; }
+/* World clock: futuristic digital roll — the new zone flips down with a brief blur. */
+@keyframes dnl-flip {
+  0%   { transform: rotateX(-88deg) translateY(-3px); opacity: 0; filter: blur(1.4px); }
+  55%  { opacity: 1; }
+  100% { transform: rotateX(0deg) translateY(0); opacity: 1; filter: blur(0); }
+}
+.dnl-flip { animation: dnl-flip 0.42s cubic-bezier(0.16, 1, 0.3, 1); transform-origin: center top; backface-visibility: hidden; }
+@media (prefers-reduced-motion: reduce) { .dnl-live-fade, .dnl-flip { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .dnl-ticker-track, .dnl-pulse, .dnl-blink { animation: none; } }
+
+/* ═══════════════════════════════════════════════════════
+   RIG WIRE — Editorial Light Mode
+   Aesthetic: 1440 / The Atlantic — white surface,
+   editorial serif headlines, pastel card backgrounds,
+   navy primary action.
+═══════════════════════════════════════════════════════ */
+
+:root {
+  /* Surfaces */
+  --bg:                #ffffff;
+  --bg-subtle:         #fafaf8;
+  --bg-band:           #f4f1ec;
+
+  /* Borders */
+  --border:            #e8e5e0;
+  --border-subtle:     #f0ede8;
+  --border-strong:     #d8d3cc;
+
+  /* Text */
+  --text-primary:      #1a1815;
+  --text-secondary:    #4f4b46;
+  --text-muted:        #7a756e;
+  --text-disabled:     #b5b1ab;
+
+  /* Action — navy primary like 1440 */
+  --action:            #1f234a;
+  --action-hover:      #0f1339;
+  --action-text:       #ffffff;
+
+  /* Top bar — lavender like 1440 */
+  --top-bar-bg:        #e8dffb;
+  --top-bar-text:      #2a225e;
+
+  /* Mode accents (saturated — used for title text & rules) */
+  --minute:            #c44a2e;
+  --digest:            #2e7c45;
+  --sides:             #5a5550;
+  --longread:          #2d5c8a;
+  --longview:          #8a6520;
+  --queue:             #5d4a9a;
+
+  /* Mode card backgrounds (pale pastels) */
+  --minute-card:       #fcded0;
+  --digest-card:       #d6e8dc;
+  --sides-card:        #e8e5e0;
+  --longread-card:     #d6e2f0;
+  --longview-card:     #f4e2c0;
+  --queue-card:        #e1d8f0;
+}
+
+/* ── Reset ──────────────────────────────────────────── */
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+}
+
+/* ── Base ───────────────────────────────────────────── */
+
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: 'kern' 1, 'liga' 1, 'calt' 1;
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: #ffffff;
+  color: #1a1815;
+  font-family: var(--font-jakarta), system-ui, -apple-system, sans-serif;
+  min-height: 100dvh;
+  overflow-x: hidden;
+}
+
+img, video {
+  display: block;
+  max-width: 100%;
+}
+
+/* ── Selection ──────────────────────────────────────── */
+
+::selection {
+  background-color: #e8dffb;
+  color: #1a1815;
+}
+
+/* ── Scrollbar ──────────────────────────────────────── */
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #ffffff;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #d8d3cc;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #b5b1ab;
+}
+
+/* ── Focus ──────────────────────────────────────────── */
+
+:focus-visible {
+  outline: 2px solid #1f234a;
+  outline-offset: 3px;
+  border-radius: 3px;
+}
+
+/* ── Typography base — editorial serif headlines ────── */
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-fraunces), Georgia, serif;
+  font-weight: 500;
+  font-variation-settings: 'opsz' 144, 'SOFT' 80, 'WONK' 0;
+  text-wrap: balance;
+  color: #1a1815;
+  letter-spacing: -0.018em;
+}
+
+p {
+  text-wrap: pretty;
+}
+
+/* ── Utility layer ──────────────────────────────────── */
+
+@layer utilities {
+
+  .font-display {
+    font-family: var(--font-fraunces), Georgia, serif;
+    font-variation-settings: 'opsz' 144, 'SOFT' 80, 'WONK' 0;
+  }
+
+  .font-display-soft {
+    font-family: var(--font-fraunces), Georgia, serif;
+    font-variation-settings: 'opsz' 144, 'SOFT' 100, 'WONK' 0;
+  }
+
+  .font-sans {
+    font-family: var(--font-jakarta), system-ui, sans-serif;
+  }
+
+  /* Kicker — small all-caps editorial label */
+  .kicker {
+    font-family: var(--font-jakarta), system-ui, sans-serif;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    line-height: 1;
+  }
+
+  /* Drop cap for long-read editorial layout */
+  .drop-cap::first-letter {
+    font-family: var(--font-fraunces), Georgia, serif;
+    font-variation-settings: 'opsz' 144, 'SOFT' 80;
+    font-size: 4.5rem;
+    font-weight: 500;
+    line-height: 0.82;
+    float: left;
+    margin-right: 0.08em;
+    margin-top: 0.06em;
+    color: #1a1815;
+  }
+
+  /* Underline accent — used for nav/highlight */
+  .editorial-underline {
+    text-decoration-line: underline;
+    text-decoration-color: currentColor;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 4px;
+  }
+
+  /* Line clamps */
+  .line-clamp-1 { overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 1; }
+  .line-clamp-2 { overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+  .line-clamp-3 { overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; }
+
+  .transition-spring {
+    transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .text-balance { text-wrap: balance; }
+  .text-pretty  { text-wrap: pretty; }
+
+  /* Editorial card shadow — soft, warm */
+  .card-shadow {
+    box-shadow: 0 1px 2px rgba(26, 24, 21, 0.04),
+                0 8px 24px rgba(26, 24, 21, 0.07);
+  }
+  .card-shadow-lg {
+    box-shadow: 0 2px 4px rgba(26, 24, 21, 0.05),
+                0 16px 40px rgba(26, 24, 21, 0.1);
+  }
+
+  /* Paper-grain texture — fractal-noise SVG overlay.
+     Applied to .paper-grain elements via ::after pseudo. */
+  .paper-grain {
+    position: relative;
+  }
+  .paper-grain::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.92' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.55 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    opacity: 0.18;
+    mix-blend-mode: multiply;
+    pointer-events: none;
+    border-radius: inherit;
+  }
+}
+
+/* ── Reduced motion ─────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .card-tilt-left, .card-tilt-right { transform: none !important; }
+}

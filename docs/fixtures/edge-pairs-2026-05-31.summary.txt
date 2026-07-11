@@ -1,0 +1,15 @@
+edge-pairs-2026-05-31 — built 2026-05-31T10:18:21.434Z
+total_pairs=1778
+by_label={"same_event":1320,"not_same_event":455,"grayzone":3}
+by_source={"golden":691,"golden_cross":400,"recall":687}
+by_kind={"true_cluster":614,"fp_bait_earnings":7,"fp_bait_template":45,"grayzone_merge":19,"grayzone_borderline":3,"grayzone_separate":3,"cross_true":400,"recall_event":687}
+note: cross_true capped at 400 (of 3403 possible)
+note: recall china_coal_mine: capped 1408 pairs (>60)
+note: recall gabbard_resign: capped 869 pairs (>60)
+note: recall pakistan_train_blast: capped 418 pairs (>60)
+note: recall petrol_diesel_hike: capped 25140 pairs (>60)
+note: recall spacex_starship: capped 801 pairs (>60)
+note: recall california_chem_tank: capped 405 pairs (>60)
+note: recall france_bengvir: capped 3945 pairs (>60)
+note: recall philippines_collapse: capped 76 pairs (>60)
+note: recall neet_paper_leak: capped 5505 pairs (>60)

@@ -1,0 +1,605 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import type { ReactNode, SyntheticEvent } from 'react';
+import Link from 'next/link';
+import { motion } from 'framer-motion';
+
+import { Wordmark } from '@/components/brand/wordmark';
+import { ThemeToggle } from '@/components/brand/theme-toggle';
+import { WorldClock } from '@/components/brand/world-clock';
+import { BreakingTicker } from './breaking-ticker';
+import { isHub, toCardView, toHubView, type CardView, type HubView } from '@/lib/worldwide/to-view';
+
+import { ScopeFilter } from './scope-filter';
+import { AroundTheWorld } from './around-the-world';
+import { isWorldScope } from './worldwide-scope-data';
+import { useEditMode } from './edit-mode';
+import { StoryPuck } from './story-puck';
+
+import type { FrontPage, StoryCard, EventHub } from '@/lib/worldwide/types';
+
+/* ═════════════════════════════════════════════════════════════════
+   WORLDWIDE — live edition. Washington-Post-style section homepage.
+   Dense, multi-row, multi-band grid. White canvas, black ink.
+   Top Stories + themed bands + Around-the-World are LIVE (getFrontPage);
+   Most Read / Editorial / Intelligence / Listen / Photo essays are
+   editorial bands kept from the prototype until wired.
+═════════════════════════════════════════════════════════════════ */
+
+const INK = 'var(--rw-ink)';
+const BODY = 'var(--rw-body)';
+const MUTED = 'var(--rw-muted)';
+const SOFT = 'var(--rw-faint)';
+const RULE = 'var(--rw-rule)';
+const RULE2 = 'var(--rw-rule-strong)';
+const ACCENT = 'var(--rw-accent)';
+const CREAM = 'var(--rw-cream)';
+const FALLBACK_IMAGE = '/cards/long-read.png';
+
+/** News-site principle: an image slot is never empty or broken. On load failure, swap to the
+ *  brand placeholder once (guarded against a fallback-also-fails loop). */
+function onImgError(e: SyntheticEvent<HTMLImageElement>): void {
+  const img = e.currentTarget;
+  if (img.dataset.fallback) return;
+  img.dataset.fallback = '1';
+  img.src = FALLBACK_IMAGE;
+}
+
+function titleCase(s: string): string {
+  return s.charAt(0) + s.slice(1).toLowerCase();
+}
+
+/** Flatten live top-stories into a card pool (hubs → their members), preserving order. */
+function cardPool(units: Array<StoryCard | EventHub>): CardView[] {
+  const out: CardView[] = [];
+  const seen = new Set<string>();
+  for (const u of units) {
+    // A hub collapses to ONE representative card (its freshest articled chapter) so a 200-member
+    // mega-event doesn't flood the top of the page with near-duplicate fragments. The full member
+    // list is shown only when the hub is the lead (HubLead umbrella).
+    const cards = isHub(u) ? u.members.slice(0, 1) : [u];
+    for (const c of cards) {
+      if (!c || seen.has(c.id)) continue;
+      seen.add(c.id);
+      out.push(toCardView(c));
+    }
+  }
+  return out;
+}
+
+export function LongReadPage({ data }: { data: FrontPage }) {
+  let pool = cardPool(data.topStories);
+
+  // Editor pins are a deliberate top-headline choice (CMS "★ Top headline"). They lead in
+  // pin order and are EXEMPT from the automated lead rules below — those rules still apply
+  // unchanged to the machine's own picks (the non-pinned remainder).
+  const pinnedLead = pool.filter((c) => c.pinned);
+  let auto = pool.filter((c) => !c.pinned);
+
+  // Editorial lead rules — applied in order to the non-pinned remainder.
+
+  // Rule 1: Sports can never lead — too many sources from a single match inflate its score.
+  if (auto.length > 1 && auto[0].topic.toLowerCase() === 'sports') {
+    const idx = auto.findIndex((c) => c.topic.toLowerCase() !== 'sports');
+    if (idx > 0) auto = [auto[idx], ...auto.slice(0, idx), ...auto.slice(idx + 1)];
+  }
+
+  // Rule 2: Hero grid freshness — fresh stories (< 8 h) always appear above stale ones
+  // in the 6 visible hero slots. Within each group, importance order is preserved.
+  // This prevents a 15h-old story occupying the centre hero while fresh stories sit below it.
+  const FRESH_S = 8 * 3600;
+  const HERO_SLOTS = 12; // wider window: collect all fresh stories from top-12 before any stale fills slots 0-5
+  const heroHead = auto.slice(0, HERO_SLOTS);
+  const fresh = heroHead.filter((c) => c.freshnessSeconds <= FRESH_S);
+  const stale = heroHead.filter((c) => c.freshnessSeconds > FRESH_S);
+  auto = [...fresh, ...stale, ...auto.slice(HERO_SLOTS)];
+
+  // Pins lead; automation fills the rest.
+  pool = [...pinnedLead, ...auto];
+
+  const heroPool = pool.slice(1); // lead renders pool[0]; the rest fill the grid
+  const sections = data.sections;
+  const aroundTheWorld = data.aroundTheWorld;
+  // Developing storylines (event-hubs) get their OWN "Full coverage" section — not an inline umbrella.
+  const fullCoverage = data.topStories.filter(isHub).map(toHubView);
+
+  // Freshest REAL stories for the live ticker (most-recent first) — makes the "LIVE" rail honest.
+  const latestSeen = new Set<string>();
+  const latest = [
+    ...data.topStories.flatMap((u) => (isHub(u) ? u.members : [u])),
+    ...data.aroundTheWorld,
+    ...data.sections.flatMap((s) => s.stories),
+  ]
+    .filter((c) => (latestSeen.has(c.id) ? false : (latestSeen.add(c.id), true)))
+    .sort((a, b) => a.freshnessSeconds - b.freshnessSeconds)
+    .slice(0, 14)
+    .map(toCardView);
+
+  // "Most covered" = the stories the most independent outlets are reporting (honest breadth signal —
+  // we don't track real readership, so we rank by independent_source_count, not fake read counts).
+  const coveredSeen = new Set<string>();
+  const mostCovered = [
+    ...data.topStories.flatMap((u) => (isHub(u) ? u.members : [u])),
+    ...data.sections.flatMap((s) => s.stories),
+  ]
+    .filter((c) => (coveredSeen.has(c.id) ? false : (coveredSeen.add(c.id), true)))
+    .sort((a, b) => b.independentSources - a.independentSources)
+    .slice(0, 6)
+    .map(toCardView);
+
+  // Democracy theme band (elections, rights, press freedom, authoritarianism…).
+  const democracy = data.democracy.map(toCardView);
+
+  // Empty-state: a thin scope (few generated English articles) shows a clean message, not blank bands.
+  if (pool.length === 0) {
+    return (
+      <div className="min-h-dvh" style={{ background: 'var(--rw-bg)', color: BODY, fontFamily: 'var(--font-fraunces), Georgia, serif' }}>
+        <TopNav scope={data.scope} />
+        <section className="px-5 py-28 md:py-36 text-center mx-auto" style={{ maxWidth: 640 }}>
+          <p className="italic" style={{ color: INK, fontSize: 'clamp(1.5rem, 3vw, 2.25rem)', fontWeight: 400, lineHeight: 1.2, fontVariationSettings: "'opsz' 144, 'SOFT' 100", marginBottom: 16 }}>
+            No stories in this edition right now.
+          </p>
+          <p style={{ color: MUTED, fontSize: 15, marginBottom: 24 }}>Fresh coverage lands continuously — check back shortly, or browse the world.</p>
+          <Link href="/long-read" style={{ fontFamily: 'var(--font-jakarta), sans-serif', fontSize: 12, fontWeight: 700, letterSpacing: '0.14em', color: ACCENT, textTransform: 'uppercase' }}>← The World edition</Link>
+        </section>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-dvh" style={{ background: 'var(--rw-bg)', color: BODY, fontFamily: 'var(--font-fraunces), Georgia, serif' }}>
+      <TopNav scope={data.scope} />
+
+      {/* ═══════════ TOP STORIES BAND — 3 columns ═══════════ */}
+      <section id="top" className="px-5 md:px-10 lg:px-16 pt-10 pb-14" style={{ scrollMarginTop: 96 }}>
+        <div className="mx-auto grid gap-x-9 lg:[grid-template-columns:1fr_1.65fr_1fr]" style={{ maxWidth: 1600 }}>
+          {/* LEFT — secondary lead + two stacked */}
+          <div className="lg:pr-7" style={{ borderRight: `1px solid ${RULE}` }}>
+            {heroPool[3] && <LeadStory story={heroPool[3]} />}
+            {heroPool[4] && <><Rule /><CompactWithImage story={heroPool[4]} /></>}
+            {heroPool[5] && <><Rule /><TextOnlyStory story={heroPool[5]} /></>}
+          </div>
+          {/* CENTRE — THE top headline (pool[0]) as the big hero + two stacked */}
+          <div className="lg:pr-7" style={{ borderRight: `1px solid ${RULE}` }}>
+            {pool[0] && <HeroStory story={pool[0]} />}
+            {heroPool[1] && <><Rule /><CompactWithImage story={heroPool[1]} /></>}
+            {heroPool[2] && <><Rule /><TextOnlyStory story={heroPool[2]} /></>}
+          </div>
+          {/* RIGHT — Live news ticker */}
+          <div>
+            <LiveNewsRail items={latest} />
+          </div>
+        </div>
+      </section>
+
+      {/* ═══════════ MORE TOP STORIES — image / headline-stack / most-read ═══════════ */}
+      <section className="px-5 md:px-10 lg:px-16 pt-14 pb-16" style={{ borderTop: `3px solid ${RULE2}` }}>
+        <div className="mx-auto" style={{ maxWidth: 1600 }}>
+          <BandTitle text="More Top Stories" />
+          <div className="grid gap-x-9 gap-y-8 lg:[grid-template-columns:1.2fr_1.5fr_1fr]">
+            <div className="lg:pr-7" style={{ borderRight: `1px solid ${RULE}` }}>
+              {heroPool[6] && <ImageHeroStory story={heroPool[6]} />}
+            </div>
+            <div className="lg:pr-7" style={{ borderRight: `1px solid ${RULE}` }}>
+              <HeadlineStack stories={heroPool.slice(7, 14)} />
+            </div>
+            <div>
+              <SidebarHead title="Most covered" />
+              <ul className="mt-4">{mostCovered.map((item, i) => <MostReadEntry key={item.slug} item={item} rank={i + 1} />)}</ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ═══════════ FULL COVERAGE — developing storylines, their own section ═══════════ */}
+      <FullCoverageSection hubs={fullCoverage} />
+
+      {/* ═══════════ AROUND THE WORLD — secondary band, world scope only ═══════════ */}
+      {isWorldScope(data.scope) && aroundTheWorld.length > 0 && (
+        <AroundTheWorld stories={aroundTheWorld.map(toCardView)} />
+      )}
+
+      {/* ═══════════ DEMOCRACY — flagship section, leads the topic bands ═══════════ */}
+      {democracy.length > 0 && (
+        <ThemedBand anchor="democracy" title="Democracy" featured={democracy[0]} list={democracy.slice(1)} />
+      )}
+
+      {/* ═══════════ LIVE TOPIC BANDS — image-left + headline-stack ═══════════ */}
+      {sections.map((section, i) => {
+        const cards = section.stories.map(toCardView);
+        if (cards.length === 0) return null;
+        const [featured, ...list] = cards;
+        return <ThemedBand key={section.topic} anchor={section.topic.toLowerCase()} title={titleCase(section.topic)} featured={featured} list={list} darker={i % 2 === 1} />;
+      })}
+
+      {/* ═══════════ FOOTER ═══════════ */}
+      <footer className="px-5 md:px-8 lg:px-12 py-10" style={{ borderTop: `1px solid ${RULE}`, background: 'var(--rw-cream)' }}>
+        <div className="mx-auto flex flex-col md:flex-row items-start md:items-center justify-between gap-4" style={{ maxWidth: 1600 }}>
+          <Wordmark size="sm" href="/long-read" rigColor="var(--rw-ink)" />
+          <Link href="/long-read" className="inline-flex items-center gap-2 hover:opacity-70 transition-opacity" style={{ fontFamily: 'var(--font-jakarta), sans-serif', fontSize: 11.5, fontWeight: 700, letterSpacing: '0.18em', color: ACCENT, textTransform: 'uppercase' }}>
+            ← Back to top
+          </Link>
+        </div>
+      </footer>
+    </div>
+  );
+}
+
+/* ═══════════ THEMED BAND — image-left + 4-headline stack right ═══════════ */
+function ThemedBand({ anchor, title, featured, list, darker }: { anchor: string; title: string; featured: CardView; list: CardView[]; darker?: boolean }) {
+  return (
+    <section id={anchor} className="px-5 md:px-10 lg:px-16 pt-14 pb-16" style={{ borderTop: `2px solid ${RULE2}`, background: darker ? CREAM : 'var(--rw-bg)', scrollMarginTop: 96 }}>
+      <div className="mx-auto" style={{ maxWidth: 1600 }}>
+        <BandTitle text={title} />
+        <div className="grid gap-x-7 gap-y-7 lg:[grid-template-columns:1.4fr_1fr]">
+          <div className="lg:pr-7" style={{ borderRight: `1px solid ${RULE}` }}>
+            <ImageHeroStory story={featured} />
+          </div>
+          <div><HeadlineStack stories={list} /></div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ═══════════ MASTHEAD DATE ═══════════ */
+function MastheadDate() {
+  const now = new Date();
+  const day = now.toLocaleDateString('en-US', { weekday: 'long' });
+  const date = now.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+  return (
+    <div style={{ fontFamily: 'var(--font-mono), monospace', fontSize: 10.5, letterSpacing: '0.06em', color: MUTED, lineHeight: 1.55, textTransform: 'uppercase' }}>
+      <div style={{ fontWeight: 700, color: INK }}>{day}</div>
+      <div>{date}</div>
+    </div>
+  );
+}
+
+/* ═══════════ TOP NAV ═══════════ */
+function TopNav({ scope }: { scope: string }) {
+  return (
+    <header style={{ borderBottom: `1px solid ${RULE}` }}>
+      <div className="grid items-center px-5 md:px-8 py-2.5" style={{ gridTemplateColumns: '1fr auto 1fr', fontFamily: 'var(--font-jakarta), sans-serif', fontSize: 11, fontWeight: 600, letterSpacing: '0.06em', color: MUTED, borderBottom: `1px solid ${RULE}` }}>
+        <div className="flex items-center gap-4 justify-self-start">
+          <button aria-label="Menu" className="hover:opacity-70" style={{ color: INK }}>
+            <svg width="16" height="14" viewBox="0 0 16 14" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><line x1="1" y1="2" x2="15" y2="2" /><line x1="1" y1="7" x2="15" y2="7" /><line x1="1" y1="12" x2="15" y2="12" /></svg>
+          </button>
+          <ScopeFilter activeKey={scope} />
+          <span className="hidden lg:inline-flex"><WorldClock /></span>
+        </div>
+        <span className="justify-self-center inline-flex items-center gap-2 whitespace-nowrap" style={{ fontWeight: 800, letterSpacing: '0.14em', color: 'var(--rw-red)', textTransform: 'uppercase', fontSize: 10.5 }}>
+          <span className="dnl-pulse" style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--rw-red)', display: 'inline-block' }} />
+          Live · Independent · Worldwide
+        </span>
+        <div className="flex items-center gap-3 justify-self-end">
+          <Link href="/signin" className="hover:opacity-90 inline-flex items-center" style={{ padding: '6px 14px', background: ACCENT, color: '#fff', borderRadius: 999, fontWeight: 700, letterSpacing: '0.04em' }}>Subscribe</Link>
+          <Link href="/signin" className="hover:opacity-70" style={{ color: INK, fontWeight: 600 }}>Sign in</Link>
+          <ThemeToggle />
+        </div>
+      </div>
+      {/* ── Three-column masthead: date | wordmark | tagline ── */}
+      <div className="grid items-center px-5 md:px-10 lg:px-16 py-5" style={{ gridTemplateColumns: '1fr auto 1fr', borderBottom: `1px solid ${RULE}` }}>
+        <MastheadDate />
+        <Link
+          href="/today"
+          className="justify-self-center"
+          aria-label="Democracy News Live — home"
+          style={{
+            textDecoration: 'none', whiteSpace: 'nowrap', color: 'var(--rw-ink)',
+            fontFamily: 'var(--font-fraunces), Georgia, serif', fontWeight: 800,
+            fontSize: 'clamp(1.75rem, 4.2vw, 3.6rem)', lineHeight: 0.92, letterSpacing: '-0.025em',
+            fontVariationSettings: "'opsz' 144, 'SOFT' 0, 'WONK' 0",
+          }}
+        >
+          Democracy News{' '}
+          <span style={{ fontStyle: 'italic', fontWeight: 800, color: 'var(--rw-red)', fontVariationSettings: "'opsz' 144, 'SOFT' 60, 'WONK' 0" }}>Live</span>
+        </Link>
+        <p className="text-right italic hidden md:block" style={{ fontFamily: 'var(--font-fraunces), Georgia, serif', color: MUTED, fontSize: 'clamp(0.8rem, 0.95vw, 0.9375rem)', fontWeight: 400, letterSpacing: '0.005em', fontVariationSettings: "'opsz' 144, 'SOFT' 100", lineHeight: 1.4 }}>
+          Democracy, worldwide —<br />watched in real time.
+        </p>
+      </div>
+      {/* ── Section strip ── */}
+      <nav style={{ borderTop: `1px solid ${RULE}`, borderBottom: `2px solid ${INK}` }}>
+        <div className="flex items-center justify-center overflow-x-auto scrollbar-none" style={{ fontFamily: 'var(--font-jakarta), sans-serif' }}>
+          {(['Top Stories', 'Democracy', 'Politics', 'Business', 'Technology', 'Health', 'Environment', 'Sports', 'Legal', 'Security', 'Finance', 'Society'] as const).map((label, i) => (
+            <a
+              key={label}
+              href={label === 'Top Stories' ? '#top' : `#${label.toLowerCase()}`}
+              className="shrink-0 transition-colors hover:text-red-700"
+              style={{
+                display: 'inline-block',
+                padding: '11px 20px',
+                fontSize: i === 0 ? 13 : 12.5,
+                fontWeight: label === 'Democracy' || i === 0 ? 800 : 600,
+                letterSpacing: i === 0 ? '0.06em' : '0.05em',
+                color: label === 'Democracy' ? 'var(--rw-red)' : i === 0 ? INK : BODY,
+                textDecoration: 'none',
+                whiteSpace: 'nowrap',
+                textTransform: 'uppercase',
+                borderRight: i < 9 ? `1px solid ${RULE}` : 'none',
+              }}
+            >
+              {label}
+            </a>
+          ))}
+        </div>
+      </nav>
+      {/* ── Breaking-news ticker (live articles, refreshed) ── */}
+      <BreakingTicker />
+    </header>
+  );
+}
+
+/* ═══════════ STORY COMPONENTS ═══════════ */
+function TitleLink({ story, children }: { story: CardView; children: ReactNode }) {
+  const editing = useEditMode();
+  if (!story.href) return <span>{children}</span>;
+  if (!editing) return <Link href={story.href} className="hover:opacity-75 transition-opacity">{children}</Link>;
+  // Curate mode: the headline is not a navigate-away link; it anchors the per-story control puck.
+  const id = story.href.split('/').filter(Boolean).pop() ?? '';
+  return (
+    <span className="group" style={{ position: 'relative', display: 'inline-block' }}>
+      {children}
+      {id && <StoryPuck storyId={id} />}
+    </span>
+  );
+}
+
+function LeadStory({ story }: { story: CardView }) {
+  return (
+    <article>
+      <img src={story.image} alt="" className="block w-full" style={{ aspectRatio: '4/3', objectFit: 'cover' }} onError={onImgError} />
+      <div className="pt-5">
+        <Kicker text={story.kicker} />
+        <h2 style={{ color: INK, fontSize: 'clamp(1.75rem, 2.6vw, 2.625rem)', fontWeight: 700, lineHeight: 1.04, letterSpacing: '-0.024em', fontVariationSettings: "'opsz' 144, 'SOFT' 0", textWrap: 'balance', marginTop: 10, marginBottom: 12 }}>
+          <TitleLink story={story}>{story.title}</TitleLink>
+        </h2>
+        {story.deck && <p style={{ color: BODY, fontSize: 'clamp(1rem, 1.2vw, 1.1875rem)', lineHeight: 1.5, marginBottom: 14, fontVariationSettings: "'opsz' 14, 'SOFT' 50" }}>{story.deck}</p>}
+        <Byline story={story} />
+      </div>
+    </article>
+  );
+}
+
+function HeroStory({ story }: { story: CardView }) {
+  return (
+    <article>
+      <img src={story.image} alt="" className="block w-full" style={{ aspectRatio: '16/10', objectFit: 'cover' }} onError={onImgError} />
+      <div className="pt-5">
+        <Kicker text={story.kicker} />
+        <h1 style={{ color: INK, fontSize: 'clamp(2.5rem, 4.6vw, 4.5rem)', fontWeight: 700, lineHeight: 1.02, letterSpacing: '-0.028em', fontVariationSettings: "'opsz' 144, 'SOFT' 0", textWrap: 'balance', marginTop: 14, marginBottom: 16 }}>
+          <TitleLink story={story}>{story.title}</TitleLink>
+        </h1>
+        {story.deck && <p style={{ color: BODY, fontSize: 'clamp(1.0625rem, 1.3vw, 1.25rem)', lineHeight: 1.5, marginBottom: 14, fontVariationSettings: "'opsz' 14, 'SOFT' 50" }}>{story.deck}</p>}
+        <Byline story={story} />
+      </div>
+    </article>
+  );
+}
+
+function CompactWithImage({ story }: { story: CardView }) {
+  return (
+    <article className="grid gap-5 md:[grid-template-columns:1fr_150px] items-start">
+      <div>
+        <Kicker text={story.kicker} />
+        <h3 style={{ color: INK, fontSize: 'clamp(1.25rem, 1.7vw, 1.5rem)', fontWeight: 700, lineHeight: 1.12, letterSpacing: '-0.016em', fontVariationSettings: "'opsz' 24, 'SOFT' 10", textWrap: 'balance', marginTop: 6, marginBottom: 8 }}>
+          <TitleLink story={story}>{story.title}</TitleLink>
+        </h3>
+        {story.deck && <p style={{ color: BODY, fontSize: 14.5, lineHeight: 1.5, marginBottom: 10 }}>{story.deck}</p>}
+        <Byline story={story} small />
+      </div>
+      <img src={story.image} alt="" className="block w-full" style={{ aspectRatio: '1/1', objectFit: 'cover' }} onError={onImgError} />
+    </article>
+  );
+}
+
+function TextOnlyStory({ story }: { story: CardView }) {
+  return (
+    <article>
+      <Kicker text={story.kicker} small />
+      <h4 style={{ color: INK, fontSize: 'clamp(1.1875rem, 1.55vw, 1.4375rem)', fontWeight: 700, lineHeight: 1.13, letterSpacing: '-0.014em', fontVariationSettings: "'opsz' 24, 'SOFT' 10", textWrap: 'balance', marginTop: 6, marginBottom: 6 }}>
+        <TitleLink story={story}>{story.title}</TitleLink>
+      </h4>
+      <Byline story={story} small />
+    </article>
+  );
+}
+
+function ImageHeroStory({ story }: { story: CardView }) {
+  return (
+    <article>
+      <img src={story.image} alt="" className="block w-full" style={{ aspectRatio: '16/10', objectFit: 'cover' }} onError={onImgError} />
+      <div className="pt-4">
+        <Kicker text={story.kicker} />
+        <h3 style={{ color: INK, fontSize: 'clamp(1.75rem, 2.8vw, 2.625rem)', fontWeight: 700, lineHeight: 1.04, letterSpacing: '-0.022em', fontVariationSettings: "'opsz' 144, 'SOFT' 0", textWrap: 'balance', marginTop: 10, marginBottom: 12 }}>
+          <TitleLink story={story}>{story.title}</TitleLink>
+        </h3>
+        {story.deck && <p style={{ color: BODY, fontSize: 'clamp(1rem, 1.2vw, 1.1875rem)', lineHeight: 1.5, marginBottom: 12 }}>{story.deck}</p>}
+        <Byline story={story} />
+      </div>
+    </article>
+  );
+}
+
+function HeadlineStack({ stories }: { stories: CardView[] }) {
+  return (
+    <ul>
+      {stories.map((s, i) => (
+        <li key={s.slug} style={{ paddingTop: i === 0 ? 0 : 18, paddingBottom: 18, borderTop: i === 0 ? 'none' : `1px solid ${RULE}` }}>
+          <Kicker text={s.kicker} small />
+          <h4 style={{ color: INK, fontSize: 'clamp(1.25rem, 1.65vw, 1.5rem)', fontWeight: 700, lineHeight: 1.13, letterSpacing: '-0.016em', fontVariationSettings: "'opsz' 24, 'SOFT' 10", textWrap: 'balance', marginTop: 6, marginBottom: 6 }}>
+            <TitleLink story={s}>{s.title}</TitleLink>
+          </h4>
+          <Byline story={s} small />
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/* ═══════════ EVENT HUB (B+) ═══════════ */
+/* ═══════════ FULL COVERAGE — developing storylines as live chapter timelines ═══════════ */
+function FullCoverageSection({ hubs }: { hubs: HubView[] }) {
+  if (hubs.length === 0) return null;
+  return (
+    <section className="px-5 md:px-10 lg:px-16 pt-14 pb-16" style={{ borderTop: `3px solid ${RULE2}`, background: CREAM }}>
+      <div className="mx-auto" style={{ maxWidth: 1600 }}>
+        <div className="flex items-center gap-3 flex-wrap" style={{ borderBottom: `2px solid ${INK}`, paddingBottom: 10, marginBottom: 26 }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '3px 9px', background: '#a8141a', color: '#fff', fontFamily: 'var(--font-jakarta), sans-serif', fontSize: 10, fontWeight: 800, letterSpacing: '0.2em', textTransform: 'uppercase', borderRadius: 3 }}>
+            <motion.span aria-hidden animate={{ opacity: [1, 0.25, 1], scale: [1, 1.15, 1] }} transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }} style={{ width: 6, height: 6, background: '#fff', borderRadius: 999, display: 'inline-block' }} />
+            Developing
+          </span>
+          <h2 style={{ color: INK, fontSize: 'clamp(1.6rem, 2.4vw, 2.25rem)', fontWeight: 700, lineHeight: 1, letterSpacing: '-0.02em', fontVariationSettings: "'opsz' 144, 'SOFT' 0" }}>Full coverage</h2>
+          <span style={{ fontFamily: 'var(--font-jakarta), sans-serif', color: MUTED, fontSize: 11.5, fontWeight: 600 }}>big stories — every update as it lands</span>
+        </div>
+        <div>
+          {hubs.map((h, i) => <StorylineRow key={h.hubId} hub={h} divided={i > 0} />)}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* One developing storyline = a full-width row: entity on the left, its chapters (newest first) in a
+   multi-column timeline on the right, so the band fills the width even with a single storyline. */
+function StorylineRow({ hub, divided }: { hub: HubView; divided: boolean }) {
+  const entity = hub.title.replace(/\s*[—-]\s*full coverage$/i, '');
+  return (
+    <article
+      className="grid gap-x-10 gap-y-5 lg:[grid-template-columns:300px_1fr]"
+      style={{ borderTop: divided ? `1px solid ${RULE}` : undefined, paddingTop: divided ? 26 : 4, paddingBottom: 26 }}
+    >
+      <div>
+        <span style={{ fontFamily: 'var(--font-jakarta), sans-serif', color: ACCENT, fontSize: 10.5, fontWeight: 800, letterSpacing: '0.2em', textTransform: 'uppercase' }}>Full coverage · {hub.memberCount} updates</span>
+        <h3 style={{ color: INK, fontSize: 'clamp(1.5rem, 2.4vw, 2.125rem)', fontWeight: 700, lineHeight: 1.04, letterSpacing: '-0.02em', fontVariationSettings: "'opsz' 144, 'SOFT' 0", textWrap: 'balance', marginTop: 8 }}>{entity}</h3>
+      </div>
+      <ul className="grid gap-x-9 gap-y-6 md:grid-cols-2 xl:grid-cols-3">
+        {hub.members.map((m) => (
+          <li key={m.slug} style={{ borderLeft: `2px solid ${RULE}`, paddingLeft: 14 }}>
+            <div style={{ fontFamily: 'var(--font-mono), monospace', color: ACCENT, fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', marginBottom: 4, textTransform: 'uppercase' }}>{m.timestamp}</div>
+            <h4 style={{ color: INK, fontSize: 'clamp(0.95rem, 1.15vw, 1.0625rem)', fontWeight: 700, lineHeight: 1.24, letterSpacing: '-0.01em', textWrap: 'balance' }}>
+              <TitleLink story={m}>{m.title}</TitleLink>
+            </h4>
+          </li>
+        ))}
+      </ul>
+    </article>
+  );
+}
+
+/* ═══════════ LIVE NEWS RAIL — rotating ticker over the freshest REAL stories ═══════════ */
+function LiveNewsRail({ items }: { items: CardView[] }) {
+  const [offset, setOffset] = useState(0);
+  const len = items.length;
+  useEffect(() => {
+    if (len <= 1) return;
+    const t = setInterval(() => setOffset((o) => (o + 1) % len), 5000);
+    return () => clearInterval(t);
+  }, [len]);
+  if (len === 0) return null;
+  const N = Math.min(9, len);
+  const visible = Array.from({ length: N }, (_, i) => ({ item: items[(len + offset - i) % len], position: i }));
+  return (
+    <div>
+      <div className="flex items-center justify-between gap-3" style={{ borderBottom: `2px solid ${INK}`, paddingBottom: 8 }}>
+        <div className="flex items-center gap-3">
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '3px 8px', background: '#a8141a', color: '#fff', fontFamily: 'var(--font-jakarta), sans-serif', fontSize: 10, fontWeight: 800, letterSpacing: '0.22em', textTransform: 'uppercase', borderRadius: 3 }}>
+            <motion.span aria-hidden animate={{ opacity: [1, 0.25, 1], scale: [1, 1.15, 1] }} transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }} style={{ width: 6, height: 6, background: '#fff', borderRadius: 999, display: 'inline-block' }} />
+            LIVE
+          </span>
+          <h2 style={{ color: INK, fontSize: 'clamp(1.5rem, 1.9vw, 1.75rem)', fontWeight: 700, lineHeight: 1, letterSpacing: '-0.018em', fontVariationSettings: "'opsz' 144, 'SOFT' 0" }}>Top news</h2>
+        </div>
+        <span style={{ fontFamily: 'var(--font-jakarta), sans-serif', color: MUTED, fontSize: 10.5, fontWeight: 700, letterSpacing: '0.10em', textTransform: 'uppercase' }}>Auto-updating</span>
+      </div>
+      {/* Fixed slots keyed by POSITION — content swaps in place, so headlines can never overlap.
+          The inner div is keyed by story so a changed slot fades in (CSS only, no layout animation). */}
+      <ul className="mt-2">
+        {visible.map(({ item, position }) => (
+          <li key={position} style={{ borderBottom: `1px solid ${RULE}`, paddingTop: 14, paddingBottom: 14 }}>
+            <div key={item.slug} className="dnl-live-fade">
+              <LiveNewsItemView item={item} isNew={position === 0} />
+            </div>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function LiveNewsItemView({ item, isNew }: { item: CardView; isNew: boolean }) {
+  const breaking = item.timestamp === 'just now' || /^[1-3]h ago$/.test(item.timestamp);
+  const titleStyle = { color: INK, fontSize: 'clamp(0.9375rem, 1.1vw, 1.0625rem)', fontWeight: 700, lineHeight: 1.22, letterSpacing: '-0.012em', fontVariationSettings: "'opsz' 24, 'SOFT' 10", textWrap: 'balance' as const };
+  return (
+    <>
+      <div className="flex items-center flex-wrap gap-2 mb-2">
+        {breaking ? (
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '2px 7px', background: '#a8141a', color: '#fff', fontFamily: 'var(--font-jakarta), sans-serif', fontSize: 9.5, fontWeight: 800, letterSpacing: '0.18em', textTransform: 'uppercase', borderRadius: 2 }}>
+            <motion.span aria-hidden animate={{ opacity: [1, 0.3, 1] }} transition={{ duration: 1.2, repeat: Infinity }} style={{ width: 5, height: 5, background: '#fff', borderRadius: 999, display: 'inline-block' }} />
+            BREAKING
+          </span>
+        ) : (
+          <span style={{ fontFamily: 'var(--font-jakarta), sans-serif', color: ACCENT, fontSize: 10, fontWeight: 800, letterSpacing: '0.24em', textTransform: 'uppercase' }}>{item.kicker}</span>
+        )}
+        <span style={{ fontFamily: 'var(--font-jakarta), sans-serif', color: isNew ? '#a8141a' : MUTED, fontSize: 9.5, fontWeight: 800, letterSpacing: '0.16em', textTransform: 'uppercase' }}>· {item.timestamp}</span>
+      </div>
+      {item.href ? (
+        <Link href={item.href} className="hover:opacity-75 transition-opacity block" style={titleStyle}>{item.title}</Link>
+      ) : (
+        <span className="block" style={titleStyle}>{item.title}</span>
+      )}
+      {item.deck && <p className="mt-1.5" style={{ color: BODY, fontSize: 13, lineHeight: 1.45 }}>{item.deck}</p>}
+    </>
+  );
+}
+
+function MostReadEntry({ item, rank }: { item: CardView; rank: number }) {
+  const titleStyle = { color: INK, fontSize: 'clamp(1.0625rem, 1.2vw, 1.1875rem)', fontWeight: 700, lineHeight: 1.2, letterSpacing: '-0.014em', fontVariationSettings: "'opsz' 24, 'SOFT' 10", textWrap: 'balance' as const };
+  return (
+    <li className="flex gap-4 items-baseline" style={{ borderBottom: `1px solid ${RULE}`, paddingTop: 12, paddingBottom: 12 }}>
+      <span className="italic" style={{ color: ACCENT, fontSize: 'clamp(2rem, 2.6vw, 2.625rem)', fontWeight: 400, lineHeight: 1, fontVariationSettings: "'opsz' 144, 'SOFT' 100, 'WONK' 1", minWidth: 36, flexShrink: 0 }}>{rank}</span>
+      <div className="flex-1 min-w-0">
+        {item.kicker && <p style={{ fontFamily: 'var(--font-jakarta), sans-serif', color: ACCENT, fontSize: 11, fontWeight: 800, letterSpacing: '0.22em', textTransform: 'uppercase', marginBottom: 4 }}>{item.kicker}</p>}
+        {item.href ? (
+          <Link href={item.href} className="hover:opacity-75 transition-opacity block" style={titleStyle}>{item.title}</Link>
+        ) : (
+          <span className="block" style={titleStyle}>{item.title}</span>
+        )}
+      </div>
+    </li>
+  );
+}
+
+/* ═══════════ PRIMITIVES ═══════════ */
+function Kicker({ text, small }: { text: string; small?: boolean }) {
+  return <span style={{ fontFamily: 'var(--font-jakarta), sans-serif', color: ACCENT, fontSize: small ? 10 : 11, fontWeight: 800, letterSpacing: '0.28em', textTransform: 'uppercase' }}>{text}</span>;
+}
+
+function Byline({ story, small }: { story: CardView; small?: boolean }) {
+  const parts = [story.author, story.timestamp, story.readTime].filter(Boolean);
+  return (
+    <p style={{ fontFamily: 'var(--font-jakarta), sans-serif', color: MUTED, fontSize: small ? 10.5 : 11.5, fontWeight: 600, letterSpacing: '0.04em', marginTop: 8 }}>
+      {parts.map((p, i) => (
+        <span key={i}>
+          {i === 0 ? <span style={{ color: INK, fontWeight: 700 }}>By {p}</span> : <><span style={{ margin: '0 8px', opacity: 0.5 }}>·</span><span style={{ textTransform: 'uppercase', letterSpacing: '0.10em' }}>{p}</span></>}
+        </span>
+      ))}
+    </p>
+  );
+}
+
+function SidebarHead({ title, small }: { title: string; small?: boolean }) {
+  return (
+    <div className="flex items-baseline justify-between">
+      <h2 style={{ color: INK, fontSize: small ? 'clamp(1.1875rem, 1.45vw, 1.375rem)' : 'clamp(1.5rem, 1.9vw, 1.75rem)', fontWeight: 700, lineHeight: 1, letterSpacing: '-0.018em', fontVariationSettings: "'opsz' 144, 'SOFT' 0", borderBottom: `2px solid ${INK}`, paddingBottom: 8, flex: 1 }}>{title}</h2>
+    </div>
+  );
+}
+
+function BandTitle({ text }: { text: string }) {
+  return <h2 className="mb-8" style={{ color: INK, fontSize: 'clamp(1.875rem, 2.6vw, 2.5rem)', fontWeight: 700, lineHeight: 1, letterSpacing: '-0.022em', fontVariationSettings: "'opsz' 144, 'SOFT' 0", borderBottom: `2px solid ${INK}`, paddingBottom: 12 }}>{text}</h2>;
+}
+
+function Rule() {
+  return <div className="my-6" style={{ borderTop: `1px solid ${RULE}` }} />;
+}
