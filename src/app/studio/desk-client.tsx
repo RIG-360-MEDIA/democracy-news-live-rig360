@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useMemo, useState, useTransition } from 'react';
 
 import type { DeskState, DeskStory } from '@/lib/studio/types';
+import { countryName } from '@/lib/worldwide/country';
 
 // One pill per true state — what readers actually get right now.
 const STATE: Record<DeskState, { bg: string; fg: string; label: string }> = {
@@ -166,10 +167,10 @@ function DeskCard({ s, busy, act }: { s: DeskStory; busy: boolean; act: Act }) {
       {/* Thumbnail + status */}
       <Link href={href} style={{ display: 'block', position: 'relative' }} aria-label={s.headline}>
         <img
-          src={s.image ?? '/cards/long-read.png'}
+          src={s.image ?? '/cards/placeholder.png'}
           alt=""
           style={{ width: '100%', aspectRatio: '16/9', objectFit: 'cover', background: '#eee', display: 'block', opacity: dimmed ? 0.5 : 1 }}
-          onError={(e) => { const t = e.currentTarget; if (t.dataset.fb) return; t.dataset.fb = '1'; t.src = '/cards/long-read.png'; }}
+          onError={(e) => { const t = e.currentTarget; if (t.dataset.fb) return; t.dataset.fb = '1'; t.src = '/cards/placeholder.png'; }}
         />
         <span style={{ position: 'absolute', top: 10, left: 10, fontFamily: 'var(--font-mono), monospace', fontSize: 9.5, fontWeight: 800, letterSpacing: '.05em', color: st.fg, background: st.bg, padding: '3px 8px', borderRadius: 5, boxShadow: '0 1px 4px rgba(0,0,0,0.15)' }}>
           {st.label}
@@ -182,7 +183,7 @@ function DeskCard({ s, busy, act }: { s: DeskStory; busy: boolean; act: Act }) {
       {/* Body */}
       <div style={{ padding: '13px 14px 12px', display: 'flex', flexDirection: 'column', flex: 1 }}>
         <div style={{ fontFamily: 'var(--font-mono), monospace', fontSize: 10, fontWeight: 700, letterSpacing: '.06em', color: '#1b4b91', textTransform: 'uppercase', marginBottom: 7 }}>
-          {s.topic} · {s.country} · {s.wordCount}w{s.edited ? ' · ✎ edited' : ''}
+          {s.topic} · {countryName(s.country) || s.country} · {s.wordCount}w{s.edited ? ' · ✎ edited' : ''}
         </div>
         <Link href={href} style={{ textDecoration: 'none' }}>
           <h3 style={{ fontFamily: 'var(--font-fraunces), Georgia, serif', fontSize: 17, fontWeight: 600, lineHeight: 1.2, color: dimmed ? '#999' : '#111', textDecoration: dimmed ? 'line-through' : 'none', margin: 0, textWrap: 'balance' }}>

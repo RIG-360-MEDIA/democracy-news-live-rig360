@@ -14,7 +14,7 @@ const SOFT = 'var(--rw-faint)';
 const RULE = 'var(--rw-rule)';
 const RULE2 = 'var(--rw-rule-strong)';
 const ACCENT = 'var(--rw-accent)';
-const FALLBACK_IMAGE = '/cards/long-read.png';
+const FALLBACK_IMAGE = '/cards/placeholder.png';
 
 /** Never leave an image slot broken — swap to the brand placeholder once on load failure. */
 function onImgError(e: SyntheticEvent<HTMLImageElement>): void {

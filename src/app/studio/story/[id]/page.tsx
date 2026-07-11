@@ -2,6 +2,7 @@
 import Link from 'next/link';
 
 import { getStoryForEdit } from '@/lib/studio/story';
+import { countryName } from '@/lib/worldwide/country';
 
 import { StoryEditorClient } from './editor-client';
 
@@ -95,7 +96,7 @@ export default async function StoryEditorPage({ params }: { params: Promise<{ id
         </h1>
         <div style={{ fontSize: 12, color: '#888', marginTop: 8, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
           <span>{generated.topic}</span>
-          <span>· {generated.country}</span>
+          <span>· {countryName(generated.country) || generated.country}</span>
           <span>· {generated.wordCount}w</span>
           <span style={{ fontFamily: 'var(--font-mono), monospace' }}>· {story.storyId}</span>
         </div>

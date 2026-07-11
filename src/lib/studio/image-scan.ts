@@ -24,7 +24,10 @@ async function classify(url: string): Promise<{ clean: boolean; detail: string |
   }
   const t = [...buckets.values()].sort((a, b) => b - a);
   const top1 = t[0] / px, top3 = (t[0] + (t[1] ?? 0) + (t[2] ?? 0)) / px, s = sat / px;
-  const graphic = top1 >= 0.55 || (top3 >= 0.58 && s >= 0.5);
+  // graphic if: one colour dominates (solid bg) · OR VERY flat regardless of saturation (white-bg logo /
+  // banner — real photos top out ~0.60-0.72, logos hit 0.78+) · OR moderately flat AND very saturated
+  // (colour poster). Thresholds raised from the first pass, which over-flagged flat real photos (~27%).
+  const graphic = top1 >= 0.6 || top3 >= 0.78 || (top3 >= 0.62 && s >= 0.55);
   return { clean: !graphic, detail: graphic ? `top1=${top1.toFixed(2)} top3=${top3.toFixed(2)} sat=${s.toFixed(2)}` : null };
 }
 
@@ -45,7 +48,10 @@ export async function scanImageBatch(limit = 40): Promise<ScanResult> {
     LEFT JOIN rigwire.image_checks ic ON ic.thumbnail_url = a.thumbnail_url
     WHERE sc.last_seen_at > now() - interval '7 days' AND sc.redirected_to IS NULL
       AND a.thumbnail_url IS NOT NULL AND a.thumbnail_url <> ''
-      AND coalesce(a.source_tier, 9) <= 2 AND ic.thumbnail_url IS NULL
+      -- tier-1/2 members (candidates for the swap) PLUS every cluster's representative image at ANY
+      -- tier (an all-tier-3 cluster falls back to it, so it can show and must be scanned).
+      AND (coalesce(a.source_tier, 9) <= 2 OR a.id = sc.representative_article_id)
+      AND ic.thumbnail_url IS NULL
     LIMIT ${limit}
   `) as unknown as { url: string }[];
 

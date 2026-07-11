@@ -33,7 +33,7 @@ async function classify(url) {
   }
   const t = [...buckets.values()].sort((a, b) => b - a);
   const top1 = t[0] / px, top3 = (t[0] + (t[1] || 0) + (t[2] || 0)) / px, s = sat / px;
-  const graphic = top1 >= 0.55 || (top3 >= 0.58 && s >= 0.5);
+  const graphic = top1 >= 0.6 || top3 >= 0.78 || (top3 >= 0.62 && s >= 0.55);
   return { clean: !graphic, detail: graphic ? `graphic top1=${top1.toFixed(2)} top3=${top3.toFixed(2)} sat=${s.toFixed(2)}` : null };
 }
 
@@ -46,7 +46,8 @@ async function main() {
     LEFT JOIN rigwire.image_checks ic ON ic.thumbnail_url = a.thumbnail_url
     WHERE sc.last_seen_at > now() - interval '7 days' AND sc.redirected_to IS NULL
       AND a.thumbnail_url IS NOT NULL AND a.thumbnail_url <> ''
-      AND coalesce(a.source_tier, 9) <= 2 AND ic.thumbnail_url IS NULL
+      AND (coalesce(a.source_tier, 9) <= 2 OR a.id = sc.representative_article_id)
+      AND ic.thumbnail_url IS NULL
     LIMIT ${LIMIT}`;
   let ok = 0, flagged = 0, err = 0, i = 0;
   async function worker() {

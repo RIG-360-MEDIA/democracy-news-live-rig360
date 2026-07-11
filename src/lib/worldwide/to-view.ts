@@ -4,6 +4,7 @@
 // components consume (kicker/title/deck/author/readTime/image/timestamp + href). Keeps the
 // view components dumb and the live types clean. No DB, no React.
 
+import { countryName } from './country';
 import type { EventHub, StoryCard } from './types';
 
 const PLACEHOLDER_IMAGE = '/cards/placeholder.png'; // DNL-branded fallback, used when a story has no thumbnail
@@ -57,7 +58,7 @@ function estReadTime(card: StoryCard): string {
 
 function kickerFor(card: StoryCard): string {
   const topic = card.topic === 'OTHER' ? '' : card.topic.toLowerCase();
-  const country = card.country !== 'XX' ? card.country : '';
+  const country = countryName(card.country); // full name, e.g. GB → United Kingdom
   return [topic, country].filter(Boolean).join(' · ') || 'news';
 }
 

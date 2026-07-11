@@ -1,6 +1,7 @@
 // Editorial CMS — Create a manual story (E6).
 import { CmsCard, CmsCardGrid } from '@/components/studio/cms-card';
 import { listManualStories } from '@/lib/studio/manual';
+import { countryName } from '@/lib/worldwide/country';
 
 import { CreateClient } from './create-client';
 
@@ -30,7 +31,7 @@ export default async function Page() {
             key={s.id}
             href={`/long-read/${s.id}`}
             image={s.imageUrl}
-            kicker={`${s.topic} · ${s.country || 'XX'} · imp ${s.importance}`}
+            kicker={`${s.topic} · ${countryName(s.country) || s.country || 'XX'} · imp ${s.importance}`}
             headline={s.headline}
             badge={{ label: 'MANUAL', bg: '#e6f0ff', fg: '#1b4b91' }}
             footer={

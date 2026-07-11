@@ -171,10 +171,10 @@ export function StoryEditorClient({ story }: { story: StoryForEdit }) {
             <label style={label}>Thumbnail image</label>
             <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
               <img
-                src={image || '/cards/long-read.png'}
+                src={image || '/cards/placeholder.png'}
                 alt=""
                 style={{ width: 116, height: 74, objectFit: 'cover', borderRadius: 7, border: '1px solid #e2e2e2', background: '#f0f0f0', flex: '0 0 auto' }}
-                onError={(e) => { const t = e.currentTarget; if (t.dataset.fb) return; t.dataset.fb = '1'; t.src = '/cards/long-read.png'; }}
+                onError={(e) => { const t = e.currentTarget; if (t.dataset.fb) return; t.dataset.fb = '1'; t.src = '/cards/placeholder.png'; }}
               />
               <div style={{ flex: 1 }}>
                 <input

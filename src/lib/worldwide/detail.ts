@@ -8,6 +8,8 @@ import { sqlAnalytics } from '@/lib/db';
 import { getOverrides } from '@/lib/studio/overrides';
 import { manualStoryDetail } from '@/lib/studio/manual-feed';
 
+import { countryName } from './country';
+
 export interface StoryImage {
   url: string;
   source: string | null; // publisher name for the caption/attribution
@@ -180,7 +182,7 @@ export async function getStoryDetail(id: string): Promise<StoryDetail | null> {
   const r = rows[0];
 
   const topicLabel = r.topic === 'OTHER' ? 'News' : r.topic.charAt(0) + r.topic.slice(1).toLowerCase();
-  const country = r.country !== 'XX' ? r.country : '';
+  const country = countryName(r.country);
   const kicker = [topicLabel, country].filter(Boolean).join(' · ');
 
   const words = r.word_count ?? r.body.split(/\s+/).length;
