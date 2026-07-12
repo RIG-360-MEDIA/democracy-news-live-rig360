@@ -55,12 +55,13 @@ const label: React.CSSProperties = {
 };
 
 function Figure({ img, ratio = '16/9' }: { img: StoryImage; ratio?: string }) {
+  // Never surface the originating outlet's name (e.g. "ABP NEWS") on a photo — it reads as another
+  // channel's branding inside our product. No publisher caption, and a neutral alt text.
   return (
     <figure style={{ margin: '6px 0 26px' }}>
-      <img src={img.url} alt={img.source ? `Via ${img.source}` : 'Coverage'} loading="lazy" className="block w-full"
+      <img src={img.url} alt="Coverage" loading="lazy" className="block w-full"
         style={{ aspectRatio: ratio, objectFit: 'cover', borderRadius: 2, background: '#f0f0f0' }}
         onError={(e) => { (e.currentTarget.closest('figure') as HTMLElement).style.display = 'none'; }} />
-      {img.source && <figcaption style={{ ...label, fontSize: 9, color: MUTED, marginTop: 6 }}>{img.source}</figcaption>}
     </figure>
   );
 }
