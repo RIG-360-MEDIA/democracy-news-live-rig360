@@ -144,7 +144,9 @@ async function bestClusterImages(storyIds: string[]): Promise<Map<string, string
     LEFT JOIN rigwire.domain_reputation dr ON dr.domain = lower(split_part(split_part(a2.thumbnail_url, '://', 2), '/', 1))
     WHERE mem.story_id = ANY(${storyIds})
       AND a2.thumbnail_url IS NOT NULL AND a2.thumbnail_url <> ''
+      -- never a hard-denylisted domain (flag_rate >= 0.9), even if the scan called it clean; then:
       -- scanned-clean, OR unscanned from a source that isn't historically mostly-junk (domain prior)
+      AND coalesce(dr.flag_rate, 0) < 0.9
       AND (ic2.clean = true OR (ic2.clean IS NULL AND coalesce(dr.flag_rate, 0) < 0.5))
     ORDER BY mem.story_id,
       (ic2.clean IS TRUE) DESC,                        -- confirmed-clean photo first
@@ -218,7 +220,12 @@ export async function getFrontPage(scope: string): Promise<FrontPage> {
            -- over the cluster label (sc.topic is 'OTHER' for most clusters) so sections fill correctly.
            coalesce(nullif(g.headline, ''), sc.representative_title) AS title,
            coalesce(nullif(g.deck, ''), nullif(a.summary_preview, '')) AS deck,
-           CASE WHEN ic.clean IS FALSE OR (ic.clean IS NULL AND coalesce(dr.flag_rate, 0) >= 0.5)
+           -- flag_rate >= 0.9 is the HARD denylist (state-media / heavy-brand outlets the classifier
+           -- passes as clean via false-negatives) — null it even when scanned "clean". Below that, the
+           -- normal rule: null if scanned-flagged, or unscanned from a mostly-junk domain (prior >= 0.5).
+           CASE WHEN coalesce(dr.flag_rate, 0) >= 0.9
+                     OR ic.clean IS FALSE
+                     OR (ic.clean IS NULL AND coalesce(dr.flag_rate, 0) >= 0.5)
                 THEN NULL ELSE a.thumbnail_url END        AS image,
            a.source_tier                                 AS "repTier",
            ic.clean                                      AS "repClean",
