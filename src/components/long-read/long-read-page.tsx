@@ -215,7 +215,10 @@ export function LongReadPage({ data }: { data: FrontPage }) {
       {sections.map((section, i) => {
         const cards = section.stories.map(toCardView);
         if (cards.length === 0) return null;
-        const [featured, ...list] = cards;
+        // Backend sends a big candidate buffer (survives global de-dup); cap the RENDERED band here:
+        // one image-lead + up to 6 headlines in the stack.
+        const [featured, ...rest] = cards;
+        const list = rest.slice(0, 6);
         return <ThemedBand key={section.topic} anchor={section.topic.toLowerCase()} title={titleCase(section.topic)} featured={featured} list={list} darker={i % 2 === 1} />;
       })}
 

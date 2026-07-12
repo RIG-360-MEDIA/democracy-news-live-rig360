@@ -46,7 +46,12 @@ const TITLE_FLAG =
   '(share price|top picks|result 20[0-9]{2}|gainers (and|&) losers|dream ?11|sensex|nifty|share market)';
 
 const TOP_STORIES_MAX = 12;
-const TOPIC_SECTION_MAX = 6;
+// Candidate buffer sent per section. The front page claims stories into a GLOBAL de-dup set in this
+// order: Top Stories → Around-the-World (one lead per country) → rails → Democracy → topic sections.
+// Sections are LAST, so if we only send 6 the earlier claims (esp. Around-the-World's ~40 country
+// leads) can strip a section down to 1 card even when the topic has dozens of stories. Send a generous
+// buffer so post-dedup each section still fills; the page caps the RENDERED count separately.
+const TOPIC_SECTION_MAX = 24;
 const ATW_MIN_COUNTRY_STORIES = 1; // a country must have ≥this many surfaced stories to feature
 const POOL_LIMIT = 600; // top-by-importance pool the front page is assembled from
 
