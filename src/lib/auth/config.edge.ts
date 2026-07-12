@@ -125,6 +125,10 @@ export const authConfigEdge: NextAuthConfig = {
     authorized({ auth, request }) {
       const pathname = request.nextUrl.pathname;
 
+      // DEV-ONLY: allow the CMS to run locally without a login. INERT in production (Vercel sets
+      // NODE_ENV=production). Pairs with the requireEditor() dev bypass. Never set CMS_DEV_EDITOR deployed.
+      if (process.env.NODE_ENV !== 'production' && process.env.CMS_DEV_EDITOR === '1') return true;
+
       // (0) DNL deploy: expose only the Democracy News Live surfaces; send everything else
       // (the Rig Wire six-mode landing / mode pages) to the DNL home. Runs before all else.
       if (process.env.DEPLOY_TARGET === 'dnl' && !isDnlPath(pathname)) {

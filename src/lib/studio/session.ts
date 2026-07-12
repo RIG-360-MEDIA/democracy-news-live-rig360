@@ -21,6 +21,12 @@ export type EditorGuard =
 
 /** Resolve the current editor, or a 401/403 reason. Editor = role editor|admin. */
 export async function requireEditor(): Promise<EditorGuard> {
+  // DEV-ONLY local verification bypass — INERT in production (Vercel sets NODE_ENV=production, so this
+  // branch is dead code there). It exists only so a developer can run the CMS against the box to verify
+  // UI without minting a login credential. NEVER set CMS_DEV_EDITOR in any deployed environment.
+  if (process.env.NODE_ENV !== 'production' && process.env.CMS_DEV_EDITOR === '1') {
+    return { ok: true, editor: { id: 'dev@local', role: 'admin', isAdmin: true } };
+  }
   const session = await auth();
   const u = session?.user;
   if (!u) return { ok: false, status: 401 };

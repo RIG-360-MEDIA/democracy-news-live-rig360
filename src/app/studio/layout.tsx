@@ -15,6 +15,8 @@ const PRIMARY: [string, string][] = [
 // [label, href, adminOnly] — secondary/admin surfaces, de-emphasised.
 const SECONDARY: [string, string, boolean][] = [
   ['Sections', '/studio/sections', false],
+  ['Merges', '/studio/merges', false],
+  ['Sources', '/studio/sources', true],
   ['Audit', '/studio/audit', false],
   ['Ranking', '/studio/ranking', true],
 ];
