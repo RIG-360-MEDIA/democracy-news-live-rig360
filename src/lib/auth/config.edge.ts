@@ -21,6 +21,25 @@ import { isEditor } from './roles';
 import './types';   // register module augmentation
 
 /**
+ * Build a redirect that stays on the host the visitor actually used.
+ *
+ * `new URL(path, request.nextUrl)` inherits request.nextUrl's origin, which on
+ * Vercel can be the internal *.vercel.app deployment host — so a redirect (e.g.
+ * `/` → `/long-read`) leaks that URL into the address bar instead of keeping the
+ * custom domain (global.democracynewslive.com). We rebuild the URL from the
+ * incoming Host header (x-forwarded-host preferred) so redirects always point
+ * back at the domain the user typed.
+ */
+function hostSafeRedirect(pathname: string, request: { nextUrl: URL; headers: Headers }): NextResponse {
+  const url = new URL(request.nextUrl.href);
+  url.pathname = pathname;
+  url.search = '';
+  const host = request.headers.get('x-forwarded-host') ?? request.headers.get('host');
+  if (host) url.host = host;
+  return NextResponse.redirect(url);
+}
+
+/**
  * Routes that are always reachable without authentication.
  * Everything else requires a session AND a completed onboarding.
  */
@@ -109,7 +128,7 @@ export const authConfigEdge: NextAuthConfig = {
       // (0) DNL deploy: expose only the Democracy News Live surfaces; send everything else
       // (the Rig Wire six-mode landing / mode pages) to the DNL home. Runs before all else.
       if (process.env.DEPLOY_TARGET === 'dnl' && !isDnlPath(pathname)) {
-        return NextResponse.redirect(new URL('/long-read', request.nextUrl));
+        return hostSafeRedirect('/long-read', request);
       }
 
       const isPublic     = isPublicPath(pathname);
@@ -126,7 +145,7 @@ export const authConfigEdge: NextAuthConfig = {
       // (Each also re-checks server-side; this is the edge backstop.)
       const isEditorZone = pathname.startsWith('/studio') || pathname.startsWith('/curate');
       if (isEditorZone && !isEditor(auth.user.role)) {
-        return NextResponse.redirect(new URL('/', request.nextUrl));
+        return hostSafeRedirect('/', request);
       }
 
       // (3) signed in but not yet onboarded
@@ -138,7 +157,7 @@ export const authConfigEdge: NextAuthConfig = {
         // Use NextResponse.redirect so the browser URL bar updates
         // (plain Response.redirect renders the body without updating
         // the location bar in Next.js middleware).
-        return NextResponse.redirect(new URL('/onboarding', request.nextUrl));
+        return hostSafeRedirect('/onboarding', request);
       }
 
       // (2) signed in + onboarded
