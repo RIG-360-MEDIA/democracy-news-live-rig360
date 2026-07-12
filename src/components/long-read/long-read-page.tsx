@@ -215,10 +215,14 @@ export function LongReadPage({ data }: { data: FrontPage }) {
       {sections.map((section, i) => {
         const cards = section.stories.map(toCardView);
         if (cards.length === 0) return null;
-        // Backend sends a big candidate buffer (survives global de-dup); cap the RENDERED band here:
-        // one image-lead + up to 6 headlines in the stack.
-        const [featured, ...rest] = cards;
-        const list = rest.slice(0, 6);
+        // The band lead is a big IMAGE card — an imageless (placeholder) hero looks broken, and after
+        // global de-dup the highest-importance leftover often lacks a clean photo. So promote the first
+        // card that HAS a real image to the lead; imageless stories still appear in the headline stack
+        // (which renders no image anyway). Fall back to the first card only if the section has no images.
+        const hasRealImage = (c: CardView) => !!c.image && !c.image.includes('placeholder');
+        const leadIdx = Math.max(0, cards.findIndex(hasRealImage));
+        const featured = cards[leadIdx];
+        const list = cards.filter((_, idx) => idx !== leadIdx).slice(0, 6);
         return <ThemedBand key={section.topic} anchor={section.topic.toLowerCase()} title={titleCase(section.topic)} featured={featured} list={list} darker={i % 2 === 1} />;
       })}
 
