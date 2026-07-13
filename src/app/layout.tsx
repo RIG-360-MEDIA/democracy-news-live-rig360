@@ -40,6 +40,8 @@ const bricolage = Bricolage_Grotesque({
 });
 
 export const metadata: Metadata = {
+  // Absolute base so relative OG image paths resolve for social scrapers (WhatsApp/X/FB/iMessage).
+  metadataBase: new URL('https://global.democracynewslive.com'),
   title:       'Rig Wire — Six ways to read the world',
   description: 'Rig Wire synthesises 247 newsrooms into six reading formats — from a sixty-second pulse to a fourteen-minute report. Same world. Pick your length.',
   keywords:    ['news', 'curation', 'global news', 'newsletter', 'independent journalism', 'wire service'],
@@ -48,6 +50,14 @@ export const metadata: Metadata = {
     title:       'Rig Wire',
     description: 'Six ways to read the world.',
     type:        'website',
+    siteName:    'Democracy News Live',
+    images:      [{ url: '/cards/placeholder.png', width: 1200, height: 630, alt: 'Democracy News Live' }],
+  },
+  twitter: {
+    card:        'summary_large_image',
+    title:       'Rig Wire',
+    description: 'Six ways to read the world.',
+    images:      ['/cards/placeholder.png'],
   },
 };
 
