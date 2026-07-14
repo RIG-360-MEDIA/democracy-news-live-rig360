@@ -135,32 +135,42 @@ function toCard(r: ScoredRow, now: number): StoryCard {
  * Build the Worldwide front page for a scope.
  * @param scope 'world' (no country filter) or an ISO2 country code.
  */
-/** Best clean thumbnail from ANY article in the cluster (one batched query). The default is always a
- *  real cluster photo, never the placeholder, as long as one member has a non-flagged thumbnail.
- *  Preference: confirmed-clean (scanned) first, then best source tier, then freshest. Never a flagged one. */
-async function bestClusterImages(storyIds: string[]): Promise<Map<string, string>> {
-  const m = new Map<string, string>();
+/** ORDERED clean thumbnails from the cluster's members (one batched query), best-first, up to 4 per
+ *  story. The first is the primary image; the rest are backups the CLIENT walks when a photo fails to
+ *  load in the browser (publisher hotlink-403 / dead URL) before falling to the branded image — a
+ *  cluster usually has several usable photos, so a single bad pick must not force a fallback.
+ *  Preference: confirmed-clean (scanned) first, then most-trusted domain, then best tier, then freshest.
+ *  Never a flagged/denylisted one. */
+async function clusterImageCandidates(storyIds: string[]): Promise<Map<string, string[]>> {
+  const m = new Map<string, string[]>();
   if (storyIds.length === 0) return m;
   const rows = (await sqlAnalytics`
-    SELECT DISTINCT ON (mem.story_id) mem.story_id AS sid, a2.thumbnail_url AS url
-    FROM analytics.story_cluster_members_v8 mem
-    JOIN articles a2 ON a2.id = mem.article_id
-    LEFT JOIN rigwire.image_checks ic2 ON ic2.thumbnail_url = a2.thumbnail_url
-    LEFT JOIN rigwire.domain_reputation dr ON dr.domain = lower(split_part(split_part(a2.thumbnail_url, '://', 2), '/', 1))
-    WHERE mem.story_id = ANY(${storyIds})
-      AND a2.thumbnail_url IS NOT NULL AND a2.thumbnail_url <> ''
-      -- never a hard-denylisted domain (flag_rate >= 0.9), even if the scan called it clean; then:
-      -- scanned-clean, OR unscanned from a source that isn't near-denylist (prior < 0.85, kept in sync
-      -- with the main image CASE above so the cluster-image upgrade can actually find a replacement).
-      AND coalesce(dr.flag_rate, 0) < 0.9
-      AND (ic2.clean = true OR (ic2.clean IS NULL AND coalesce(dr.flag_rate, 0) < 0.85))
-    ORDER BY mem.story_id,
-      (ic2.clean IS TRUE) DESC,                        -- confirmed-clean photo first
-      coalesce(dr.flag_rate, 0) ASC,                   -- then most-trusted source domain
-      coalesce(a2.source_tier, 9) ASC,                 -- then best source tier
-      a2.published_at DESC NULLS LAST                  -- then freshest
+    SELECT sid, url FROM (
+      SELECT mem.story_id AS sid, a2.thumbnail_url AS url,
+        row_number() OVER (PARTITION BY mem.story_id ORDER BY
+          (ic2.clean IS TRUE) DESC,                      -- confirmed-clean photo first
+          coalesce(dr.flag_rate, 0) ASC,                 -- then most-trusted source domain
+          coalesce(a2.source_tier, 9) ASC,               -- then best source tier
+          a2.published_at DESC NULLS LAST) AS rn         -- then freshest
+      FROM analytics.story_cluster_members_v8 mem
+      JOIN articles a2 ON a2.id = mem.article_id
+      LEFT JOIN rigwire.image_checks ic2 ON ic2.thumbnail_url = a2.thumbnail_url
+      LEFT JOIN rigwire.domain_reputation dr ON dr.domain = lower(split_part(split_part(a2.thumbnail_url, '://', 2), '/', 1))
+      WHERE mem.story_id = ANY(${storyIds})
+        AND a2.thumbnail_url IS NOT NULL AND a2.thumbnail_url <> ''
+        -- never a hard-denylisted domain (>= 0.9) even if scanned clean; else scanned-clean, or
+        -- unscanned from a source that isn't near-denylist (< 0.85) — same rule as the main image CASE.
+        AND coalesce(dr.flag_rate, 0) < 0.9
+        AND (ic2.clean = true OR (ic2.clean IS NULL AND coalesce(dr.flag_rate, 0) < 0.85))
+    ) t
+    WHERE t.rn <= 8
+    ORDER BY sid, rn
   `) as unknown as { sid: string; url: string }[];
-  for (const r of rows) m.set(r.sid, r.url);
+  for (const r of rows) {
+    const list = m.get(r.sid) ?? [];
+    if (!list.includes(r.url) && list.length < 4) list.push(r.url); // dedupe (dup members share a URL), cap 4
+    m.set(r.sid, list);
+  }
   return m;
 }
 
@@ -314,17 +324,18 @@ export async function getFrontPage(scope: string): Promise<FrontPage> {
   // Editor-authored manual stories join the automated pool (epic 002) and flow through the same
   // override/weight/sort/section logic below.
   const manual = await manualStoryCards();
-  // Image upgrade: when the representative thumbnail is a tabloid (tier ≥3) or was flagged/blank,
-  // swap it for the best tier-1/2 photo in the SAME cluster. Batched over only the rows that need it.
-  // Upgrade the image whenever the rep is a tabloid tier, blank/flagged (image nulled), OR not
-  // yet confirmed-clean — so a tier-2 junk thumbnail (e.g. an aggregator's logo) is replaced by a
-  // clean cluster photo instead of showing the logo or falling to placeholder.
-  const needImg = rows.filter((r) => (r.repTier ?? 9) >= 3 || !r.image || r.repClean !== true).map((r) => r.id);
-  const betterImg = await bestClusterImages(needImg);
+  // Image resolution: build an ordered list of clean cluster photos per story (best-first). The first
+  // is the primary; the rest ride along as backups the client walks when a photo fails to load in the
+  // browser (publisher hotlink-403 / dead URL). Computed for EVERY row — even a story whose own rep
+  // looks clean needs backups, since its single chosen URL may still 403 in the browser. Falls back to
+  // the rep image only if the cluster yielded no clean candidate (then the view layer shows the brand).
+  const candMap = await clusterImageCandidates(rows.map((r) => r.id));
   const basePool = [
     ...rows.map((r) => {
-      const up = betterImg.get(r.id);
-      return toCard(up ? { ...r, image: up } : r, now);
+      const cands = candMap.get(r.id) ?? [];
+      const primary = cands[0] ?? r.image ?? null;
+      const alts = cands.filter((u) => u !== primary).slice(0, 3);
+      return { ...toCard(r, now), image: primary, imageAlts: alts };
     }),
     ...manual,
   ].filter((c) => c.title.length > 0 && isEnglishTitle(c.title) && c.hasArticle);

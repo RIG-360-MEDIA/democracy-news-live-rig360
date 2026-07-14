@@ -19,6 +19,7 @@ export interface CardView {
   authorPhoto: string;
   readTime: string;
   image: string;
+  imageAlts: string[]; // backup member photos the client walks on an image load-error before the fallback
   timestamp: string;
   href: string | null; // null = no published article yet → render as a non-link (graceful)
   topic: string;           // raw topic for editorial rules (e.g. sports lead cap)
@@ -73,6 +74,9 @@ export function toCardView(card: StoryCard): CardView {
     authorPhoto: '',
     readTime: estReadTime(card),
     image: card.image ?? pickFallback(card.id),
+    // Backups only make sense when we have a real primary; when we're already on the fallback there's
+    // nothing to walk to. The client tries these in order before it ever shows the branded image.
+    imageAlts: card.image ? (card.imageAlts ?? []) : [],
     // Displayed age reflects when we PUBLISHED the story on our site (generation run), not the
     // source/cluster activity time. Falls back to freshness for manual stories with no run stamp.
     timestamp: relativeTime(card.publishedSeconds ?? card.freshnessSeconds),

@@ -1,6 +1,6 @@
 'use client';
 
-import type { ReactNode, SyntheticEvent } from 'react';
+import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 
@@ -9,7 +9,7 @@ import { ThemeToggle } from '@/components/brand/theme-toggle';
 import { WorldClock } from '@/components/brand/world-clock';
 import { BreakingTicker } from './breaking-ticker';
 import { isHub, toCardView, toHubView, type CardView, type HubView } from '@/lib/worldwide/to-view';
-import { pickFallback } from '@/lib/worldwide/fallback';
+import { storyImg, useImageFallbackRepair } from '@/lib/worldwide/story-img';
 
 import { AroundTheWorld } from './around-the-world';
 import { isWorldScope } from './worldwide-scope-data';
@@ -34,15 +34,6 @@ const RULE = 'var(--rw-rule)';
 const RULE2 = 'var(--rw-rule-strong)';
 const ACCENT = 'var(--rw-accent)';
 const CREAM = 'var(--rw-cream)';
-/** News-site principle: an image slot is never empty or broken. On load failure, swap to a DNL-branded
- *  fallback once (guarded against a fallback-also-fails loop). Fallback is chosen deterministically from
- *  the broken URL so a given card is stable and the three variants spread across the page. */
-function onImgError(e: SyntheticEvent<HTMLImageElement>): void {
-  const img = e.currentTarget;
-  if (img.dataset.fallback) return;
-  img.dataset.fallback = '1';
-  img.src = pickFallback(img.getAttribute('src'));
-}
 
 function titleCase(s: string): string {
   return s.charAt(0) + s.slice(1).toLowerCase();
@@ -67,6 +58,10 @@ function cardPool(units: Array<StoryCard | EventHub>): CardView[] {
 }
 
 export function LongReadPage({ data }: { data: FrontPage }) {
+  // Repair images that failed to load before hydration (their error event was lost) — walk them to a
+  // real backup photo, so a publisher hotlink-403 on the initial pick doesn't strand a broken image.
+  useImageFallbackRepair();
+
   let pool = cardPool(data.topStories);
 
   // Editor pins are a deliberate top-headline choice (CMS "★ Top headline"). They lead in
@@ -222,7 +217,7 @@ export function LongReadPage({ data }: { data: FrontPage }) {
         // global de-dup the highest-importance leftover often lacks a clean photo. So promote the first
         // card that HAS a real image to the lead; imageless stories still appear in the headline stack
         // (which renders no image anyway). Fall back to the first card only if the section has no images.
-        const hasRealImage = (c: CardView) => !!c.image && !c.image.includes('placeholder');
+        const hasRealImage = (c: CardView) => !!c.image && !c.image.includes('/cards/fallback');
         const leadIdx = Math.max(0, cards.findIndex(hasRealImage));
         const featured = cards[leadIdx];
         const list = cards.filter((_, idx) => idx !== leadIdx).slice(0, 6);
@@ -394,7 +389,7 @@ function TitleLink({ story, children }: { story: CardView; children: ReactNode }
 function LeadStory({ story }: { story: CardView }) {
   return (
     <article>
-      <img src={story.image} alt="" className="block w-full" style={{ aspectRatio: '4/3', objectFit: 'cover' }} onError={onImgError} />
+      <img {...storyImg(story)} alt="" className="block w-full" style={{ aspectRatio: '4/3', objectFit: 'cover' }} />
       <div className="pt-5">
         <Kicker text={story.kicker} />
         <h2 style={{ color: INK, fontSize: 'clamp(1.75rem, 2.6vw, 2.625rem)', fontWeight: 700, lineHeight: 1.04, letterSpacing: '-0.024em', fontVariationSettings: "'opsz' 144, 'SOFT' 0", textWrap: 'balance', marginTop: 10, marginBottom: 12 }}>
@@ -410,7 +405,7 @@ function LeadStory({ story }: { story: CardView }) {
 function HeroStory({ story }: { story: CardView }) {
   return (
     <article>
-      <img src={story.image} alt="" className="block w-full" style={{ aspectRatio: '16/10', objectFit: 'cover' }} onError={onImgError} />
+      <img {...storyImg(story)} alt="" className="block w-full" style={{ aspectRatio: '16/10', objectFit: 'cover' }} />
       <div className="pt-5">
         <Kicker text={story.kicker} />
         <h1 style={{ color: INK, fontSize: 'clamp(2.5rem, 4.6vw, 4.5rem)', fontWeight: 700, lineHeight: 1.02, letterSpacing: '-0.028em', fontVariationSettings: "'opsz' 144, 'SOFT' 0", textWrap: 'balance', marginTop: 14, marginBottom: 16 }}>
@@ -434,7 +429,7 @@ function CompactWithImage({ story }: { story: CardView }) {
         {story.deck && <p style={{ color: BODY, fontSize: 14.5, lineHeight: 1.5, marginBottom: 10 }}>{story.deck}</p>}
         <Byline story={story} small />
       </div>
-      <img src={story.image} alt="" className="block w-full" style={{ aspectRatio: '1/1', objectFit: 'cover' }} onError={onImgError} />
+      <img {...storyImg(story)} alt="" className="block w-full" style={{ aspectRatio: '1/1', objectFit: 'cover' }} />
     </article>
   );
 }
@@ -454,7 +449,7 @@ function TextOnlyStory({ story }: { story: CardView }) {
 function ImageHeroStory({ story }: { story: CardView }) {
   return (
     <article>
-      <img src={story.image} alt="" className="block w-full" style={{ aspectRatio: '16/10', objectFit: 'cover' }} onError={onImgError} />
+      <img {...storyImg(story)} alt="" className="block w-full" style={{ aspectRatio: '16/10', objectFit: 'cover' }} />
       <div className="pt-4">
         <Kicker text={story.kicker} />
         <h3 style={{ color: INK, fontSize: 'clamp(1.75rem, 2.8vw, 2.625rem)', fontWeight: 700, lineHeight: 1.04, letterSpacing: '-0.022em', fontVariationSettings: "'opsz' 144, 'SOFT' 0", textWrap: 'balance', marginTop: 10, marginBottom: 12 }}>
@@ -523,8 +518,8 @@ function StorylineRow({ hub, divided }: { hub: HubView; divided: boolean }) {
         {hub.members.map((m) => (
           <li key={m.slug} style={{ borderLeft: `2px solid ${RULE}`, paddingLeft: 14 }}>
             {m.href
-              ? <Link href={m.href} aria-label={m.title} className="block"><img src={m.image} alt="" className="block w-full" style={{ aspectRatio: '16/10', objectFit: 'cover', marginBottom: 10 }} onError={onImgError} /></Link>
-              : <img src={m.image} alt="" className="block w-full" style={{ aspectRatio: '16/10', objectFit: 'cover', marginBottom: 10 }} onError={onImgError} />}
+              ? <Link href={m.href} aria-label={m.title} className="block"><img {...storyImg(m)} alt="" className="block w-full" style={{ aspectRatio: '16/10', objectFit: 'cover', marginBottom: 10 }} /></Link>
+              : <img {...storyImg(m)} alt="" className="block w-full" style={{ aspectRatio: '16/10', objectFit: 'cover', marginBottom: 10 }} />}
             <div style={{ fontFamily: 'var(--font-mono), monospace', color: ACCENT, fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', marginBottom: 4, textTransform: 'uppercase' }}>{m.timestamp}</div>
             <h4 style={{ color: INK, fontSize: 'clamp(0.95rem, 1.15vw, 1.0625rem)', fontWeight: 700, lineHeight: 1.24, letterSpacing: '-0.01em', textWrap: 'balance' }}>
               <TitleLink story={m}>{m.title}</TitleLink>

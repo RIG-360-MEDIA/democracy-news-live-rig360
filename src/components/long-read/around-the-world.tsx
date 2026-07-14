@@ -2,9 +2,9 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
-import type { SyntheticEvent } from 'react';
 
 import type { CardView } from '@/lib/worldwide/to-view';
+import { storyImg } from '@/lib/worldwide/story-img';
 import { countryName } from '@/lib/worldwide/country';
 import { pinPercent } from '@/lib/worldwide/geo';
 import { LAND_PATH } from '@/lib/worldwide/worldmap-data';
@@ -25,14 +25,6 @@ const RULE = 'var(--rw-rule)';
 const RULE2 = 'var(--rw-rule-strong)';
 const ACCENT = 'var(--rw-accent)';
 const RED = 'var(--rw-red)';
-const FALLBACK_IMAGE = '/cards/fallback-1.png';
-
-function onImgError(e: SyntheticEvent<HTMLImageElement>): void {
-  const img = e.currentTarget;
-  if (img.dataset.fallback) return;
-  img.dataset.fallback = '1';
-  img.src = FALLBACK_IMAGE;
-}
 
 const clamp = (v: number, lo: number, hi: number): number => Math.max(lo, Math.min(hi, v));
 
@@ -164,7 +156,7 @@ function FloatingCard({ s, p }: { s: CardView; p: { left: number; top: number } 
   const top = clamp(p.top - 10, 2, 60);
   const card = (
     <div className="flex" style={{ background: '#fff', borderRadius: 12, overflow: 'hidden', boxShadow: '0 14px 40px -12px rgba(20,23,31,0.35)', border: `1px solid ${RULE}` }}>
-      <img src={s.image} alt="" onError={onImgError} style={{ width: '42%', objectFit: 'cover', flexShrink: 0 }} />
+      <img {...storyImg(s)} alt="" style={{ width: '42%', objectFit: 'cover', flexShrink: 0 }} />
       <div style={{ padding: '13px 15px', minWidth: 0 }}>
         <div style={{ fontFamily: 'var(--font-jakarta), sans-serif', color: ACCENT, fontSize: 10, fontWeight: 800, letterSpacing: '0.16em', textTransform: 'uppercase', marginBottom: 6 }}>{s.kicker}</div>
         <div style={{ fontFamily: 'var(--font-fraunces), Georgia, serif', color: INK, fontSize: 'clamp(1rem, 1.15vw, 1.2rem)', fontWeight: 700, lineHeight: 1.16, letterSpacing: '-0.012em', textWrap: 'balance' }}>{s.title}</div>
@@ -197,8 +189,8 @@ function ListCard({ s }: { s: CardView }) {
   return (
     <article>
       {s.href
-        ? <Link href={s.href} aria-label={s.title} className="block"><img src={s.image} alt="" className="block w-full" style={{ aspectRatio: '16/10', objectFit: 'cover', marginBottom: 12 }} onError={onImgError} /></Link>
-        : <img src={s.image} alt="" className="block w-full" style={{ aspectRatio: '16/10', objectFit: 'cover', marginBottom: 12 }} onError={onImgError} />}
+        ? <Link href={s.href} aria-label={s.title} className="block"><img {...storyImg(s)} alt="" className="block w-full" style={{ aspectRatio: '16/10', objectFit: 'cover', marginBottom: 12 }} /></Link>
+        : <img {...storyImg(s)} alt="" className="block w-full" style={{ aspectRatio: '16/10', objectFit: 'cover', marginBottom: 12 }} />}
       <div className="flex items-baseline justify-between" style={{ marginBottom: 6 }}>
         <span style={{ fontFamily: 'var(--font-jakarta), sans-serif', color: ACCENT, fontSize: 10.5, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase' }}>{s.kicker}</span>
         <span style={{ fontFamily: 'var(--font-mono), monospace', color: SOFT, fontSize: 9.5, letterSpacing: '0.08em' }}>{s.timestamp}</span>

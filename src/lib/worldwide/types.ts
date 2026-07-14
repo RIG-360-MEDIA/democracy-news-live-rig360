@@ -9,7 +9,9 @@ export interface StoryCard {
   id: string;
   title: string; // generated headline if available, else representative title
   deck: string | null; // one-line summary (generated, else article lead summary)
-  image: string | null; // representative article thumbnail
+  image: string | null; // best cluster thumbnail (null → view layer applies a branded fallback)
+  imageAlts?: string[]; // ordered backup photos from other cluster members — the client walks these on
+                        // an image load-error (publisher hotlink-403 / dead URL) before the fallback
   hasArticle: boolean; // true = a published synthesized article exists (else stub)
   topic: string;
   country: string; // ISO2, or 'XX' when unknown
