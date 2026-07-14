@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- Democracy News Live mark: 3×3 dot grid, one red. Vector = crisp at every size (16px tab → retina). -->
+  <g fill="#2556A6">
+    <circle cx="13" cy="13" r="9"/>
+    <circle cx="32" cy="13" r="9"/>
+    <circle cx="13" cy="32" r="9"/>
+    <circle cx="32" cy="32" r="9"/>
+    <circle cx="51" cy="32" r="9"/>
+    <circle cx="13" cy="51" r="9"/>
+    <circle cx="32" cy="51" r="9"/>
+    <circle cx="51" cy="51" r="9"/>
+  </g>
+  <circle cx="51" cy="13" r="9" fill="#E11B2E"/>
+</svg>

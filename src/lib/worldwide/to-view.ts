@@ -7,7 +7,7 @@
 import { countryName } from './country';
 import type { EventHub, StoryCard } from './types';
 
-const PLACEHOLDER_IMAGE = '/cards/placeholder.png'; // DNL-branded fallback, used when a story has no thumbnail
+import { pickFallback } from './fallback'; // DNL-branded fallback set, used only when a story has no thumbnail
 
 /** A card as the long-read components expect it (mirrors LongReadItem + a resolved href). */
 export interface CardView {
@@ -72,7 +72,7 @@ export function toCardView(card: StoryCard): CardView {
     author: 'Rig Wire',
     authorPhoto: '',
     readTime: estReadTime(card),
-    image: card.image ?? PLACEHOLDER_IMAGE,
+    image: card.image ?? pickFallback(card.id),
     // Displayed age reflects when we PUBLISHED the story on our site (generation run), not the
     // source/cluster activity time. Falls back to freshness for manual stories with no run stamp.
     timestamp: relativeTime(card.publishedSeconds ?? card.freshnessSeconds),
@@ -91,7 +91,7 @@ export function toHubView(hub: EventHub): HubView {
     kicker: 'Full coverage',
     title: hub.title,
     memberCount: hub.memberCount,
-    image: hub.image ?? PLACEHOLDER_IMAGE,
+    image: hub.image ?? pickFallback(hub.hubId),
     members: hub.members.map(toCardView),
   };
 }

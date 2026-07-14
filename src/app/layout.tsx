@@ -51,13 +51,13 @@ export const metadata: Metadata = {
     description: 'Six ways to read the world.',
     type:        'website',
     siteName:    'Democracy News Live',
-    images:      [{ url: '/cards/placeholder.png', width: 1200, height: 630, alt: 'Democracy News Live' }],
+    images:      [{ url: '/cards/fallback-1.png', width: 1200, height: 630, alt: 'Democracy News Live' }],
   },
   twitter: {
     card:        'summary_large_image',
     title:       'Rig Wire',
     description: 'Six ways to read the world.',
-    images:      ['/cards/placeholder.png'],
+    images:      ['/cards/fallback-1.png'],
   },
 };
 

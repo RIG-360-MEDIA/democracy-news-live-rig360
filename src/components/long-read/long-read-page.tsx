@@ -9,6 +9,7 @@ import { ThemeToggle } from '@/components/brand/theme-toggle';
 import { WorldClock } from '@/components/brand/world-clock';
 import { BreakingTicker } from './breaking-ticker';
 import { isHub, toCardView, toHubView, type CardView, type HubView } from '@/lib/worldwide/to-view';
+import { pickFallback } from '@/lib/worldwide/fallback';
 
 import { AroundTheWorld } from './around-the-world';
 import { isWorldScope } from './worldwide-scope-data';
@@ -33,15 +34,14 @@ const RULE = 'var(--rw-rule)';
 const RULE2 = 'var(--rw-rule-strong)';
 const ACCENT = 'var(--rw-accent)';
 const CREAM = 'var(--rw-cream)';
-const FALLBACK_IMAGE = '/cards/placeholder.png';
-
-/** News-site principle: an image slot is never empty or broken. On load failure, swap to the
- *  brand placeholder once (guarded against a fallback-also-fails loop). */
+/** News-site principle: an image slot is never empty or broken. On load failure, swap to a DNL-branded
+ *  fallback once (guarded against a fallback-also-fails loop). Fallback is chosen deterministically from
+ *  the broken URL so a given card is stable and the three variants spread across the page. */
 function onImgError(e: SyntheticEvent<HTMLImageElement>): void {
   const img = e.currentTarget;
   if (img.dataset.fallback) return;
   img.dataset.fallback = '1';
-  img.src = FALLBACK_IMAGE;
+  img.src = pickFallback(img.getAttribute('src'));
 }
 
 function titleCase(s: string): string {
@@ -160,11 +160,14 @@ export function LongReadPage({ data }: { data: FrontPage }) {
       {/* ═══════════ TOP STORIES BAND — 3 columns ═══════════ */}
       <section id="top" className="px-5 md:px-10 lg:px-16 pt-10 pb-14" style={{ scrollMarginTop: 96 }}>
         <div className="mx-auto grid gap-x-9 lg:[grid-template-columns:1fr_1.65fr_1fr]" style={{ maxWidth: 1600 }}>
-          {/* LEFT — secondary lead + two stacked */}
+          {/* LEFT — secondary lead + stacked. heroPool[0] (the #2 story) was previously rendered
+              NOWHERE in the hero region; surface it at the foot of this column so the strongest
+              leftover fills the whitespace the tall centre hero leaves beside the shorter side rails. */}
           <div className="lg:pr-7" style={{ borderRight: `1px solid ${RULE}` }}>
             {heroPool[3] && <LeadStory story={heroPool[3]} />}
             {heroPool[4] && <><Rule /><CompactWithImage story={heroPool[4]} /></>}
             {heroPool[5] && <><Rule /><TextOnlyStory story={heroPool[5]} /></>}
+            {heroPool[0] && <><Rule /><CompactWithImage story={heroPool[0]} /></>}
           </div>
           {/* CENTRE — THE top headline (pool[0]) as the big hero + two stacked */}
           <div className="lg:pr-7" style={{ borderRight: `1px solid ${RULE}` }}>
@@ -306,10 +309,10 @@ function TopNav() {
   return (
     <header style={{ borderBottom: `1px solid ${RULE}` }}>
       <div className="grid items-center px-5 md:px-8 py-2.5" style={{ gridTemplateColumns: '1fr auto 1fr', fontFamily: 'var(--font-jakarta), sans-serif', fontSize: 11, fontWeight: 600, letterSpacing: '0.06em', color: MUTED, borderBottom: `1px solid ${RULE}` }}>
-        <div className="flex items-center gap-4 justify-self-start">
-          <button aria-label="Menu" className="hover:opacity-70" style={{ color: INK }}>
-            <svg width="16" height="14" viewBox="0 0 16 14" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><line x1="1" y1="2" x2="15" y2="2" /><line x1="1" y1="7" x2="15" y2="7" /><line x1="1" y1="12" x2="15" y2="12" /></svg>
-          </button>
+        <div className="flex items-center gap-3 justify-self-start">
+          <Link href="/long-read" aria-label="Democracy News Live — home" className="inline-flex shrink-0 hover:opacity-80">
+            <img src="/logo.png" alt="Democracy News Live" width={26} height={26} style={{ display: 'block' }} />
+          </Link>
           <span className="inline-flex"><WorldClock /></span>
         </div>
         <span className="justify-self-center inline-flex items-center gap-2 whitespace-nowrap" style={{ fontWeight: 800, letterSpacing: '0.14em', color: 'var(--rw-red)', textTransform: 'uppercase', fontSize: 10.5 }}>

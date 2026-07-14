@@ -69,7 +69,7 @@ async function getStoryImages(storyId: string, heroUrl: string | null): Promise<
       -- same cleanliness gate as the hero: never a hard-denylisted domain, never scanned-flagged,
       -- and unscanned only from a source that isn't historically mostly-junk.
       AND coalesce(dr.flag_rate, 0) < 0.9
-      AND (ic.clean = true OR (ic.clean IS NULL AND coalesce(dr.flag_rate, 0) < 0.5))
+      AND (ic.clean = true OR (ic.clean IS NULL AND coalesce(dr.flag_rate, 0) < 0.85))
     GROUP BY a.thumbnail_url, s.name
     ORDER BY max(a.published_at) DESC NULLS LAST
     LIMIT 60
@@ -160,7 +160,7 @@ export async function getStoryDetail(id: string): Promise<StoryDetail | null> {
            -- flag_rate >= 0.9 = hard denylist (heavy-brand/state-media false-negatives): null even if scanned "clean".
            CASE WHEN coalesce(dr.flag_rate, 0) >= 0.9
                      OR ic.clean IS FALSE
-                     OR (ic.clean IS NULL AND coalesce(dr.flag_rate, 0) >= 0.5)
+                     OR (ic.clean IS NULL AND coalesce(dr.flag_rate, 0) >= 0.85)
                 THEN NULL ELSE a.thumbnail_url END         AS image,
            a.source_tier                                  AS rep_tier,
            g.word_count,

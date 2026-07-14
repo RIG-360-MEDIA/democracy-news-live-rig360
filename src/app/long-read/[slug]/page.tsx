@@ -16,7 +16,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const { slug } = await params;
   const story = await getStoryDetail(slug).catch(() => null);
   if (!story) return { title: 'Democracy News Live' };
-  const image = story.image ?? '/cards/placeholder.png'; // story.image is already the cleaned/denylisted hero
+  const image = story.image ?? '/cards/fallback-1.png'; // story.image is already the cleaned/denylisted hero
   const description = story.deck ?? undefined;
   const url = `/long-read/${slug}`;
   return {

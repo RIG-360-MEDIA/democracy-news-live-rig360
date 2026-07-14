@@ -25,7 +25,7 @@ const RULE = 'var(--rw-rule)';
 const RULE2 = 'var(--rw-rule-strong)';
 const ACCENT = 'var(--rw-accent)';
 const RED = 'var(--rw-red)';
-const FALLBACK_IMAGE = '/cards/placeholder.png';
+const FALLBACK_IMAGE = '/cards/fallback-1.png';
 
 function onImgError(e: SyntheticEvent<HTMLImageElement>): void {
   const img = e.currentTarget;
@@ -46,7 +46,10 @@ export function AroundTheWorld({ stories }: { stories: CardView[] }) {
   const [activeSlug, setActiveSlug] = useState<string | null>(null);
   if (stories.length === 0) return null;
 
-  const active = placed.find((x) => x.s.slug === activeSlug) ?? placed[0] ?? null;
+  // At rest NOTHING is active — no floating card, no red pin. A card raises only while a pin or a
+  // rail row is actually hovered/focused, and drops the moment the cursor leaves (onMouseLeave below),
+  // so the card can never sit over the map and block navigation.
+  const active = activeSlug ? (placed.find((x) => x.s.slug === activeSlug) ?? null) : null;
 
   return (
     <section className="px-5 md:px-10 lg:px-16 pt-14 pb-16" style={{ borderTop: `3px solid ${RULE2}` }} aria-label="Around the World">
@@ -71,7 +74,7 @@ export function AroundTheWorld({ stories }: { stories: CardView[] }) {
           <>
             {/* ── DESKTOP: map + country rail ── */}
             <div className="hidden md:grid mt-4" style={{ gridTemplateColumns: 'minmax(0,1fr) 224px', gap: 28, alignItems: 'start' }}>
-              <div className="relative" style={{ width: '100%', aspectRatio: '2 / 1' }}>
+              <div className="relative" style={{ width: '100%', aspectRatio: '2 / 1' }} onMouseLeave={() => setActiveSlug(null)}>
                 <svg viewBox="0 0 1000 500" width="100%" height="100%" style={{ display: 'block' }} aria-hidden>
                   <defs>
                     <clipPath id="atw-land"><path d={LAND_PATH} /></clipPath>
@@ -112,7 +115,7 @@ export function AroundTheWorld({ stories }: { stories: CardView[] }) {
                 <div style={{ fontFamily: 'var(--font-jakarta), sans-serif', color: ACCENT, fontSize: 10.5, fontWeight: 800, letterSpacing: '0.2em', textTransform: 'uppercase', borderBottom: `2px solid ${INK}`, paddingBottom: 8, marginBottom: 6 }}>
                   {placed.length} regions live
                 </div>
-                <ul className="atw-rail" style={{ maxHeight: 420, overflowY: 'auto' }}>
+                <ul className="atw-rail" style={{ maxHeight: 420, overflowY: 'auto' }} onMouseLeave={() => setActiveSlug(null)}>
                   {placed.map(({ s }) => {
                     const isActive = active?.s.slug === s.slug;
                     const inner = (

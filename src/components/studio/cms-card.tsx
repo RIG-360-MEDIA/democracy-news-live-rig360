@@ -26,10 +26,10 @@ export function CmsCard({ href, image, kicker, headline, badge, footer, dim }: C
     <div style={{ border: '1px solid #e8e8e8', borderRadius: 12, overflow: 'hidden', background: '#fff', display: 'flex', flexDirection: 'column', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
       <Link href={href} style={{ display: 'block', position: 'relative' }} aria-label={headline}>
         <img
-          src={image ?? '/cards/placeholder.png'}
+          src={image ?? '/cards/fallback-1.png'}
           alt=""
           style={{ width: '100%', aspectRatio: '16/9', objectFit: 'cover', background: '#eee', display: 'block', opacity: dim ? 0.5 : 1 }}
-          onError={(e) => { const t = e.currentTarget; if (t.dataset.fb) return; t.dataset.fb = '1'; t.src = '/cards/placeholder.png'; }}
+          onError={(e) => { const t = e.currentTarget; if (t.dataset.fb) return; t.dataset.fb = '1'; t.src = '/cards/fallback-1.png'; }}
         />
         {badge && (
           <span style={{ position: 'absolute', top: 10, left: 10, fontFamily: 'var(--font-mono), monospace', fontSize: 9.5, fontWeight: 800, letterSpacing: '.05em', color: badge.fg, background: badge.bg, padding: '3px 8px', borderRadius: 5, boxShadow: '0 1px 4px rgba(0,0,0,0.15)' }}>

@@ -24,6 +24,17 @@ export interface TickerItem {
   breaking: boolean;
 }
 
+// `language_iso = 'en'` is source-level metadata and is frequently mislabeled, so headlines in
+// Devanagari / Bengali / Tamil / Telugu / Arabic / Hebrew / CJK / Hangul / Cyrillic / Thai still
+// leak into the breaking strip. Reject any title that carries characters from a non-Latin script
+// block. Accented Latin (café, José, Łódź) is intentionally allowed — that IS English/roman text.
+const NON_LATIN_SCRIPT =
+  /[Ѐ-ӿԀ-ԯ֐-׿؀-ۿ܀-ݏऀ-ॿঀ-৿਀-੿઀-૿଀-୿஀-௿ఀ-౿ಀ-೿ഀ-ൿ฀-๿ᄀ-ᇿ぀-ヿ㄰-㆏㐀-䶿一-鿿가-힯]/;
+
+function isEnglishTitle(title: string): boolean {
+  return !NON_LATIN_SCRIPT.test(title);
+}
+
 function relTime(ts: Date | string | null): string {
   if (!ts) return '';
   const secs = Math.max(0, Math.round((Date.now() - new Date(ts).getTime()) / 1000));
@@ -48,14 +59,16 @@ export async function GET() {
       LIMIT 30
     `) as unknown as TickerRow[];
 
-    const data: TickerItem[] = rows.map((r) => ({
-      id: r.id,
-      title: r.title.replace(/\s+/g, ' ').trim(),
-      topic: r.topic,
-      country: r.country,
-      ago: relTime(r.published_at),
-      breaking: !!r.breaking,
-    }));
+    const data: TickerItem[] = rows
+      .map((r) => ({
+        id: r.id,
+        title: r.title.replace(/\s+/g, ' ').trim(),
+        topic: r.topic,
+        country: r.country,
+        ago: relTime(r.published_at),
+        breaking: !!r.breaking,
+      }))
+      .filter((it) => isEnglishTitle(it.title)); // English-only breaking strip (script guard, not just metadata)
 
     return NextResponse.json({ ok: true, data, error: null });
   } catch (e: unknown) {

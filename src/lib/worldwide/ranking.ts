@@ -150,9 +150,10 @@ async function bestClusterImages(storyIds: string[]): Promise<Map<string, string
     WHERE mem.story_id = ANY(${storyIds})
       AND a2.thumbnail_url IS NOT NULL AND a2.thumbnail_url <> ''
       -- never a hard-denylisted domain (flag_rate >= 0.9), even if the scan called it clean; then:
-      -- scanned-clean, OR unscanned from a source that isn't historically mostly-junk (domain prior)
+      -- scanned-clean, OR unscanned from a source that isn't near-denylist (prior < 0.85, kept in sync
+      -- with the main image CASE above so the cluster-image upgrade can actually find a replacement).
       AND coalesce(dr.flag_rate, 0) < 0.9
-      AND (ic2.clean = true OR (ic2.clean IS NULL AND coalesce(dr.flag_rate, 0) < 0.5))
+      AND (ic2.clean = true OR (ic2.clean IS NULL AND coalesce(dr.flag_rate, 0) < 0.85))
     ORDER BY mem.story_id,
       (ic2.clean IS TRUE) DESC,                        -- confirmed-clean photo first
       coalesce(dr.flag_rate, 0) ASC,                   -- then most-trusted source domain
@@ -227,10 +228,14 @@ export async function getFrontPage(scope: string): Promise<FrontPage> {
            coalesce(nullif(g.deck, ''), nullif(a.summary_preview, '')) AS deck,
            -- flag_rate >= 0.9 is the HARD denylist (state-media / heavy-brand outlets the classifier
            -- passes as clean via false-negatives) — null it even when scanned "clean". Below that, the
-           -- normal rule: null if scanned-flagged, or unscanned from a mostly-junk domain (prior >= 0.5).
+           -- normal rule: null if scanned-flagged (ic.clean IS FALSE). An UNSCANNED image was never
+           -- actually inspected, so it is nulled only when its domain is already near-denylist (>= 0.85);
+           -- below that we SHOW the real thumbnail rather than send an inspected-innocent story to the
+           -- branded fallback. (Was 0.5 — with sparse image_checks coverage that nulled the majority of
+           -- real photos purely for lack of a scan record, which is why so many cards used fallbacks.)
            CASE WHEN coalesce(dr.flag_rate, 0) >= 0.9
                      OR ic.clean IS FALSE
-                     OR (ic.clean IS NULL AND coalesce(dr.flag_rate, 0) >= 0.5)
+                     OR (ic.clean IS NULL AND coalesce(dr.flag_rate, 0) >= 0.85)
                 THEN NULL ELSE a.thumbnail_url END        AS image,
            a.source_tier                                 AS "repTier",
            ic.clean                                      AS "repClean",

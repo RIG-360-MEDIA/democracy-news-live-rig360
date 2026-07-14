@@ -167,10 +167,10 @@ function DeskCard({ s, busy, act }: { s: DeskStory; busy: boolean; act: Act }) {
       {/* Thumbnail + status */}
       <Link href={href} style={{ display: 'block', position: 'relative' }} aria-label={s.headline}>
         <img
-          src={s.image ?? '/cards/placeholder.png'}
+          src={s.image ?? '/cards/fallback-1.png'}
           alt=""
           style={{ width: '100%', aspectRatio: '16/9', objectFit: 'cover', background: '#eee', display: 'block', opacity: dimmed ? 0.5 : 1 }}
-          onError={(e) => { const t = e.currentTarget; if (t.dataset.fb) return; t.dataset.fb = '1'; t.src = '/cards/placeholder.png'; }}
+          onError={(e) => { const t = e.currentTarget; if (t.dataset.fb) return; t.dataset.fb = '1'; t.src = '/cards/fallback-1.png'; }}
         />
         <span style={{ position: 'absolute', top: 10, left: 10, fontFamily: 'var(--font-mono), monospace', fontSize: 9.5, fontWeight: 800, letterSpacing: '.05em', color: st.fg, background: st.bg, padding: '3px 8px', borderRadius: 5, boxShadow: '0 1px 4px rgba(0,0,0,0.15)' }}>
           {st.label}
