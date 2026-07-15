@@ -335,7 +335,9 @@ export async function getFrontPage(scope: string): Promise<FrontPage> {
   const basePool = [
     ...rows.map((r) => {
       const cands = candMap.get(r.id) ?? [];
-      const primary = cands[0] ?? r.image ?? null;
+      // Sourced licensed hero (Commons/Pexels) wins as the primary; the cluster's member
+      // photos ride along as browser fallbacks if the sourced image ever fails to load.
+      const primary = r.generatedImageUrl ?? cands[0] ?? r.image ?? null;
       const alts = cands.filter((u) => u !== primary).slice(0, 3);
       return { ...toCard(r, now), image: primary, imageAlts: alts };
     }),
