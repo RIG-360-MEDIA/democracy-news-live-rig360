@@ -20,6 +20,50 @@ export interface CoveragePoint {
   value: number; // articles added that day (real, from member added_at)
 }
 
+// A tweet card embedded between sub-sections. `sectionIndex` is a 1-based `##`
+// heading ordinal (the same contract the box-side selector writes): the card
+// renders after that section's content. See analytics.story_generated_v8.tweet_embeds.
+export interface TweetEmbed {
+  sectionIndex: number;
+  tweetId: string;
+  authorName: string;
+  handle: string; // without leading '@'
+  verified: boolean;
+  avatarUrl: string | null;
+  text: string;
+  url: string;
+  postedAt: string; // ISO 8601
+  replies: number;
+  reposts: number;
+  likes: number;
+  views: number;
+}
+
+/** Validate + normalise the jsonb tweet_embeds blob (never trust stored JSON). */
+export function toTweetEmbeds(raw: unknown): TweetEmbed[] {
+  if (!Array.isArray(raw)) return [];
+  const num = (v: unknown): number => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
+  const str = (v: unknown): string => (typeof v === 'string' ? v : '');
+  return raw
+    .filter((t): t is Record<string, unknown> => typeof t === 'object' && t !== null)
+    .map((t) => ({
+      sectionIndex: num(t.section_index),
+      tweetId: str(t.tweet_id),
+      authorName: str(t.author_name) || str(t.handle),
+      handle: str(t.handle),
+      verified: t.verified === true,
+      avatarUrl: typeof t.avatar_url === 'string' ? t.avatar_url : null,
+      text: str(t.text),
+      url: str(t.url),
+      postedAt: str(t.posted_at),
+      replies: num(t.replies),
+      reposts: num(t.reposts),
+      likes: num(t.likes),
+      views: num(t.views),
+    }))
+    .filter((t) => t.text && t.handle);
+}
+
 export interface StoryDetail {
   id: string;
   kicker: string; // "topic · country"
@@ -31,6 +75,7 @@ export interface StoryDetail {
   stats: { articles: number; sources: number } | null; // real cluster coverage stats
   coverage: CoveragePoint[]; // real articles-per-day series for the coverage chart
   paragraphs: string[]; // body split into paragraphs
+  tweets: TweetEmbed[]; // related tweets to weave between sub-sections (box-selected)
   readTime: string;
   date: string; // formatted "10 Jun 2026"
 }
@@ -127,6 +172,7 @@ interface DetailRow {
   representative_title: string;
   deck: string | null;
   body: string;
+  tweet_embeds: unknown; // jsonb → parsed array of tweet embeds (validated below)
   image: string | null;
   rep_tier: number | null;
   word_count: number | null;
@@ -157,6 +203,7 @@ export async function getStoryDetail(id: string): Promise<StoryDetail | null> {
            sc.representative_title,
            g.deck,
            g.body,
+           g.tweet_embeds,
            -- flag_rate >= 0.9 = hard denylist (heavy-brand/state-media false-negatives): null even if scanned "clean".
            CASE WHEN coalesce(dr.flag_rate, 0) >= 0.9
                      OR ic.clean IS FALSE
@@ -249,6 +296,7 @@ export async function getStoryDetail(id: string): Promise<StoryDetail | null> {
     stats,
     coverage,
     paragraphs: paragraphs.length > 0 ? paragraphs : [r.body.trim()],
+    tweets: toTweetEmbeds(r.tweet_embeds),
     readTime,
     date,
   };

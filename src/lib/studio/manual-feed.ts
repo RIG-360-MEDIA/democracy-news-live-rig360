@@ -87,6 +87,7 @@ export async function manualStoryDetail(id: string): Promise<StoryDetail | null>
     stats: null,
     coverage: [],
     paragraphs: paragraphs.length > 0 ? paragraphs : [r.body.trim()],
+    tweets: [], // editor-authored manual stories carry no auto-selected tweets
     readTime: `${Math.max(2, Math.round(words / 200))} min read`,
     date: new Date(r.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
   };

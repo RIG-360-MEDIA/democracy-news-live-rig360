@@ -6,7 +6,9 @@ import Link from 'next/link';
 import { Wordmark } from '@/components/brand/wordmark';
 import { ThemeToggle } from '@/components/brand/theme-toggle';
 
-import type { CoveragePoint, StoryDetail, StoryImage } from '@/lib/worldwide/detail';
+import { TweetCard } from './tweet-card';
+
+import type { CoveragePoint, StoryDetail, StoryImage, TweetEmbed } from '@/lib/worldwide/detail';
 
 const INK = 'var(--rw-ink)';
 const BODY = 'var(--rw-body)';
@@ -38,13 +40,16 @@ function renderParagraph(raw: string): ReactNode[] {
   });
 }
 
-type Block = { kind: 'heading'; text: string } | { kind: 'para'; text: string };
+// `md` marks a real markdown heading (`## …`). Only these are section boundaries for
+// tweet anchoring — the box-side selector counts sections the same way, so the two
+// stay aligned even though bold/short-line headings are also styled as headings.
+type Block = { kind: 'heading'; text: string; md: boolean } | { kind: 'para'; text: string };
 function toBlocks(paragraphs: string[]): Block[] {
   const out: Block[] = [];
   paragraphs.forEach((p) => {
     if (isRule(p)) return;
     const head = asHeading(p);
-    out.push(head ? { kind: 'heading', text: head } : { kind: 'para', text: p });
+    out.push(head ? { kind: 'heading', text: head, md: /^#{1,6}\s+/.test(p.trim()) } : { kind: 'para', text: p });
   });
   return out;
 }
@@ -108,12 +113,30 @@ function CoverageChart({ data, sources }: { data: CoveragePoint[]; sources: numb
 export function StoryRead({ story }: { story: StoryDetail }) {
   const blocks = toBlocks(story.paragraphs);
 
+  // Related tweets are anchored to a `##` heading ordinal; render each after its section's
+  // content (i.e. just before the next markdown heading, or at the article's end).
+  const tweetsBySection = new Map<number, TweetEmbed[]>();
+  story.tweets.forEach((t) => {
+    tweetsBySection.set(t.sectionIndex, [...(tweetsBySection.get(t.sectionIndex) ?? []), t]);
+  });
+
   // Right column = the article, with media woven in prominently and EARLY (visible without deep scroll).
   const nodes: ReactNode[] = [];
   let paraSeen = 0;
   let firstPara = true;
+  let mdHeadings = 0; // sections closed so far (0 = the opening/lede)
+  const flushTweets = (section: number): void => {
+    const ts = tweetsBySection.get(section);
+    if (!ts) return;
+    ts.forEach((t, j) => nodes.push(<TweetCard key={`tw-${section}-${t.tweetId || j}`} tweet={t} />));
+    tweetsBySection.delete(section);
+  };
   blocks.forEach((b, i) => {
     if (b.kind === 'heading') {
+      if (b.md) {
+        flushTweets(mdHeadings); // close the section that just ended
+        mdHeadings += 1;
+      }
       nodes.push(
         <div key={`h${i}`} style={{ ...label, fontSize: 11, color: RED, marginTop: firstPara ? 0 : 32, marginBottom: 12, paddingTop: firstPara ? 0 : 15, borderTop: firstPara ? 'none' : `1px solid ${RULE}`, fontFamily: 'var(--font-jakarta), sans-serif', letterSpacing: '0.13em' }}>
           {b.text}
@@ -136,6 +159,10 @@ export function StoryRead({ story }: { story: StoryDetail }) {
     if (paraSeen === 5 && story.stats) nodes.push(<CoverageChart key="chart" data={story.coverage} sources={story.stats.sources} />);
     if (paraSeen === 7 && story.images[1]) nodes.push(<Figure key="fig1" img={story.images[1]} />);
   });
+  // Flush the final section's tweets, then any anchored beyond the sections we saw.
+  flushTweets(mdHeadings);
+  [...tweetsBySection.keys()].sort((a, b) => a - b).forEach(flushTweets);
+
   // Anything not yet placed (short article) drops to the end so nothing is lost.
   if (paraSeen < 5 && story.stats) nodes.push(<CoverageChart key="chart-end" data={story.coverage} sources={story.stats.sources} />);
   if (paraSeen < 3 && story.pullQuote) nodes.push(<PullQuote key="pq-end" text={story.pullQuote} />);
