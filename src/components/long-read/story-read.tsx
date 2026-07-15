@@ -60,13 +60,19 @@ const label: React.CSSProperties = {
 };
 
 function Figure({ img, ratio = '16/9' }: { img: StoryImage; ratio?: string }) {
-  // Never surface the originating outlet's name (e.g. "ABP NEWS") on a photo — it reads as another
-  // channel's branding inside our product. No publisher caption, and a neutral alt text.
+  // Wire/member photos carry no caption (never surface another outlet's branding). Sourced
+  // photos (Commons/Pexels/Openverse) DO carry the required attribution caption.
   return (
     <figure style={{ margin: '6px 0 26px' }}>
       <img src={img.url} alt="Coverage" loading="lazy" className="block w-full"
         style={{ aspectRatio: ratio, objectFit: 'cover', borderRadius: 2, background: '#f0f0f0' }}
         onError={(e) => { (e.currentTarget.closest('figure') as HTMLElement).style.display = 'none'; }} />
+      {img.credit && (
+        <figcaption style={{ marginTop: 6, fontFamily: 'var(--font-mono), monospace', fontSize: 10, color: FAINT, letterSpacing: '0.02em' }}>
+          Photo: {img.credit}
+          {img.sourcePage && <> · <a href={img.sourcePage} target="_blank" rel="noopener noreferrer" style={{ color: FAINT, textDecoration: 'underline' }}>via {img.source}</a></>}
+        </figcaption>
+      )}
     </figure>
   );
 }

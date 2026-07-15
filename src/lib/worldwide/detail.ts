@@ -13,6 +13,9 @@ import { countryName } from './country';
 export interface StoryImage {
   url: string;
   source: string | null; // publisher name for the caption/attribution
+  credit?: string; // sourced-image attribution (author · license) — shown as a caption
+  licenseUrl?: string;
+  sourcePage?: string;
 }
 
 export interface CoveragePoint {
@@ -74,6 +77,24 @@ export interface HeroImage {
   license: string; // e.g. "CC BY-SA 4.0", "Public domain"
   licenseUrl: string;
   credit: string; // ready-made "Author / License" line
+}
+
+/** Extract the sourced-image gallery (extra photos for the article's inline figures). */
+export function toGallery(raw: unknown): StoryImage[] {
+  if (!raw || typeof raw !== 'object') return [];
+  const g = (raw as Record<string, unknown>).gallery;
+  if (!Array.isArray(g)) return [];
+  const str = (v: unknown): string => (typeof v === 'string' ? v : '');
+  return g
+    .filter((x): x is Record<string, unknown> => typeof x === 'object' && x !== null)
+    .map((x) => ({
+      url: str(x.url),
+      source: str(x.source) || 'Wikimedia Commons',
+      credit: str(x.credit),
+      licenseUrl: str(x.license_url),
+      sourcePage: str(x.source_page),
+    }))
+    .filter((i) => i.url);
 }
 
 /** Validate the generated_image jsonb blob (a sourced hero record); null when absent/malformed. */
@@ -320,6 +341,9 @@ export async function getStoryDetail(id: string): Promise<StoryDetail | null> {
 
   // Sourced licensed hero wins when present; otherwise fall back to the best member photo.
   const heroImg = toHeroImage(r.generated_image);
+  // Inline article figures: use the sourced gallery (clean, credited) when we have it,
+  // else fall back to the deduped member photos.
+  const sourcedGallery = toGallery(r.generated_image);
 
   return {
     id,
@@ -328,7 +352,7 @@ export async function getStoryDetail(id: string): Promise<StoryDetail | null> {
     deck: stripMd(r.deck ?? '') || null,
     image: heroImg?.url ?? r.image,
     heroImage: heroImg,
-    images,
+    images: sourcedGallery.length > 0 ? sourcedGallery : images,
     pullQuote,
     stats,
     coverage,
