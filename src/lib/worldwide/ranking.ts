@@ -60,6 +60,7 @@ interface ScoredRow {
   title: string;
   deck: string | null;
   image: string | null;
+  generatedImageUrl: string | null; // sourced licensed hero URL when present (overrides the member thumbnail)
   hasArticle: boolean;
   dominantEntity: string | null;
   topic: string;
@@ -115,7 +116,7 @@ function toCard(r: ScoredRow, now: number): StoryCard {
     title: cleanTitle(r.title),
     // strip leading gen markdown ("**", "#") from decks too, so no card renders raw markdown
     deck: r.deck ? r.deck.replace(/^[\s*>#_`-]+/, '').trim() || null : r.deck,
-    image: r.image,
+    image: r.generatedImageUrl ?? r.image,
     hasArticle: r.hasArticle,
     topic: r.topic,
     country: r.country,
@@ -226,7 +227,7 @@ export async function getFrontPage(scope: string): Promise<FrontPage> {
       SELECT story_id, count(*)::int AS fc FROM analytics.story_facts_v8 GROUP BY 1
     ),
     gen AS (
-      SELECT DISTINCT ON (story_id) story_id, headline, deck, body, status, strategy, topic, run_id
+      SELECT DISTINCT ON (story_id) story_id, headline, deck, body, status, strategy, topic, run_id, generated_image
       FROM analytics.story_generated_v8 ORDER BY story_id, updated_at DESC
     )
     SELECT sc.story_id                                   AS id,
@@ -247,6 +248,7 @@ export async function getFrontPage(scope: string): Promise<FrontPage> {
                      OR ic.clean IS FALSE
                      OR (ic.clean IS NULL AND coalesce(dr.flag_rate, 0) >= 0.85)
                 THEN NULL ELSE a.thumbnail_url END        AS image,
+           g.generated_image->>'url'                     AS "generatedImageUrl",
            a.source_tier                                 AS "repTier",
            ic.clean                                      AS "repClean",
            true                                          AS "hasArticle",

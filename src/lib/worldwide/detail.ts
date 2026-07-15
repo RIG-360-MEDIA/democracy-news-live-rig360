@@ -64,12 +64,43 @@ export function toTweetEmbeds(raw: unknown): TweetEmbed[] {
     .filter((t) => t.text && t.handle);
 }
 
+// A freely-licensed hero image sourced box-side (Wikimedia Commons), keyed to the story's
+// main subject. Shown as the hero with a REQUIRED attribution caption (author + license).
+export interface HeroImage {
+  url: string;
+  source: string; // e.g. "Wikimedia Commons"
+  sourcePage: string; // description/file page (attribution link)
+  author: string;
+  license: string; // e.g. "CC BY-SA 4.0", "Public domain"
+  licenseUrl: string;
+  credit: string; // ready-made "Author / License" line
+}
+
+/** Validate the generated_image jsonb blob (a sourced hero record); null when absent/malformed. */
+export function toHeroImage(raw: unknown): HeroImage | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const o = raw as Record<string, unknown>;
+  const str = (v: unknown): string => (typeof v === 'string' ? v : '');
+  const url = str(o.url);
+  if (!url) return null;
+  return {
+    url,
+    source: str(o.source) || 'Wikimedia Commons',
+    sourcePage: str(o.source_page),
+    author: str(o.author),
+    license: str(o.license),
+    licenseUrl: str(o.license_url),
+    credit: str(o.credit) || str(o.author) || str(o.source),
+  };
+}
+
 export interface StoryDetail {
   id: string;
   kicker: string; // "topic · country"
   title: string; // generated headline
   deck: string | null;
-  image: string | null; // representative article thumbnail (generated articles have none of their own)
+  image: string | null; // hero image shown to the reader (sourced licensed photo when present, else member photo)
+  heroImage: HeroImage | null; // set when the hero is a sourced Commons photo (drives the credit caption)
   images: StoryImage[]; // curated supporting images from member articles (deduped, ≤3, hero excluded)
   pullQuote: string | null; // a strong sentence lifted verbatim from the body (real, not generated)
   stats: { articles: number; sources: number } | null; // real cluster coverage stats
@@ -173,6 +204,7 @@ interface DetailRow {
   deck: string | null;
   body: string;
   tweet_embeds: unknown; // jsonb → parsed array of tweet embeds (validated below)
+  generated_image: unknown; // jsonb → AI-generated hero (validated below)
   image: string | null;
   rep_tier: number | null;
   word_count: number | null;
@@ -204,6 +236,7 @@ export async function getStoryDetail(id: string): Promise<StoryDetail | null> {
            g.deck,
            g.body,
            g.tweet_embeds,
+           g.generated_image,
            -- flag_rate >= 0.9 = hard denylist (heavy-brand/state-media false-negatives): null even if scanned "clean".
            CASE WHEN coalesce(dr.flag_rate, 0) >= 0.9
                      OR ic.clean IS FALSE
@@ -285,12 +318,16 @@ export async function getStoryDetail(id: string): Promise<StoryDetail | null> {
   // strip stray markdown ("**", leading "#"/">") the generator sometimes leaves in the headline/deck
   const stripMd = (s: string): string => s.replace(/\*+/g, '').replace(/^\s*[#>]+\s*/, '').trim();
 
+  // Sourced licensed hero wins when present; otherwise fall back to the best member photo.
+  const heroImg = toHeroImage(r.generated_image);
+
   return {
     id,
     kicker,
     title: stripMd(r.headline) || r.representative_title || r.headline,
     deck: stripMd(r.deck ?? '') || null,
-    image: r.image,
+    image: heroImg?.url ?? r.image,
+    heroImage: heroImg,
     images,
     pullQuote,
     stats,

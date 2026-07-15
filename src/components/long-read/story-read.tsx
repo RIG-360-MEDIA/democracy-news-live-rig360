@@ -203,6 +203,20 @@ export function StoryRead({ story }: { story: StoryDetail }) {
             <figure style={{ margin: '22px 0 0' }}>
               <img src={story.image} alt={story.title} className="block w-full" style={{ aspectRatio: '16/9', objectFit: 'cover', borderRadius: 2 }}
                 onError={(e) => { (e.currentTarget.closest('figure') as HTMLElement).style.display = 'none'; }} />
+              {story.heroImage && (
+                <figcaption style={{ marginTop: 6, fontFamily: 'var(--font-mono), monospace', fontSize: 10.5, color: FAINT, letterSpacing: '0.02em' }}>
+                  {story.heroImage.author ? `Photo: ${story.heroImage.author}` : 'Photo'}
+                  {story.heroImage.license && (
+                    <> · {story.heroImage.licenseUrl
+                      ? <a href={story.heroImage.licenseUrl} target="_blank" rel="noopener noreferrer" style={{ color: FAINT, textDecoration: 'underline' }}>{story.heroImage.license}</a>
+                      : story.heroImage.license}</>
+                  )}
+                  {' · '}
+                  {story.heroImage.sourcePage
+                    ? <a href={story.heroImage.sourcePage} target="_blank" rel="noopener noreferrer" style={{ color: FAINT, textDecoration: 'underline' }}>via {story.heroImage.source}</a>
+                    : <>via {story.heroImage.source}</>}
+                </figcaption>
+              )}
             </figure>
           )}
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginTop: 16, paddingTop: 15, borderTop: `1px solid ${RULE}` }}>

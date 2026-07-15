@@ -82,6 +82,7 @@ export async function manualStoryDetail(id: string): Promise<StoryDetail | null>
     title: r.headline,
     deck: r.dek,
     image: r.image_url,
+    heroImage: null, // editor-authored manual stories use their own uploaded image
     images: [], // manual stories have no member set — just the hero
     pullQuote: null,
     stats: null,
