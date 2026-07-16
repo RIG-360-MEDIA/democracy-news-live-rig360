@@ -15,6 +15,7 @@ import { AroundTheWorld } from './around-the-world';
 import { isWorldScope } from './worldwide-scope-data';
 import { useEditMode } from './edit-mode';
 import { StoryPuck } from './story-puck';
+import { VideoBand } from './video-band';
 
 import type { FrontPage, StoryCard, EventHub } from '@/lib/worldwide/types';
 
@@ -98,7 +99,6 @@ export function LongReadPage({ data }: { data: FrontPage }) {
   //    because the rails + Democracy band never de-duped against Top Stories.) ──
   const seen = new Set<string>();
   pool.slice(0, 15).forEach((c) => seen.add(c.slug));               // 1. Top Stories + More Top Stories grid (CardView.slug === story id)
-  const fullCoverage = data.topStories.filter(isHub).map(toHubView);
   data.topStories.forEach((u) => { if (isHub(u)) u.members.forEach((m) => seen.add(m.id)); }); // 2. Full-coverage timelines
 
   const takeN = (cards: StoryCard[], n: number): StoryCard[] => {
@@ -176,6 +176,9 @@ export function LongReadPage({ data }: { data: FrontPage }) {
         </div>
       </section>
 
+      {/* ═══════════ VIDEO — Democracy News Live channel, embedded (right after Top Stories) ═══════════ */}
+      <VideoBand />
+
       {/* ═══════════ MORE TOP STORIES — image / headline-stack / most-read ═══════════ */}
       <section className="px-5 md:px-10 lg:px-16 pt-8 pb-16" style={{ borderTop: `3px solid ${RULE2}` }}>
         <div className="mx-auto" style={{ maxWidth: 1600 }}>
@@ -194,9 +197,6 @@ export function LongReadPage({ data }: { data: FrontPage }) {
           </div>
         </div>
       </section>
-
-      {/* ═══════════ FULL COVERAGE — developing storylines, their own section ═══════════ */}
-      <FullCoverageSection hubs={fullCoverage} />
 
       {/* ═══════════ AROUND THE WORLD — secondary band, world scope only ═══════════ */}
       {isWorldScope(data.scope) && aroundTheWorld.length > 0 && (
