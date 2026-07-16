@@ -43,7 +43,9 @@ export async function getDeskFeed(limit = 120): Promise<DeskStory[]> {
       -- hide parse-fail garbage rows (unparsed JSON body / '(parse-fail)' headline) from the Desk too
       AND g.headline NOT ILIKE '%(parse-fail)%'
       AND left(btrim(g.body), 1) <> '{'
-    ORDER BY sc.importance_score DESC NULLS LAST
+    -- Desk sorts newest-generated first so editors see the freshest stories at
+    -- the top (was importance_score DESC, which floated old high-scoring stories up).
+    ORDER BY g.updated_at DESC
     LIMIT ${limit}
   `) as unknown as GenRow[];
 

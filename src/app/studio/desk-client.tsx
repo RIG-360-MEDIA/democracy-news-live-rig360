@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useMemo, useState, useTransition } from 'react';
 
+import { fmtStamp } from '@/lib/studio/time';
 import type { DeskState, DeskStory } from '@/lib/studio/types';
 import { countryName } from '@/lib/worldwide/country';
 
@@ -190,6 +191,11 @@ function DeskCard({ s, busy, act }: { s: DeskStory; busy: boolean; act: Act }) {
             {s.headline}
           </h3>
         </Link>
+
+        {/* Generation time — when the machine wrote this story */}
+        <div style={{ fontFamily: 'var(--font-mono), monospace', fontSize: 10.5, color: '#9a9a9a', marginTop: 7 }} title="When the machine generated this story">
+          🕒 {fmtStamp(s.updatedAt)}
+        </div>
 
         {/* Actions — three plain choices */}
         <div style={{ marginTop: 'auto', paddingTop: 14 }}>

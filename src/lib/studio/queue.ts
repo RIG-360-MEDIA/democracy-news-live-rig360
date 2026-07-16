@@ -15,6 +15,8 @@ export interface QueueItem {
   sources: number;
   generated: boolean; // has a publishable, non-stub generated body
   status: string; // generator status, or 'UNGENERATED'
+  generatedAt: string | null; // when the story was generated (null if ungenerated)
+  lastSeen: string; // cluster last-seen time (fallback "when" for ungenerated items)
 }
 
 interface QueueRow {
@@ -28,6 +30,8 @@ interface QueueRow {
   independent_source_count: number | null;
   generated: boolean | null;
   gen_status: string | null;
+  generated_at: string | Date | null;
+  last_seen_at: string | Date;
 }
 
 /** Surfaceable clusters from the last 24h, ranked by importance, annotated with generation state. */
@@ -42,7 +46,9 @@ export async function getQueue(limit = 50): Promise<QueueItem[]> {
            sc.article_count,
            sc.independent_source_count,
            (g.story_id IS NOT NULL) AS generated,
-           g.status AS gen_status
+           g.status AS gen_status,
+           g.updated_at AS generated_at,
+           sc.last_seen_at
     FROM analytics.story_clusters_v8 sc
     LEFT JOIN articles a ON a.id = sc.representative_article_id
     LEFT JOIN analytics.story_generated_v8 g
@@ -56,7 +62,9 @@ export async function getQueue(limit = 50): Promise<QueueItem[]> {
       AND sc.independent_source_count >= 2
       AND sc.article_count >= 3
       AND sc.last_seen_at > now() - interval '24 hours'
-    ORDER BY sc.importance_score DESC NULLS LAST
+    -- Newest first: generated stories by their generation time, ungenerated
+    -- clusters by their last-seen time (was importance_score DESC).
+    ORDER BY COALESCE(g.updated_at, sc.last_seen_at) DESC
     LIMIT ${limit}
   `) as unknown as QueueRow[];
 
@@ -72,6 +80,8 @@ export async function getQueue(limit = 50): Promise<QueueItem[]> {
       sources: r.independent_source_count ?? 0,
       generated: !!r.generated,
       status: r.gen_status || 'UNGENERATED',
+      generatedAt: r.generated_at ? new Date(r.generated_at).toISOString() : null,
+      lastSeen: new Date(r.last_seen_at).toISOString(),
     }),
   );
 }

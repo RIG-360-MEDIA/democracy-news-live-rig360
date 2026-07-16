@@ -5,6 +5,7 @@ import { useState, useTransition } from 'react';
 
 import { CmsCard, CmsCardGrid } from '@/components/studio/cms-card';
 import type { QueueItem } from '@/lib/studio/queue';
+import { fmtStamp } from '@/lib/studio/time';
 import { countryName } from '@/lib/worldwide/country';
 
 export function QueueClient({ items }: { items: QueueItem[] }) {
@@ -62,7 +63,7 @@ export function QueueClient({ items }: { items: QueueItem[] }) {
               key={i.storyId}
               href={`/studio/story/${i.storyId}`}
               image={i.image}
-              kicker={`${i.topic} · ${countryName(i.country) || i.country} · ${i.articleCount} articles · ${i.sources} sources`}
+              kicker={`${i.topic} · ${countryName(i.country) || i.country} · ${i.articleCount} articles · ${i.sources} sources · ${i.generated ? `gen ${fmtStamp(i.generatedAt)}` : `seen ${fmtStamp(i.lastSeen)}`}`}
               headline={i.title}
               badge={i.generated ? { label: 'READY', bg: '#e8f5e9', fg: '#2e7d32' } : { label: 'PENDING GEN', bg: '#fff4d6', fg: '#8a6d1a' }}
               footer={
