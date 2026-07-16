@@ -17,14 +17,16 @@ import { LAND_PATH } from '@/lib/worldwide/worldmap-data';
    legible: the world side by side, not Anglo-Atlantic first.
 ═════════════════════════════════════════════════════════════════ */
 
-const INK = 'var(--rw-ink)';
-const BODY = 'var(--rw-body)';
-const MUTED = 'var(--rw-muted)';
-const SOFT = 'var(--rw-faint)';
-const RULE = 'var(--rw-rule)';
-const RULE2 = 'var(--rw-rule-strong)';
-const ACCENT = 'var(--rw-accent)';
-const RED = 'var(--rw-red)';
+// This section commits to a dark "cinema" ground (matches the Watch/video band),
+// so the palette is fixed dark-theme values, not the page's adaptive tokens.
+const INK = '#F2ECE2';
+const BODY = '#C9C1B4';
+const MUTED = '#9C9084';
+const SOFT = '#6F665D';
+const RULE = '#2A211C';
+const RULE2 = '#2A211C';
+const ACCENT = '#E23B30';
+const RED = '#E23B30';
 
 const clamp = (v: number, lo: number, hi: number): number => Math.max(lo, Math.min(hi, v));
 
@@ -44,7 +46,9 @@ export function AroundTheWorld({ stories }: { stories: CardView[] }) {
   const active = activeSlug ? (placed.find((x) => x.s.slug === activeSlug) ?? null) : null;
 
   return (
-    <section className="px-5 md:px-10 lg:px-16 pt-14 pb-16" style={{ borderTop: `3px solid ${RULE2}` }} aria-label="Around the World">
+    <section className="px-5 md:px-10 lg:px-16 pt-14 pb-16" aria-label="Around the World"
+      style={{ borderTop: `3px solid ${RED}`, color: INK,
+        background: `radial-gradient(100% 70% at 50% -12%, rgba(226,59,48,0.045), transparent 50%), radial-gradient(140% 120% at 50% 46%, transparent 58%, rgba(0,0,0,0.6)), #050404` }}>
       <div className="mx-auto" style={{ maxWidth: 1600 }}>
         {/* ── Masthead ── */}
         <div className="text-center" style={{ marginBottom: 10 }}>
@@ -71,10 +75,10 @@ export function AroundTheWorld({ stories }: { stories: CardView[] }) {
                   <defs>
                     <clipPath id="atw-land"><path d={LAND_PATH} /></clipPath>
                     <pattern id="atw-dots" width="7" height="7" patternUnits="userSpaceOnUse">
-                      <circle cx="1.5" cy="1.5" r="1.15" fill="#c9c0aa" />
+                      <circle cx="1.5" cy="1.5" r="1.15" fill="#544838" />
                     </pattern>
                   </defs>
-                  <path d={LAND_PATH} fill="#efe9d9" />
+                  <path d={LAND_PATH} fill="#1C1611" />
                   <rect x="0" y="0" width="1000" height="500" fill="url(#atw-dots)" clipPath="url(#atw-land)" />
                 </svg>
 
@@ -155,7 +159,7 @@ function FloatingCard({ s, p }: { s: CardView; p: { left: number; top: number } 
   const left = clamp(p.left > 50 ? p.left - W - 3 : p.left + 3, 1, 100 - W - 1);
   const top = clamp(p.top - 10, 2, 60);
   const card = (
-    <div className="flex" style={{ background: '#fff', borderRadius: 12, overflow: 'hidden', boxShadow: '0 14px 40px -12px rgba(20,23,31,0.35)', border: `1px solid ${RULE}` }}>
+    <div className="flex" style={{ background: '#161210', borderRadius: 12, overflow: 'hidden', boxShadow: '0 18px 44px -12px rgba(0,0,0,0.6)', border: `1px solid ${RULE}` }}>
       <img {...storyImg(s)} alt="" style={{ width: '42%', objectFit: 'cover', flexShrink: 0 }} />
       <div style={{ padding: '13px 15px', minWidth: 0 }}>
         <div style={{ fontFamily: 'var(--font-jakarta), sans-serif', color: ACCENT, fontSize: 10, fontWeight: 800, letterSpacing: '0.16em', textTransform: 'uppercase', marginBottom: 6 }}>{s.kicker}</div>
