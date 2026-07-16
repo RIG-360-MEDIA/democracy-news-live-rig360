@@ -7,7 +7,7 @@ import { LongReadPage } from '@/components/long-read/long-read-page';
 export const dynamic = 'force-dynamic';
 
 export const metadata = {
-  title: 'Worldwide — Rig Wire',
+  title: 'Democracy News Live',
   description: 'The whole world, gathered into one read — every region’s biggest story today.',
 };
 
