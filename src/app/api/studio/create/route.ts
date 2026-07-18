@@ -1,6 +1,8 @@
 // Editorial CMS — author a manual story (E6).
+import { revalidateTag } from 'next/cache';
 import { NextResponse } from 'next/server';
 
+import { CACHE_TAGS } from '@/lib/cache';
 import { createManualStory, MANUAL_TOPICS, type ManualTopic } from '@/lib/studio/manual';
 import { requireEditor } from '@/lib/studio/session';
 
@@ -56,6 +58,8 @@ export async function POST(req: Request) {
       },
       editor,
     );
+    // A new manual story can surface on the front page — bust the reader cache now.
+    revalidateTag(CACHE_TAGS.frontPage);
     return NextResponse.json({ ok: true, data: { id }, error: null });
   } catch (e: unknown) {
     return fail('500', e instanceof Error ? e.message : 'Create failed', 500);

@@ -1,6 +1,8 @@
 // Editorial CMS — override actions (publish/unpublish/pin/unpin + legacy kill/revive/boost/lock). Epic 002.
+import { revalidateTag } from 'next/cache';
 import { NextResponse } from 'next/server';
 
+import { CACHE_TAGS } from '@/lib/cache';
 import {
   boostStory,
   killStory,
@@ -65,6 +67,10 @@ export async function POST(req: Request) {
       default:
         return fail('400', `Unknown action: ${kind}`, 400);
     }
+    // Editor decision changes what readers see — bust the reader Data Cache now
+    // so it reflects immediately instead of after READER_CACHE_TTL.
+    revalidateTag(CACHE_TAGS.frontPage);
+    revalidateTag(CACHE_TAGS.storyDetail);
     return NextResponse.json({ ok: true, data, error: null });
   } catch (e: unknown) {
     return fail('500', e instanceof Error ? e.message : 'Override failed', 500);

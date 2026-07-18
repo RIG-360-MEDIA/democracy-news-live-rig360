@@ -1,6 +1,8 @@
 // Editorial CMS — ranking weights read/write (E5). Epic 002.
+import { revalidateTag } from 'next/cache';
 import { NextResponse } from 'next/server';
 
+import { CACHE_TAGS } from '@/lib/cache';
 import { getWeights, setWeights, type WeightsPatch } from '@/lib/studio/weights';
 import { requireAdmin, requireEditor } from '@/lib/studio/session';
 
@@ -85,6 +87,8 @@ export async function POST(req: Request) {
 
   try {
     const data = await setWeights(patch, editor);
+    // Weights change front-page ordering — bust the reader cache now.
+    revalidateTag(CACHE_TAGS.frontPage);
     return NextResponse.json({ ok: true, data, error: null });
   } catch (e: unknown) {
     return fail('500', e instanceof Error ? e.message : 'Failed to save weights', 500);

@@ -1,6 +1,8 @@
 // Editorial CMS — inline edit (headline/dek/body/tags). Locks the story. Epic 002.
+import { revalidateTag } from 'next/cache';
 import { NextResponse } from 'next/server';
 
+import { CACHE_TAGS } from '@/lib/cache';
 import { editStory } from '@/lib/studio/overrides';
 import { requireEditor } from '@/lib/studio/session';
 
@@ -40,6 +42,9 @@ export async function POST(req: Request) {
 
   try {
     const data = await editStory(storyId, editor, fields);
+    // Edited headline/deck/image/section changes the reader view — bust the cache now.
+    revalidateTag(CACHE_TAGS.frontPage);
+    revalidateTag(CACHE_TAGS.storyDetail);
     return NextResponse.json({ ok: true, data, error: null });
   } catch (e: unknown) {
     return fail('500', e instanceof Error ? e.message : 'Edit failed', 500);

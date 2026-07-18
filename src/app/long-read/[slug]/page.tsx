@@ -1,10 +1,21 @@
 import type { Metadata } from 'next';
+import { unstable_cache } from 'next/cache';
 import { notFound } from 'next/navigation';
 
+import { CACHE_TAGS, READER_CACHE_TTL } from '@/lib/cache';
 import { getStoryDetail } from '@/lib/worldwide/detail';
 import { StoryRead } from '@/components/long-read/story-read';
 
 export const dynamic = 'force-dynamic';
+
+// Cache the Neon read (keyed by slug). getStoryDetail is called twice per view
+// (generateMetadata + the page body); caching collapses that to one query and
+// serves subsequent visitors from cache until READER_CACHE_TTL / an editor edit.
+const getCachedStoryDetail = unstable_cache(
+  (slug: string) => getStoryDetail(slug),
+  ['reader-story-detail'],
+  { revalidate: READER_CACHE_TTL, tags: [CACHE_TAGS.storyDetail] },
+);
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -14,7 +25,7 @@ interface PageProps {
 // not the generic site card. Falls back to the branded default if the story has no image.
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
-  const story = await getStoryDetail(slug).catch(() => null);
+  const story = await getCachedStoryDetail(slug).catch(() => null);
   if (!story) return { title: 'Democracy News Live' };
   const image = story.image ?? '/cards/fallback-1.png'; // story.image is already the cleaned/denylisted hero
   const description = story.deck ?? undefined;
@@ -42,7 +53,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function ArticlePage({ params }: PageProps) {
   const { slug } = await params;
-  const story = await getStoryDetail(slug);
+  const story = await getCachedStoryDetail(slug);
   if (!story) notFound();
   return <StoryRead story={story} />;
 }
