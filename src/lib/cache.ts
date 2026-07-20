@@ -13,6 +13,8 @@ export const CACHE_TAGS = {
 } as const;
 
 // Seconds the reader's Neon reads may be served from cache before refetch.
-// The box→Neon sync only lands new data every ~20 min, so 120s is far fresher
-// than the underlying data changes while still collapsing per-request compute.
-export const READER_CACHE_TTL = 120;
+// The box→Neon sync only lands new data every ~20 min, so a 10-min cache is still
+// fresher than the underlying data changes — and a longer TTL means visitor traffic
+// wakes Neon's (compute-metered) endpoint far less often. Editor writes bust the
+// cache immediately via revalidateTag, so publish/pin/edit still reflect at once.
+export const READER_CACHE_TTL = 600;
