@@ -1,14 +1,33 @@
-// Editorial CMS — Create a manual story (E6).
+// Editorial CMS — Create a story (E6): manual authoring (Door A) plus AI-assisted
+// topic briefs (Door B), with the editor's recent manual stories beneath.
+import { redirect } from 'next/navigation';
+
 import { CmsCard, CmsCardGrid } from '@/components/studio/cms-card';
+import { listJobs } from '@/lib/dispatch/client';
 import { listManualStories } from '@/lib/studio/manual';
+import { requireEditor } from '@/lib/studio/session';
 import { countryName } from '@/lib/worldwide/country';
 
-import { CreateClient } from './create-client';
+import CreateClient from './create-client';
+
+import type { JobStatus } from '@/lib/dispatch/types';
 
 export const dynamic = 'force-dynamic';
 
 export default async function Page() {
+  const guard = await requireEditor();
+  if (!guard.ok) redirect(guard.status === 401 ? '/signin' : '/');
+
   const recent = await listManualStories(30);
+
+  let jobs: JobStatus[] = [];
+  try {
+    jobs = await listJobs(undefined, guard.editor.id);
+  } catch {
+    // The draft desk is optional context here — a box/mock hiccup must not 500
+    // the whole Create page. Fall back to an empty tray.
+    jobs = [];
+  }
 
   return (
     <div>
@@ -16,11 +35,12 @@ export default async function Page() {
         Create a story
       </h1>
       <p style={{ fontSize: 12.5, color: '#888', marginBottom: 20 }}>
-        Author a manual story — it bypasses the generator and is injected into the feed alongside the
-        machine&rsquo;s output. Headline and body are required; everything else is optional.
+        Author a manual story, or hand the machine a topic brief and let it gather and draft. Manual
+        stories bypass the generator; topic drafts land in <em>My Drafts</em> below and go to review
+        once ready.
       </p>
 
-      <CreateClient />
+      <CreateClient initialJobs={jobs} />
 
       <h2 style={{ fontFamily: 'var(--font-fraunces), Georgia, serif', fontSize: 18, fontWeight: 600, margin: '30px 0 10px' }}>
         Recently created

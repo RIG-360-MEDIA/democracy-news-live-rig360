@@ -2,7 +2,23 @@
 
 import Link from 'next/link';
 
-export function CurateBar({ editor }: { editor: string }) {
+import { SegmentedToggle } from '@/components/studio/ui';
+
+export type CurateView = 'reader' | 'editor';
+
+interface CurateBarProps {
+  editor: string;
+  view: CurateView;
+  onViewChange: (view: CurateView) => void;
+  onOpenSections: () => void;
+}
+
+const VIEW_OPTIONS = [
+  { key: 'reader' as const, label: 'Reader view' },
+  { key: 'editor' as const, label: 'Editor view' },
+];
+
+export function CurateBar({ editor, view, onViewChange, onOpenSections }: CurateBarProps) {
   return (
     <div
       style={{
@@ -14,10 +30,29 @@ export function CurateBar({ editor }: { editor: string }) {
       <span style={{ fontFamily: 'var(--font-mono), monospace', fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', fontSize: 11 }}>
         Curate
       </span>
-      <span style={{ opacity: 0.72 }}>
-        Hover any story → <b style={{ color: '#fff' }}>★</b> make top headline · <b style={{ color: '#fff' }}>✎</b> edit · <b style={{ color: '#fff' }}>✕</b> remove
-      </span>
-      <span style={{ marginLeft: 'auto', opacity: 0.6, fontFamily: 'var(--font-mono), monospace', fontSize: 11 }}>{editor}</span>
+
+      <SegmentedToggle options={VIEW_OPTIONS} value={view} onChange={onViewChange} ariaLabel="Curate view" />
+
+      {view === 'editor' && (
+        <span style={{ opacity: 0.72 }}>
+          Drag stories to reorder · drop onto <b style={{ color: '#fff' }}>Lead #1</b> · click a headline or thumbnail to edit
+        </span>
+      )}
+
+      <button
+        type="button"
+        onClick={onOpenSections}
+        disabled={view !== 'editor'}
+        style={{
+          marginLeft: 'auto', background: 'transparent', color: '#fff', border: '1px solid rgba(255,255,255,0.35)',
+          padding: '4px 10px', fontSize: 12, cursor: view === 'editor' ? 'pointer' : 'default',
+          opacity: view === 'editor' ? 1 : 0.4,
+        }}
+      >
+        Sections
+      </button>
+
+      <span style={{ opacity: 0.6, fontFamily: 'var(--font-mono), monospace', fontSize: 11 }}>{editor}</span>
       <Link href="/studio" style={{ color: '#e0837d', textDecoration: 'none', fontWeight: 700 }}>← Studio</Link>
     </div>
   );

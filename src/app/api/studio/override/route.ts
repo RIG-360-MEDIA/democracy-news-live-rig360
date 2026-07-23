@@ -13,6 +13,7 @@ import {
   unpinStory,
   unpublishStory,
 } from '@/lib/studio/overrides';
+import { projectPlacement } from '@/lib/studio/placement';
 import { requireEditor } from '@/lib/studio/session';
 
 export const runtime = 'nodejs';
@@ -71,7 +72,10 @@ export async function POST(req: Request) {
     // so it reflects immediately instead of after READER_CACHE_TTL.
     revalidateTag(CACHE_TAGS.frontPage);
     revalidateTag(CACHE_TAGS.storyDetail);
-    return NextResponse.json({ ok: true, data, error: null });
+    // Where the story now sits on the reader front page — the Newsroom publish toast reports it
+    // ("Live — #6 in Politics"). Best-effort; null when the story has no dedicated section.
+    const placement = await projectPlacement(storyId);
+    return NextResponse.json({ ok: true, data: { ...data, placement }, error: null });
   } catch (e: unknown) {
     return fail('500', e instanceof Error ? e.message : 'Override failed', 500);
   }

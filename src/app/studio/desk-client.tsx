@@ -12,6 +12,7 @@ import { countryName } from '@/lib/worldwide/country';
 const STATE: Record<DeskState, { bg: string; fg: string; label: string }> = {
   top: { bg: '#e6f0ff', fg: '#1b4b91', label: '📌 TOP STORY' },
   live: { bg: '#e8f5e9', fg: '#2e7d32', label: '● LIVE' },
+  scheduled: { bg: '#eef2ff', fg: '#3b3f8a', label: '● SCHEDULED' },
   held: { bg: '#fff4d6', fg: '#8a6d1a', label: '● NEEDS YOUR OK' },
   hidden: { bg: '#ececec', fg: '#777777', label: '● HIDDEN' },
 };

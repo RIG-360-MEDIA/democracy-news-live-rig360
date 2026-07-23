@@ -55,6 +55,16 @@ const config: Config = {
           right:  '#d46a6a',
           center: '#9a9590',
         },
+        // ── Studio CMS (RigWire Studio) — ivory/paper editorial chrome.
+        //    ADDITIVE: reader tokens above are untouched. Studio UI reads
+        //    ONLY these; accent is reserved for live/urgent/destructive.
+        studio: {
+          paper:  '#faf8f3', // page / surface
+          ink:    '#141210', // primary text
+          accent: '#7a1e22', // single dark-red accent
+          rule:   '#e4e0d8', // hairline dividers, borders
+          muted:  '#6b645c', // secondary text, meta
+        },
       },
 
       fontFamily: {

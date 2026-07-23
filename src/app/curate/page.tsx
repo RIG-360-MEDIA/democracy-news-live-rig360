@@ -2,12 +2,10 @@
 // wrapped in EditModeProvider so every story card grows a control puck. Editor-gated.
 import { redirect } from 'next/navigation';
 
-import { EditModeProvider } from '@/components/long-read/edit-mode';
-import { LongReadPage } from '@/components/long-read/long-read-page';
 import { getFrontPage } from '@/lib/worldwide/ranking';
 import { requireEditor } from '@/lib/studio/session';
 
-import { CurateBar } from './curate-bar';
+import { CurateWorkspace } from './curate-workspace';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,10 +17,7 @@ export default async function Curate() {
 
   return (
     <div>
-      <CurateBar editor={guard.editor.id} />
-      <EditModeProvider>
-        <LongReadPage data={data} />
-      </EditModeProvider>
+      <CurateWorkspace editor={guard.editor.id} data={data} />
     </div>
   );
 }

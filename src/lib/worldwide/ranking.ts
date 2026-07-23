@@ -8,6 +8,7 @@
 
 import { sqlAnalytics } from '@/lib/db';
 
+import { BUFFER_MINUTES } from '@/lib/publish-buffer';
 import { manualStoryCards } from '@/lib/studio/manual-feed';
 import { getOverrides } from '@/lib/studio/overrides';
 import { getWeights } from '@/lib/studio/weights';
@@ -227,7 +228,7 @@ export async function getFrontPage(scope: string): Promise<FrontPage> {
       SELECT story_id, count(*)::int AS fc FROM analytics.story_facts_v8 GROUP BY 1
     ),
     gen AS (
-      SELECT DISTINCT ON (story_id) story_id, headline, deck, body, status, strategy, topic, run_id, generated_image
+      SELECT DISTINCT ON (story_id) story_id, headline, deck, body, status, strategy, topic, run_id, generated_image, updated_at
       FROM analytics.story_generated_v8 ORDER BY story_id, updated_at DESC
     )
     SELECT sc.story_id                                   AS id,
@@ -308,10 +309,18 @@ export async function getFrontPage(scope: string): Promise<FrontPage> {
       AND g.headline NOT ILIKE '%(parse-fail)%'
       AND left(btrim(g.body), 1) <> '{'
       AND (
-        -- machine-publishable: verified prose with substance (fact-ledger OR a real body).
+        -- machine-publishable: verified prose with substance (fact-ledger OR a real body),
+        -- AND past the 15-min HOLD-AND-RELEASE BUFFER (BUFFER_MINUTES). A freshly generated
+        -- machine story waits out the window before it auto-appears; g.updated_at is the
+        -- generation timestamp. Stories older than the window — nearly all of them — pass
+        -- unchanged, so this never empties the front page. This gate lives INSIDE the
+        -- machine branch only: the force-surface OR-branch below is untouched, so an editor
+        -- Publish/Pin still bypasses both the machine hold AND the buffer (appears at once).
         (g.status LIKE 'PUBLISHABLE%' AND g.strategy <> 'stub'
-         AND (coalesce(f.fc, 0) > 0 OR (length(g.body) >= 800 AND g.body NOT ILIKE '%no facts available%')))
-        -- OR editor force-surfaced (Published/Pinned a held story) — the editor overrides the hold.
+         AND (coalesce(f.fc, 0) > 0 OR (length(g.body) >= 800 AND g.body NOT ILIKE '%no facts available%'))
+         AND g.updated_at <= now() - make_interval(mins => ${BUFFER_MINUTES}::int4))
+        -- OR editor force-surfaced (Published/Pinned a held story) — the editor overrides the
+        -- hold and the buffer.
         ${forcedClause}
       )
       ${scopeFilter}

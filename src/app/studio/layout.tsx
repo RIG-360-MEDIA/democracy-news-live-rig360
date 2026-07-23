@@ -1,4 +1,6 @@
-// Editorial CMS shell — auth- AND role-gated chrome for every /studio page (epic 002).
+// RigWire Studio — ivory editorial CMS shell. Auth- AND role-gated chrome for
+// every /studio page (epic 002). Studio tokens + Tailwind utilities only; the
+// public reader site is untouched (these tokens are additive).
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 
@@ -6,66 +8,60 @@ import { requireEditor } from '@/lib/studio/session';
 
 export const dynamic = 'force-dynamic';
 
-// Three things an editor ever does. Everything else is a quiet admin/reference corner.
-const PRIMARY: [string, string][] = [
-  ['Front Page', '/curate'], // see exactly what readers see, click any card to control it
-  ['Review', '/studio'], // the list: approve held stories, pick the top, hide the bad
-  ['Write', '/studio/create'], // author a manual story
-];
-// [label, href, adminOnly] — secondary/admin surfaces, de-emphasised.
-const SECONDARY: [string, string, boolean][] = [
-  ['Sections', '/studio/sections', false],
-  ['Merges', '/studio/merges', false],
-  ['Sources', '/studio/sources', true],
-  ['Audit', '/studio/audit', false],
-  ['Ranking', '/studio/ranking', true],
+// The five surfaces an editor moves between. Admin is appended only for admins.
+const NAV: ReadonlyArray<{ label: string; href: string }> = [
+  { label: 'Newsroom', href: '/studio' },
+  { label: 'Create', href: '/studio/create' },
+  { label: 'Front Page', href: '/curate' },
+  { label: 'Audit', href: '/studio/audit' },
 ];
 
 export default async function StudioLayout({ children }: { children: React.ReactNode }) {
   const guard = await requireEditor();
   if (!guard.ok) redirect(guard.status === 401 ? '/signin' : '/');
-  const { id, role, isAdmin } = guard.editor;
+  const { id, isAdmin } = guard.editor;
 
-  const secondary = SECONDARY.filter(([, , adminOnly]) => !adminOnly || isAdmin);
+  const nav = isAdmin ? [...NAV, { label: 'Admin', href: '/studio/admin' }] : NAV;
 
   return (
-    <div style={{ minHeight: '100dvh', background: '#f6f6f5', fontFamily: 'var(--font-jakarta), system-ui, sans-serif', color: '#1a1a1a' }}>
-      <header style={{ background: '#0d0a08', color: '#fff', padding: '0 20px' }}>
-        <div style={{ maxWidth: 1320, margin: '0 auto', display: 'flex', alignItems: 'center', gap: 22, height: 52 }}>
-          <span style={{ fontFamily: 'var(--font-bricolage), sans-serif', fontWeight: 800, fontSize: 17, letterSpacing: '-0.02em' }}>
-            Rig<span style={{ color: '#e0555b' }}>Wire</span> <span style={{ opacity: 0.5, fontWeight: 600 }}>Studio</span>
-          </span>
-          <nav style={{ display: 'flex', alignItems: 'center', gap: 4, flex: 1 }}>
-            {PRIMARY.map(([label, href]) => (
-              <Link key={href} href={href} style={{ color: '#fff', fontSize: 13.5, fontWeight: 700, padding: '6px 12px', borderRadius: 6 }}>
-                {label}
-              </Link>
-            ))}
-            <span style={{ width: 1, height: 18, background: '#333', margin: '0 8px' }} aria-hidden />
-            {secondary.map(([label, href]) => (
-              <Link key={href} href={href} style={{ color: '#8f8f8f', fontSize: 12, fontWeight: 600, padding: '6px 9px', borderRadius: 6 }}>
-                {label}
+    <div className="min-h-[100dvh] bg-studio-paper font-sans text-studio-ink">
+      <header className="border-b border-studio-rule bg-studio-paper">
+        <div className="mx-auto flex h-[52px] max-w-screen items-center gap-6 px-6">
+          {/* Wordmark */}
+          <Link
+            href="/studio"
+            className="font-sans text-ui-lg font-bold uppercase tracking-[0.18em] text-studio-ink no-underline"
+          >
+            RigWire Studio
+          </Link>
+
+          {/* Site-health dot — stubbed nominal; downstream wires real state. */}
+          <span
+            role="status"
+            aria-label="System nominal"
+            title="System nominal"
+            className="h-2 w-2 shrink-0 rounded-full bg-studio-ink"
+          />
+
+          {/* Nav */}
+          <nav className="flex flex-1 items-center gap-1">
+            {nav.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className="border-b-2 border-transparent px-3 py-1.5 font-sans text-ui-md font-semibold text-studio-muted no-underline transition-colors hover:border-studio-accent hover:text-studio-ink"
+              >
+                {item.label}
               </Link>
             ))}
           </nav>
-          <span
-            style={{
-              fontSize: 10,
-              fontWeight: 800,
-              letterSpacing: '.06em',
-              textTransform: 'uppercase',
-              padding: '3px 7px',
-              borderRadius: 5,
-              background: isAdmin ? '#7a1e22' : '#333',
-              color: '#fff',
-            }}
-          >
-            {role}
-          </span>
-          <span style={{ fontSize: 12, opacity: 0.7 }}>{id}</span>
+
+          {/* Signed-in editor */}
+          <span className="font-mono text-ui-sm text-studio-muted">{id}</span>
         </div>
       </header>
-      <main style={{ maxWidth: 1320, margin: '0 auto', padding: '22px 24px 90px' }}>{children}</main>
+
+      <main className="mx-auto max-w-screen px-6 py-8 pb-24">{children}</main>
     </div>
   );
 }

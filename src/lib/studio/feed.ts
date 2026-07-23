@@ -1,16 +1,25 @@
 // Editorial CMS — Desk feed: generated stories with editorial overrides applied (epic 002).
 
 import { sqlAnalytics } from '@/lib/db';
+import { isPastBuffer } from '@/lib/publish-buffer';
 
 import { getOverrides } from './overrides';
 import type { DeskState, DeskStory, OverrideAction } from './types';
 
-/** The one true state readers get: explicit editor decisions win; otherwise follow the machine. */
-function deskState(genStatus: string, action: OverrideAction | undefined): DeskState {
+/** The one true state readers get: explicit editor decisions win; otherwise follow the machine.
+ *  Pure — derives only from its inputs (and the wall clock, same as the reader ranking's now()). */
+function deskState(
+  genStatus: string,
+  action: OverrideAction | undefined,
+  generatedAt: string,
+): DeskState {
   if (action === 'killed') return 'hidden';
   if (action === 'pinned') return 'top';
-  if (action === 'live') return 'live'; // editor Published (force-surfaced, even if machine held it)
-  return /^PUBLISHABLE/i.test(genStatus) ? 'live' : 'held'; // no editor decision → follow the machine
+  if (action === 'live') return 'live'; // editor Published — force-surfaced, bypasses machine hold + buffer
+  if (!/^PUBLISHABLE/i.test(genStatus)) return 'held'; // machine held it → needs the editor's OK
+  // Publishable, no editor decision → follow the machine, but honour the hold-and-release buffer:
+  // live once past the window, otherwise scheduled (in the buffer — Next Up with a countdown).
+  return isPastBuffer(generatedAt) ? 'live' : 'scheduled';
 }
 
 interface GenRow {
@@ -56,6 +65,7 @@ export async function getDeskFeed(limit = 120): Promise<DeskStory[]> {
     const base = Number(r.importance ?? 0);
     const action: OverrideAction = o?.action ?? 'held'; // 'held' = no editor decision → follow machine
     const edited = !!(o && (o.editedHeadline || o.editedDek || o.editedBody || o.editedImage));
+    const generatedAt = new Date(r.updated_at).toISOString(); // buffer anchor = generation time
     return {
       storyId: r.story_id,
       headline: o?.editedHeadline || r.headline || '(untitled)',
@@ -67,8 +77,9 @@ export async function getDeskFeed(limit = 120): Promise<DeskStory[]> {
       status: r.status || 'UNKNOWN',
       importance: base,
       effectiveImportance: base + (o?.importanceDelta ?? 0),
-      updatedAt: new Date(r.updated_at).toISOString(),
-      state: deskState(r.status || '', o?.action),
+      generatedAt,
+      updatedAt: generatedAt,
+      state: deskState(r.status || '', o?.action, generatedAt),
       action,
       pinnedRank: o?.pinnedRank ?? null,
       humanLocked: o?.humanLocked ?? false,

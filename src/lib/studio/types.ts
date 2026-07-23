@@ -3,8 +3,10 @@
 export type OverrideAction = 'live' | 'killed' | 'pinned' | 'held';
 
 /** The single true state an editor sees per story — what readers actually get right now.
- *  top = pinned #1 · live = on the site · held = machine held it, needs the editor's OK · hidden. */
-export type DeskState = 'top' | 'live' | 'held' | 'hidden';
+ *  top = pinned #1 · live = on the site · scheduled = publishable but still inside the 15-min
+ *  hold-and-release buffer (in "Next Up" with a countdown, not yet live) · held = machine held
+ *  it, needs the editor's OK · hidden. */
+export type DeskState = 'top' | 'live' | 'scheduled' | 'held' | 'hidden';
 
 export interface EditorialOverride {
   storyId: string;
@@ -35,6 +37,7 @@ export interface DeskStory {
   status: string; // PUBLISHABLE / HELD... from the generator
   importance: number; // base importance_score
   effectiveImportance: number; // + override delta
+  generatedAt: string; // generation timestamp (story_generated_v8.updated_at) — anchors the buffer countdown
   updatedAt: string;
   // the true reader-facing state (what the editor should read at a glance)
   state: DeskState;
