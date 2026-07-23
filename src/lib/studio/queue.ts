@@ -21,6 +21,7 @@ export interface QueueItem {
 
 interface QueueRow {
   story_id: string;
+  headline: string | null; // generated (English) headline, null when ungenerated
   representative_title: string | null;
   topic: string | null;
   subject_country: string | null;
@@ -38,6 +39,7 @@ interface QueueRow {
 export async function getQueue(limit = 50): Promise<QueueItem[]> {
   const rows = (await sqlAnalytics`
     SELECT sc.story_id,
+           g.headline,
            sc.representative_title,
            sc.topic,
            coalesce(nullif(sc.subject_country, ''), 'XX') AS subject_country,
@@ -71,7 +73,9 @@ export async function getQueue(limit = 50): Promise<QueueItem[]> {
   return rows.map(
     (r): QueueItem => ({
       storyId: r.story_id,
-      title: r.representative_title || '(untitled)',
+      // Prefer the generated English headline; the raw representative title is often
+      // in the source language, so a READY row must not show it.
+      title: r.headline || r.representative_title || '(untitled)',
       topic: (r.topic || 'OTHER').toUpperCase(),
       country: r.subject_country || 'XX',
       image: r.image,

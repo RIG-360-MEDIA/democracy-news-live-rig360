@@ -62,9 +62,13 @@ export async function createManualStory(
 ): Promise<string> {
   const rows = (await sql`
     INSERT INTO rigwire.manual_stories
-      (headline, dek, body, topic, country, image_url, importance, editor_id)
+      (headline, dek, body, topic, country, image_url, importance, editor_id, status)
     VALUES (${fields.headline}, ${fields.dek}, ${fields.body}, ${fields.topic},
-            ${fields.country}, ${fields.imageUrl}, ${fields.importance}, ${editorId})
+            ${fields.country}, ${fields.imageUrl}, ${fields.importance}, ${editorId},
+            -- Set explicitly, not left to the column default: manualStoryCards (manual-feed.ts)
+            -- only surfaces rows matching status LIKE 'PUBLISHABLE%', so a changed default would
+            -- silently make every new manual story invisible.
+            'PUBLISHABLE')
     RETURNING id
   `) as unknown as Array<{ id: string }>;
 

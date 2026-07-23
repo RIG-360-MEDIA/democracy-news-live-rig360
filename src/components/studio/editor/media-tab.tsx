@@ -1,19 +1,44 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import { useToast } from '@/components/studio/ui';
 
-import { extractImageUrls, replaceImageUrl } from './markdown';
-import type { MediaOption } from './types';
+import { extractImageUrls, replaceImageUrl, splitBlocks } from './markdown';
 
-// Media tab — every image in the story (the hero/thumbnail plus any inline body
-// images). Click one to open a picker offering corpus matches (GET
-// /api/studio/media/search) alongside web/wikimedia placeholders, each labelled
-// with its license/source. Choosing an option swaps that image via the shell,
-// which persists it as an editorial override (editedImage or inline body swap).
+// Media tab — an image MANAGER, not a thumbnail viewer. It lists every image in
+// the story: the HERO (what the card uses) plus every inline `![alt](url)` in
+// the body markdown, each swappable/removable on its own.
+//
+// Clicking one opens a picker with three labelled groups of real options:
+//   • this story's cluster — GET /api/studio/media/cluster?storyId=…
+//   • our corpus          — GET /api/studio/media/search?q=…  (origin 'corpus')
+//   • the web             — the same search route (origin 'web'; SearXNG or
+//                           Wikimedia Commons), always license-flagged.
+//
+// Applying a choice never mutates: the hero goes through onImage (persisted as
+// an editorial override by the shell's autosave → /api/studio/edit), an inline
+// image is a new body string from replaceImageUrl and goes through onBody. Both
+// are reversible — the generated original is untouched and resettable.
 
 const FALLBACK = '/cards/fallback-1.png';
+
+type Origin = 'corpus' | 'web' | 'cluster' | 'generated';
+
+interface Candidate {
+  url: string;
+  title: string;
+  source: string;
+  license: string;
+  origin: Origin;
+  needsLicenseReview: boolean;
+}
+
+interface Envelope {
+  ok: boolean;
+  data: Candidate[] | null;
+  error: { message: string } | null;
+}
 
 interface Target {
   kind: 'hero' | 'inline';
@@ -21,6 +46,7 @@ interface Target {
 }
 
 export interface MediaTabProps {
+  storyId: string;
   image: string;
   body: string;
   generatedImage: string;
@@ -28,75 +54,164 @@ export interface MediaTabProps {
   onBody: (body: string) => void;
 }
 
-function Thumb({ url, onClick, label }: { url: string; onClick: () => void; label: string }) {
+/** Escape a URL for use inside a RegExp literal. */
+function escapeRe(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/** Return a new body with the first `![alt](url)` for `url` removed. Immutable. */
+function removeImageMarkdown(body: string, url: string): string {
+  return body.replace(new RegExp(`!\\[[^\\]]*\\]\\(${escapeRe(url)}[^)]*\\)\\s*`), '').replace(/\n{3,}/g, '\n\n');
+}
+
+/** 1-based index of the body block holding `url`, or null if it is not found. */
+function blockOf(body: string, url: string): number | null {
+  const i = splitBlocks(body).findIndex((b) => b.includes(url));
+  return i < 0 ? null : i + 1;
+}
+
+function Preview({ url, className }: { url: string; className: string }) {
   return (
-    <button type="button" onClick={onClick} className="group text-left">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={url || FALLBACK}
-        alt=""
-        onError={(e) => {
-          const t = e.currentTarget;
-          if (t.dataset.fb) return;
-          t.dataset.fb = '1';
-          t.src = FALLBACK;
-        }}
-        className="h-28 w-full border border-studio-rule object-cover group-hover:border-studio-ink"
-      />
-      <div className="mt-1 font-mono text-ui-sm uppercase tracking-wider text-studio-muted">{label}</div>
-      <div className="truncate font-mono text-ui-sm text-studio-muted">{url || '(machine default)'}</div>
-    </button>
+    // eslint-disable-next-line @next/next/no-img-element -- external CMS thumbnails, see ui/story-row-card.tsx
+    <img
+      src={url || FALLBACK}
+      alt=""
+      loading="lazy"
+      onError={(e) => {
+        const t = e.currentTarget;
+        if (t.dataset.fb) return;
+        t.dataset.fb = '1';
+        t.src = FALLBACK;
+      }}
+      className={className}
+    />
+  );
+}
+
+function OptionTile({ opt, onPick }: { opt: Candidate; onPick: (url: string) => void }) {
+  return (
+    <div className="border border-studio-rule p-2">
+      <Preview url={opt.url} className="h-24 w-full border border-studio-rule object-cover" />
+      <div className="mt-1 line-clamp-2 font-sans text-ui-sm text-studio-ink">{opt.title}</div>
+      <div className="truncate font-mono text-ui-sm uppercase tracking-wider text-studio-muted">{opt.source}</div>
+      <div className="mt-0.5 line-clamp-2 font-mono text-ui-sm text-studio-muted">{opt.license}</div>
+      {opt.needsLicenseReview && (
+        <div className="mt-1 border border-studio-rule px-1 py-0.5 font-mono text-ui-sm uppercase tracking-wider text-studio-accent">
+          License review required
+        </div>
+      )}
+      <button
+        type="button"
+        onClick={() => onPick(opt.url)}
+        className="mt-1 w-full border border-studio-ink px-2 py-1 font-sans text-ui-sm font-semibold text-studio-ink hover:bg-studio-ink hover:text-studio-paper"
+      >
+        Use this
+      </button>
+    </div>
+  );
+}
+
+function Group({
+  label,
+  note,
+  options,
+  onPick,
+  empty,
+}: {
+  label: string;
+  note: string;
+  options: ReadonlyArray<Candidate>;
+  onPick: (url: string) => void;
+  empty: string;
+}) {
+  return (
+    <section className="mb-5">
+      <div className="mb-2 flex items-baseline justify-between border-b border-studio-rule pb-1">
+        <h4 className="font-mono text-ui-sm uppercase tracking-wider text-studio-ink">{label}</h4>
+        <span className="font-mono text-ui-sm text-studio-muted">{note}</span>
+      </div>
+      {options.length === 0 ? (
+        <p className="font-sans text-ui-sm text-studio-muted">{empty}</p>
+      ) : (
+        <div className="grid grid-cols-4 gap-3">
+          {options.map((opt, i) => (
+            <OptionTile key={`${opt.url}-${i}`} opt={opt} onPick={onPick} />
+          ))}
+        </div>
+      )}
+    </section>
   );
 }
 
 function Picker({
+  storyId,
   target,
   onPick,
   onClose,
 }: {
+  storyId: string;
   target: Target;
   onPick: (url: string) => void;
   onClose: () => void;
 }) {
   const toast = useToast();
   const [q, setQ] = useState('');
-  const [options, setOptions] = useState<ReadonlyArray<MediaOption>>([]);
+  const [cluster, setCluster] = useState<ReadonlyArray<Candidate>>([]);
+  const [searched, setSearched] = useState<ReadonlyArray<Candidate>>([]);
   const [loading, setLoading] = useState(false);
+  const [searchedOnce, setSearchedOnce] = useState(false);
+
+  // Cluster options are the editorially safest, so they load without a query.
+  useEffect(() => {
+    let live = true;
+    void (async () => {
+      try {
+        const r = await fetch(`/api/studio/media/cluster?storyId=${encodeURIComponent(storyId)}`);
+        const j = (await r.json()) as Envelope;
+        if (live && j.ok && j.data) setCluster(j.data);
+      } catch {
+        if (live) toast.show('Could not load cluster images', 'error');
+      }
+    })();
+    return () => {
+      live = false;
+    };
+  }, [storyId, toast]);
 
   const search = useCallback(async () => {
     const term = q.trim();
-    if (!term) return;
+    if (term.length < 2) return;
     setLoading(true);
     try {
       const r = await fetch(`/api/studio/media/search?q=${encodeURIComponent(term)}`);
-      const j = (await r.json()) as { ok: boolean; data: MediaOption[] | null; error: { message: string } | null };
+      const j = (await r.json()) as Envelope;
       if (!j.ok || !j.data) {
         toast.show(j.error?.message ?? 'Search failed', 'error');
-        setOptions([]);
-        return;
+        setSearched([]);
+      } else {
+        setSearched(j.data);
       }
-      // Corpus results first, then web/wikimedia placeholders (license-labelled).
-      const placeholders: MediaOption[] = [
-        { url: `https://commons.wikimedia.org/wiki/Special:Search?search=${encodeURIComponent(term)}`, title: `Wikimedia Commons — "${term}"`, source: 'Wikimedia', license: 'CC / public domain (verify)' },
-        { url: `https://www.google.com/search?tbm=isch&q=${encodeURIComponent(term)}`, title: `Web image search — "${term}"`, source: 'Web', license: 'License unknown — clear rights' },
-      ];
-      setOptions([...j.data, ...placeholders]);
     } catch {
       toast.show('Search failed', 'error');
     } finally {
+      setSearchedOnce(true);
       setLoading(false);
     }
   }, [q, toast]);
 
+  const corpus = searched.filter((o) => o.origin === 'corpus');
+  const web = searched.filter((o) => o.origin === 'web');
+  const searchHint = searchedOnce ? 'No matches for that term.' : 'Search above to load options.';
+
   return (
     <div className="fixed inset-0 z-40 flex items-start justify-center bg-studio-ink/40 p-8" onClick={onClose}>
       <div
-        className="max-h-[80vh] w-full max-w-3xl overflow-auto border border-studio-rule bg-studio-paper p-5"
+        className="max-h-[84vh] w-full max-w-5xl overflow-auto border border-studio-rule bg-studio-paper p-5"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="mb-3 flex items-center justify-between">
+        <div className="mb-3 flex items-center justify-between border-b border-studio-rule pb-2">
           <h3 className="font-display text-d-xs text-studio-ink">
-            Replace {target.kind === 'hero' ? 'thumbnail' : 'inline image'}
+            Replace {target.kind === 'hero' ? 'the hero image' : 'an inline image'}
           </h3>
           <button type="button" onClick={onClose} className="font-mono text-ui-md text-studio-muted hover:text-studio-ink">
             Close
@@ -113,7 +228,7 @@ function Picker({
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Search the corpus (keywords)…"
+            placeholder="Search our corpus and the web (keywords)…"
             className="flex-1 border border-studio-rule bg-studio-paper px-3 py-2 font-sans text-ui-md text-studio-ink outline-none focus:border-studio-ink"
           />
           <button
@@ -125,55 +240,80 @@ function Picker({
           </button>
         </form>
 
-        {options.length === 0 ? (
-          <p className="font-sans text-ui-md text-studio-muted">
-            Search the corpus for a replacement image, or open a source below to source one.
-          </p>
-        ) : (
-          <div className="grid grid-cols-3 gap-3">
-            {options.map((opt, i) => (
-              <div key={`${opt.url}-${i}`} className="border border-studio-rule p-2">
-                {/^https?:\/\/\S+\.(jpg|jpeg|png|webp|gif)/i.test(opt.url) ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={opt.url} alt="" className="h-24 w-full object-cover" />
-                ) : (
-                  <div className="flex h-24 items-center justify-center bg-studio-ink/[0.04] px-2 text-center font-sans text-ui-sm text-studio-muted">
-                    {opt.source} — open to browse
-                  </div>
-                )}
-                <div className="mt-1 line-clamp-2 font-sans text-ui-sm text-studio-ink">{opt.title}</div>
-                <div className="font-mono text-ui-sm text-studio-muted">{opt.license}</div>
-                {/^https?:\/\/\S+\.(jpg|jpeg|png|webp|gif)/i.test(opt.url) ? (
-                  <button
-                    type="button"
-                    onClick={() => onPick(opt.url)}
-                    className="mt-1 w-full border border-studio-ink px-2 py-1 font-sans text-ui-sm font-semibold text-studio-ink hover:bg-studio-ink hover:text-studio-paper"
-                  >
-                    Use this
-                  </button>
-                ) : (
-                  <a
-                    href={opt.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="mt-1 block w-full border border-studio-rule px-2 py-1 text-center font-sans text-ui-sm text-studio-muted hover:text-studio-ink"
-                  >
-                    Open source
-                  </a>
-                )}
-              </div>
-            ))}
-          </div>
+        <Group
+          label="From this story's cluster"
+          note={`${cluster.length} clean image${cluster.length === 1 ? '' : 's'} · flagged images excluded`}
+          options={cluster}
+          onPick={onPick}
+          empty="No clean member-article images for this story."
+        />
+        <Group
+          label="From our corpus"
+          note={`${corpus.length} match${corpus.length === 1 ? '' : 'es'}`}
+          options={corpus}
+          onPick={onPick}
+          empty={searchHint}
+        />
+        <Group
+          label="From the web"
+          note="license review required before publishing"
+          options={web}
+          onPick={onPick}
+          empty={searchHint}
+        />
+      </div>
+    </div>
+  );
+}
+
+function ImageRow({
+  label,
+  detail,
+  url,
+  onReplace,
+  onRemove,
+}: {
+  label: string;
+  detail: string;
+  url: string;
+  onReplace: () => void;
+  onRemove?: () => void;
+}) {
+  return (
+    <div className="flex items-start gap-3 border-b border-studio-rule py-3">
+      <Preview url={url} className="h-20 w-32 shrink-0 border border-studio-rule object-cover" />
+      <div className="min-w-0 flex-1">
+        <div className="font-mono text-ui-sm uppercase tracking-wider text-studio-ink">{label}</div>
+        <div className="font-mono text-ui-sm text-studio-muted">{detail}</div>
+        <div className="mt-1 truncate font-mono text-ui-sm text-studio-muted">{url || '(machine default)'}</div>
+      </div>
+      <div className="flex shrink-0 gap-2">
+        <button
+          type="button"
+          onClick={onReplace}
+          className="border border-studio-ink px-3 py-1.5 font-sans text-ui-sm font-semibold text-studio-ink hover:bg-studio-ink hover:text-studio-paper"
+        >
+          Replace…
+        </button>
+        {onRemove && (
+          <button
+            type="button"
+            onClick={onRemove}
+            className="border border-studio-rule px-3 py-1.5 font-sans text-ui-sm text-studio-muted hover:border-studio-ink hover:text-studio-ink"
+          >
+            Remove
+          </button>
         )}
       </div>
     </div>
   );
 }
 
-export default function MediaTab({ image, body, generatedImage, onImage, onBody }: MediaTabProps) {
+export default function MediaTab({ storyId, image, body, generatedImage, onImage, onBody }: MediaTabProps) {
   const toast = useToast();
   const [target, setTarget] = useState<Target | null>(null);
   const inlineUrls = extractImageUrls(body);
+  const blockCount = splitBlocks(body).length;
 
   const pick = (url: string) => {
     if (!target) return;
@@ -182,36 +322,59 @@ export default function MediaTab({ image, body, generatedImage, onImage, onBody 
     } else {
       onBody(replaceImageUrl(body, target.url, url));
     }
-    toast.show('Image swapped — saving');
+    toast.show('Image swapped — saving as an editorial override');
     setTarget(null);
+  };
+
+  const removeInline = (url: string) => {
+    onBody(removeImageMarkdown(body, url));
+    toast.show('Inline image removed — saving');
   };
 
   return (
     <div>
       <h2 className="mb-1 font-display text-d-xs text-studio-ink">Images</h2>
       <p className="mb-4 font-sans text-ui-md text-studio-muted">
-        Click any image to swap it. Replacements are saved as an editorial override — the generated
-        image is preserved and can be reset from the Content tab.
+        Every image in this story — the hero the card uses, plus each image embedded in the body.
+        Replace or remove them independently. Every change is saved as an editorial override; the
+        generated original is preserved and can be restored below or from the History tab.
       </p>
 
-      <div className="grid grid-cols-4 gap-4">
-        <Thumb url={image} label="Thumbnail" onClick={() => setTarget({ kind: 'hero', url: image })} />
-        {inlineUrls.map((url, i) => (
-          <Thumb key={`${url}-${i}`} url={url} label={`Inline ${i + 1}`} onClick={() => setTarget({ kind: 'inline', url })} />
-        ))}
-      </div>
+      <ImageRow
+        label="Hero · thumbnail"
+        detail={image === generatedImage || !generatedImage ? 'As generated' : 'Editorial override'}
+        url={image}
+        onReplace={() => setTarget({ kind: 'hero', url: image })}
+      />
 
-      {image !== generatedImage && (
+      {inlineUrls.length === 0 ? (
+        <p className="border-b border-studio-rule py-3 font-sans text-ui-md text-studio-muted">
+          No inline images in the body.
+        </p>
+      ) : (
+        inlineUrls.map((url, i) => (
+          <ImageRow
+            key={`${url}-${i}`}
+            label={`Inline ${i + 1} of ${inlineUrls.length}`}
+            detail={`Body block ${blockOf(body, url) ?? '?'} of ${blockCount}`}
+            url={url}
+            onReplace={() => setTarget({ kind: 'inline', url })}
+            onRemove={() => removeInline(url)}
+          />
+        ))
+      )}
+
+      {generatedImage && image !== generatedImage && (
         <button
           type="button"
           onClick={() => onImage(generatedImage)}
           className="mt-4 border border-studio-rule px-3 py-1.5 font-sans text-ui-md font-semibold text-studio-ink hover:border-studio-ink"
         >
-          Reset thumbnail to generated
+          Reset hero to generated
         </button>
       )}
 
-      {target && <Picker target={target} onPick={pick} onClose={() => setTarget(null)} />}
+      {target && <Picker storyId={storyId} target={target} onPick={pick} onClose={() => setTarget(null)} />}
     </div>
   );
 }

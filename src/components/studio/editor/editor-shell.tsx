@@ -122,7 +122,14 @@ export default function EditorShell({ story, storyId, sources, loadHistory, reve
         />
       )}
       {tab === 'media' && (
-        <MediaTab image={image} body={body} generatedImage={generatedImage} onImage={setImage} onBody={setBody} />
+        <MediaTab
+          storyId={storyId}
+          image={image}
+          body={body}
+          generatedImage={generatedImage}
+          onImage={setImage}
+          onBody={setBody}
+        />
       )}
       {tab === 'embeds' && <EmbedsTab body={body} onBody={setBody} />}
       {tab === 'sources' && <SourcesTab sources={sources} />}

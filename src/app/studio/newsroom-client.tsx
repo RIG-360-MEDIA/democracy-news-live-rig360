@@ -2,7 +2,7 @@
 
 // RigWire Studio — Newsroom client. Three lanes behind a SegmentedToggle:
 //   NEXT UP — wire clusters in publish order; top 3 carry a red QueueNumeral + projected slot.
-//   LIVE    — on the site, grouped by section; thin red edge on the top-10.
+//   LIVE    — the REAL front page, band by band, in the site's own order (see lib/studio/live-view).
 //   HELD    — machine-held / editor-hidden, with who/when/why.
 // Every mutating action goes through /api/studio/override; the publish toast reports the placement
 // the route now returns. Reads only Studio primitives + Studio tokens (reader site untouched).
@@ -22,6 +22,8 @@ import {
 } from '@/components/studio/ui';
 import { BUFFER_MINUTES, bufferMsRemaining, isPastBuffer } from '@/lib/publish-buffer';
 import type { LiveMeta } from '@/lib/studio/live-meta';
+import { countLiveRows } from '@/lib/studio/live-view';
+import type { LiveGroup, LiveRow } from '@/lib/studio/live-view';
 import type { Placement } from '@/lib/studio/placement';
 import type { QueueItem } from '@/lib/studio/queue';
 import { fmtStamp } from '@/lib/studio/time';
@@ -30,14 +32,14 @@ import { countryName } from '@/lib/worldwide/country';
 
 type LaneKey = 'next' | 'live' | 'held';
 
-// LIVE lane grouping order; a live story with no dedicated section falls into the trailing bucket.
+// Sections an editor can move a story into (the Section ▾ menu).
 const SECTION_ORDER = [
   'POLITICS', 'SECURITY', 'BUSINESS', 'FINANCE', 'TECHNOLOGY',
   'HEALTH', 'ENVIRONMENT', 'LEGAL', 'SPORTS', 'SOCIETY',
 ] as const;
-const NO_SECTION = 'OTHER';
 
-const LIVE_EDGE_TOP_N = 10; // thin red left edge on the N most important live stories
+// The hero block's first N slots are the page's real headline positions — flagged with the accent edge.
+const LIVE_EDGE_TOP_N = 3;
 
 function sectionTitle(token: string): string {
   return token.charAt(0) + token.slice(1).toLowerCase();
@@ -68,6 +70,8 @@ interface GenerateResponse {
 export interface NewsroomClientProps {
   stories: DeskStory[];
   queue: QueueItem[];
+  /** The real front page, band by band, in the site's order — the LIVE lane. */
+  liveGroups: LiveGroup[];
   placements: Record<string, Placement | null>;
   meta: Record<string, LiveMeta>;
 }
@@ -80,7 +84,7 @@ export function NewsroomClient(props: NewsroomClientProps) {
   );
 }
 
-function Newsroom({ stories, queue, placements, meta }: NewsroomClientProps) {
+function Newsroom({ stories, queue, liveGroups, placements, meta }: NewsroomClientProps) {
   const router = useRouter();
   const { show } = useToast();
   const [pending, start] = useTransition();
@@ -93,41 +97,20 @@ function Newsroom({ stories, queue, placements, meta }: NewsroomClientProps) {
     [queue],
   );
 
-  const live = useMemo(
-    () => stories.filter((s) => s.state === 'live' || s.state === 'top'),
-    [stories],
-  );
-
   const held = useMemo(
     () => stories.filter((s) => s.state === 'held' || s.state === 'hidden'),
     [stories],
   );
 
-  // The N most important live stories get the accent edge.
-  const edgeIds = useMemo(() => {
-    const top = [...live].sort((a, b) => b.effectiveImportance - a.effectiveImportance);
-    return new Set(top.slice(0, LIVE_EDGE_TOP_N).map((s) => s.storyId));
-  }, [live]);
+  // The desk feed still carries per-story generation time; the front page does not. Rows we can match
+  // get a "gen" chip, rows we can't simply omit it — we never render a placeholder for missing data.
+  const generatedAt = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const s of stories) map[s.storyId] = s.updatedAt;
+    return map;
+  }, [stories]);
 
-  // Live stories grouped by projected section, each group ordered by current position.
-  const liveGroups = useMemo(() => {
-    const groups = new Map<string, DeskStory[]>();
-    for (const s of live) {
-      const section = place(placements, s.storyId)?.section ?? NO_SECTION;
-      groups.set(section, [...(groups.get(section) ?? []), s]);
-    }
-    const order = [...SECTION_ORDER, NO_SECTION];
-    return order
-      .filter((sec) => groups.has(sec))
-      .map((sec) => ({
-        section: sec,
-        stories: [...(groups.get(sec) ?? [])].sort(
-          (a, b) =>
-            (place(placements, a.storyId)?.position ?? Infinity) -
-            (place(placements, b.storyId)?.position ?? Infinity),
-        ),
-      }));
-  }, [live, placements]);
+  const liveCount = useMemo(() => countLiveRows(liveGroups), [liveGroups]);
 
   // ── Actions ──────────────────────────────────────────────────────
   async function act(
@@ -208,7 +191,7 @@ function Newsroom({ stories, queue, placements, meta }: NewsroomClientProps) {
 
   const options = [
     { key: 'next' as const, label: 'Next up', count: nextUp.length },
-    { key: 'live' as const, label: 'Live', count: live.length },
+    { key: 'live' as const, label: 'Live', count: liveCount },
     { key: 'held' as const, label: 'Held', count: held.length },
   ];
 
@@ -238,7 +221,14 @@ function Newsroom({ stories, queue, placements, meta }: NewsroomClientProps) {
           />
         )}
         {lane === 'live' && (
-          <LiveLane groups={liveGroups} placements={placements} meta={meta} edgeIds={edgeIds} busy={isBusy} act={act} show={show} />
+          <LiveLane
+            groups={liveGroups}
+            meta={meta}
+            generatedAt={generatedAt}
+            busy={isBusy}
+            act={act}
+            show={show}
+          />
         )}
         {lane === 'held' && (
           <HeldLane rows={held} meta={meta} busy={isBusy} onPublish={publish} act={act} show={show} />
@@ -501,63 +491,100 @@ function NextUpLane({
   );
 }
 
+// LIVE — the front page as the reader sees it: each band in page order, each row at its real slot.
+// Everything here is derived from the cached reader front page, so a row's absence means the story is
+// genuinely not on the site. Rows carry only what the front page knows; desk-only fields (generation
+// time, provenance) are joined in where available and omitted where not.
 function LiveLane({
   groups,
-  placements,
   meta,
-  edgeIds,
+  generatedAt,
   busy,
   act,
   show,
 }: {
-  groups: { section: string; stories: DeskStory[] }[];
-  edgeIds: Set<string>;
+  groups: LiveGroup[];
+  generatedAt: Record<string, string>;
 } & LaneShared) {
   if (groups.length === 0) return <Empty>Nothing live yet — publish from Next up.</Empty>;
-  const map = placements ?? {};
   const metaMap = meta ?? {};
   return (
     <section className="flex flex-col gap-8">
+      <p className="font-sans text-ui-md text-studio-muted">
+        The front page exactly as readers see it — every band in page order, every story at its real
+        slot. Anything not here is not on the site.
+      </p>
       {groups.map((g) => (
-        <div key={g.section}>
+        <div key={g.key}>
           <h2 className="mb-2 border-b border-studio-rule pb-1 font-mono text-ui-sm uppercase tracking-[0.18em] text-studio-muted">
-            {sectionTitle(g.section)}
-            <span className="ml-2 text-studio-ink">{g.stories.length}</span>
+            {g.label}
+            <span className="ml-2 text-studio-ink">{g.items.length}</span>
           </h2>
-          {g.stories.map((s) => {
-            const m = metaMap[s.storyId];
-            const p = place(map, s.storyId);
-            const who = m?.publishedBy ?? m?.editedBy ?? 'machine';
-            const rowMeta = (
-              <>
-                gen {fmtStamp(s.updatedAt)} · pub {fmtStamp(m?.liveSince ?? s.updatedAt)} ·{' '}
-                {humanizeDuration(m?.timeOnSiteSeconds ?? null)} on site ·{' '}
-                {p ? `${sectionTitle(p.section)} #${p.position}` : '—'} · {who}
-                {m?.editedBy ? ` · edited ${m.editedBy}` : ''}
-              </>
-            );
-            const edged = edgeIds.has(s.storyId);
-            return (
-              <div key={s.storyId} className={edged ? 'border-l-2 border-studio-accent pl-3' : 'pl-3'}>
-                <StoryRowCard
-                  headline={s.headline}
-                  thumbnail={s.image}
-                  dek={s.dek}
-                  meta={rowMeta}
-                  href={`/studio/story/${s.storyId}`}
-                >
-                  <StatusChip state={s.state === 'top' ? 'published' : 'live'} label={s.state === 'top' ? 'Top' : 'Live'} />
-                  <HoldBtn id={s.storyId} busy={busy} act={act} show={show} />
-                  <EditLink id={s.storyId} />
-                  <SectionMenu show={show} />
-                  <OverflowMenu id={s.storyId} busy={busy} act={act} show={show} />
-                </StoryRowCard>
-              </div>
-            );
-          })}
+          {g.items.map((row) => (
+            <LiveRowItem
+              key={`${g.key}:${row.storyId}`}
+              row={row}
+              groupLabel={g.label}
+              meta={metaMap[row.storyId]}
+              generatedAt={generatedAt[row.storyId]}
+              lead={g.key === 'top-stories' && row.position <= LIVE_EDGE_TOP_N}
+              busy={busy}
+              act={act}
+              show={show}
+            />
+          ))}
         </div>
       ))}
     </section>
+  );
+}
+
+function LiveRowItem({
+  row,
+  groupLabel,
+  meta,
+  generatedAt,
+  lead,
+  busy,
+  act,
+  show,
+}: {
+  row: LiveRow;
+  groupLabel: string;
+  meta: LiveMeta | undefined;
+  generatedAt: string | undefined;
+  lead: boolean;
+  busy: boolean;
+  act: Act;
+  show: Show;
+}) {
+  // Only chips we can actually source. A front-page row with no desk/audit match shows its slot and
+  // nothing else, rather than an "undefined" or a fabricated timestamp.
+  const chips: string[] = [`#${row.position} in ${groupLabel}`];
+  if (row.isHub && row.hubMemberCount) chips.push(`hub · ${row.hubMemberCount} angles`);
+  if (generatedAt) chips.push(`gen ${fmtStamp(generatedAt)}`);
+  if (meta?.liveSince) chips.push(`pub ${fmtStamp(meta.liveSince)}`);
+  if (meta?.timeOnSiteSeconds != null) chips.push(`${humanizeDuration(meta.timeOnSiteSeconds)} on site`);
+  const who = meta?.publishedBy ?? meta?.editedBy;
+  if (who) chips.push(who);
+  if (meta?.editedBy) chips.push(`edited ${meta.editedBy}`);
+
+  return (
+    <div className={lead ? 'border-l-2 border-studio-accent pl-3' : 'pl-3'}>
+      <StoryRowCard
+        headline={row.headline}
+        thumbnail={row.image}
+        dek={row.dek}
+        meta={chips.join(' · ')}
+        href={`/studio/story/${row.storyId}`}
+      >
+        <StatusChip state={lead ? 'published' : 'live'} label={lead ? 'Top' : 'Live'} />
+        <HoldBtn id={row.storyId} busy={busy} act={act} show={show} />
+        <EditLink id={row.storyId} />
+        <SectionMenu show={show} />
+        <OverflowMenu id={row.storyId} busy={busy} act={act} show={show} />
+      </StoryRowCard>
+    </div>
   );
 }
 

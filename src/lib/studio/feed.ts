@@ -40,12 +40,37 @@ export async function getDeskFeed(limit = 120): Promise<DeskStory[]> {
   const rows = (await sqlAnalytics`
     SELECT g.story_id, g.headline, g.deck, g.topic,
            coalesce(nullif(sc.subject_country, ''), 'XX') AS country,
-           CASE WHEN ic.clean IS FALSE THEN NULL ELSE a.thumbnail_url END AS image,
+           -- Mirror the reader's fallback chain (see worldwide/ranking.ts): sourced/generated hero
+           -- first, then the best non-flagged cluster-member photo, then the representative
+           -- thumbnail. Every source honours the image-safety verdict — a thumbnail with
+           -- ic.clean IS FALSE is excluded here AND in the member subquery, so a flagged image
+           -- can never re-enter via a fallback.
+           coalesce(
+             nullif(g.generated_image->>'url', ''),
+             mem.thumbnail_url,
+             CASE WHEN ic.clean IS FALSE THEN NULL ELSE a.thumbnail_url END
+           ) AS image,
            g.word_count, g.status, round(sc.importance_score, 1) AS importance, g.updated_at
     FROM analytics.story_generated_v8 g
     JOIN analytics.story_clusters_v8 sc ON sc.story_id = g.story_id
     LEFT JOIN articles a ON a.id = sc.representative_article_id
     LEFT JOIN rigwire.image_checks ic ON ic.thumbnail_url = a.thumbnail_url
+    -- Best non-flagged photo from the cluster's members: confirmed-clean first, then best source
+    -- tier, then freshest. One LATERAL inside the same query — no N+1.
+    LEFT JOIN LATERAL (
+      SELECT a2.thumbnail_url
+      FROM analytics.story_cluster_members_v8 m
+      JOIN articles a2 ON a2.id = m.article_id
+      LEFT JOIN rigwire.image_checks ic2 ON ic2.thumbnail_url = a2.thumbnail_url
+      WHERE m.story_id = g.story_id
+        AND a2.thumbnail_url IS NOT NULL
+        AND a2.thumbnail_url <> ''
+        AND ic2.clean IS NOT FALSE
+      ORDER BY (ic2.clean IS TRUE) DESC,
+               coalesce(a2.source_tier, 9) ASC,
+               a2.published_at DESC NULLS LAST
+      LIMIT 1
+    ) mem ON true
     WHERE g.updated_at > now() - interval '48 hours'
       AND g.strategy <> 'stub'
       AND g.body IS NOT NULL
