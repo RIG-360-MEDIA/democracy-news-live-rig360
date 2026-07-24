@@ -7,9 +7,16 @@
 // desk never showed. This module projects the REAL front page into desk rows so the Live lane is,
 // by construction, what readers are looking at.
 //
+// It no longer re-derives placement itself: it delegates to layoutFrontPage (the one mirror of the
+// reader page's band/dedup/cap composition) and adapts its bands into the LiveGroup/LiveRow contract
+// the newsroom client already consumes. So the lane reflects the page's global de-dup, the rail skim,
+// and the hard 7-per-topic cap — with the capped remainder reported as `hiddenEligible`.
+//
 // Pure: no I/O, no mutation. Groups come back in the site's own top-to-bottom order.
 
-import type { EventHub, FrontPage, StoryCard } from '@/lib/worldwide/types';
+import { layoutFrontPage } from '@/lib/worldwide/front-page-layout';
+import type { LaidOutBand } from '@/lib/worldwide/front-page-layout';
+import type { FrontPage } from '@/lib/worldwide/types';
 
 /** One live row = one card as it actually appears on the site. */
 export interface LiveRow {
@@ -30,88 +37,39 @@ export interface LiveGroup {
   key: string;
   label: string;
   items: LiveRow[];
+  /** Stories this band claimed off the page but does not display — the per-topic 7-cap remainder.
+   *  0 for bands that show everything they claim (top stories, around the world, democracy). */
+  hiddenEligible: number;
 }
 
-const TOP_STORIES_KEY = 'top-stories';
-const AROUND_KEY = 'around-the-world';
-const DEMOCRACY_KEY = 'democracy';
-
-function titleCase(token: string): string {
-  return token.charAt(0).toUpperCase() + token.slice(1).toLowerCase();
-}
-
-function isHub(unit: StoryCard | EventHub): unit is EventHub {
-  return 'kind' in unit && unit.kind === 'hub';
-}
-
-// A hub occupies one slot on the site but has no story id of its own. We represent it by its LEAD
-// member — the same convention /curate uses (curate-workspace.tsx) — so Edit/Hold act on a real
-// story. hubId is only a last-resort key for a (shouldn't happen) memberless hub.
-function toRow(unit: StoryCard | EventHub, position: number): LiveRow {
-  if (isHub(unit)) {
-    const lead = unit.members[0] ?? null;
-    return {
-      storyId: lead?.id ?? unit.hubId,
-      headline: lead?.title ?? unit.title,
-      dek: lead?.deck ?? null,
-      image: unit.image ?? lead?.image ?? null,
-      position,
-      isHub: true,
-      hubMemberCount: unit.memberCount,
-    };
-  }
-  return {
-    storyId: unit.id,
-    headline: unit.title,
-    dek: unit.deck,
-    image: unit.image,
-    position,
-    isHub: false,
-  };
+function bandToGroup(band: LaidOutBand): LiveGroup {
+  const items: LiveRow[] = band.stories.map((story, index) => ({
+    storyId: story.id,
+    headline: story.headline,
+    dek: story.dek,
+    image: story.image,
+    position: index + 1,
+    isHub: story.isHub,
+    ...(story.hubMemberCount != null ? { hubMemberCount: story.hubMemberCount } : {}),
+  }));
+  return { key: band.key, label: band.label, items, hiddenEligible: band.hiddenEligible };
 }
 
 /**
- * Project a front page into ordered desk groups.
- *
- * A story that somehow surfaces in two bands (e.g. also picked up by Around the World) is kept only
- * in the first — highest-priority — group, so the lane's total is a true count of on-site stories.
- * Positions are assigned after that de-duplication, so they stay contiguous within each group.
+ * Project a front page into ordered desk groups — the reader page's layout, adapted to desk rows.
+ * Bands are already de-duplicated and capped by layoutFrontPage, so every row here is a story that is
+ * genuinely on the site at that slot.
  */
 export function buildLiveView(fp: FrontPage): LiveGroup[] {
-  const bands: Array<{ key: string; label: string; units: Array<StoryCard | EventHub> }> = [
-    { key: TOP_STORIES_KEY, label: 'Top Stories', units: fp.topStories },
-    { key: AROUND_KEY, label: 'Around the World', units: fp.aroundTheWorld },
-    { key: DEMOCRACY_KEY, label: 'Democracy', units: fp.democracy },
-    ...fp.sections.map((s) => ({
-      key: `section:${s.topic.toLowerCase()}`,
-      label: titleCase(s.topic),
-      units: s.stories,
-    })),
-  ];
-
-  const seen = new Set<string>();
-  const groups: LiveGroup[] = [];
-
-  for (const band of bands) {
-    const items: LiveRow[] = [];
-    for (const unit of band.units) {
-      const row = toRow(unit, items.length + 1);
-      if (seen.has(row.storyId)) continue;
-      seen.add(row.storyId);
-      items.push(row);
-    }
-    if (items.length > 0) groups.push({ key: band.key, label: band.label, items });
-  }
-
-  return groups;
+  return layoutFrontPage(fp).bands.map(bandToGroup);
 }
 
-/** Total stories actually on the site — the Live tab's count. */
+/** Total stories actually on the site — the Live tab's count (VISIBLE rows only). */
 export function countLiveRows(groups: readonly LiveGroup[]): number {
   return groups.reduce((n, g) => n + g.items.length, 0);
 }
 
-/** Every story id on the front page — used to fetch provenance for the rows we can match. */
+/** Every VISIBLE story id on the front page — used to fetch provenance for the rows we can match. */
 export function liveStoryIds(groups: readonly LiveGroup[]): string[] {
   return groups.flatMap((g) => g.items.map((r) => r.storyId));
 }

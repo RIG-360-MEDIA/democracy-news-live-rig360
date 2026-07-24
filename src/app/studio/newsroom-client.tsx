@@ -520,6 +520,11 @@ function LiveLane({
             {g.label}
             <span className="ml-2 text-studio-ink">{g.items.length}</span>
           </h2>
+          {g.hiddenEligible > 0 && (
+            <p className="mb-2 font-sans text-ui-sm text-studio-muted">
+              +{g.hiddenEligible} eligible, not shown on the page
+            </p>
+          )}
           {g.items.map((row) => (
             <LiveRowItem
               key={`${g.key}:${row.storyId}`}
