@@ -61,6 +61,8 @@ export interface FrontPageLayout {
 const TOP_STORIES_KEY = 'top-stories';
 const AROUND_KEY = 'around-the-world';
 const DEMOCRACY_KEY = 'democracy';
+const LATEST_KEY = 'latest';
+const MOST_COVERED_KEY = 'most-covered';
 
 // Page caps — kept identical to long-read-page.tsx.
 const LATEST_RAIL = 8;
@@ -164,18 +166,6 @@ function buildRailPool(fp: FrontPage): StoryCard[] {
   return railPool;
 }
 
-/** De-dup a laid-out list by id, keeping first occurrence and order. */
-function uniqueById(stories: ReadonlyArray<LaidOutStory>): LaidOutStory[] {
-  const seen = new Set<string>();
-  const out: LaidOutStory[] = [];
-  for (const s of stories) {
-    if (seen.has(s.id)) continue;
-    seen.add(s.id);
-    out.push(s);
-  }
-  return out;
-}
-
 /**
  * Lay out a front page exactly as long-read-page.tsx composes it, returning the VISIBLE stories per
  * band plus the count each topic band hides behind the 7-per-band cap. Bands come back in page order;
@@ -208,15 +198,19 @@ export function layoutFrontPage(fp: FrontPage): FrontPageLayout {
 
   const bands: LaidOutBand[] = [];
 
-  // Top Stories band = everything rendered in the top area of the page: the hero/grid pool, the LIVE
-  // rail (latest) and the "Most covered" sidebar (mostCovered), unique, in claim order.
-  const topStories = uniqueById([
-    ...pool,
-    ...latest.map(storyToLaidOut),
-    ...mostCovered.map(storyToLaidOut),
-  ]);
-  if (topStories.length > 0) {
-    bands.push({ key: TOP_STORIES_KEY, label: 'Top Stories', stories: topStories, hiddenEligible: 0 });
+  // The page renders THREE distinct labelled elements in its top area — the Top Stories hero/grid, the
+  // LIVE ticker (right column) and the "Most covered" sidebar. They are SEPARATE bands here so each CMS
+  // count matches a real page section; merging them made "Top Stories" over-count (pool + rails).
+  if (pool.length > 0) {
+    bands.push({ key: TOP_STORIES_KEY, label: 'Top Stories', stories: pool, hiddenEligible: 0 });
+  }
+  const latestStories = latest.map(storyToLaidOut);
+  if (latestStories.length > 0) {
+    bands.push({ key: LATEST_KEY, label: 'Live Ticker', stories: latestStories, hiddenEligible: 0 });
+  }
+  const mostCoveredStories = mostCovered.map(storyToLaidOut);
+  if (mostCoveredStories.length > 0) {
+    bands.push({ key: MOST_COVERED_KEY, label: 'Most Covered', stories: mostCoveredStories, hiddenEligible: 0 });
   }
 
   // Around the World — one lead per country; the page renders every claimed card, so nothing hidden.
