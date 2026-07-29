@@ -154,18 +154,16 @@ export const editStory = (
   id: string,
   editor: string,
   fields: { headline?: string; dek?: string; body?: string; tags?: string[]; image?: string },
-) =>
-  applyOverride(
-    id,
-    {
-      humanLocked: true,
-      editedHeadline: fields.headline ?? undefined,
-      editedDek: fields.dek ?? undefined,
-      editedBody: fields.body ?? undefined,
-      editedTags: fields.tags ?? undefined,
-      // '' means "clear the override" → back to the machine's image; undefined means "leave as-is".
-      editedImage: fields.image === undefined ? undefined : fields.image.trim() || null,
-    },
-    editor,
-    'edit',
-  );
+) => {
+  // Only include keys the caller actually sent. A key set to `undefined` here would be spread onto the
+  // merged override and reach the INSERT as an SQL bind, and the postgres driver rejects undefined
+  // ("UNDEFINED_VALUE"). Omitting absent keys makes the spread a true "leave as-is" for partial edits.
+  const patch: OverridePatch = { humanLocked: true };
+  if (fields.headline !== undefined) patch.editedHeadline = fields.headline;
+  if (fields.dek !== undefined) patch.editedDek = fields.dek;
+  if (fields.body !== undefined) patch.editedBody = fields.body;
+  if (fields.tags !== undefined) patch.editedTags = fields.tags;
+  // '' means "clear the override" → back to the machine's image; absent means "leave as-is".
+  if (fields.image !== undefined) patch.editedImage = fields.image.trim() || null;
+  return applyOverride(id, patch, editor, 'edit');
+};
