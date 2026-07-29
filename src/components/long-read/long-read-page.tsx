@@ -371,6 +371,12 @@ function TopNav() {
 }
 
 /* ═══════════ STORY COMPONENTS ═══════════ */
+/** True only for a genuine photo — not empty and not the branded /cards/fallback placeholder.
+ *  Cards without one skip the image box entirely so they fill with text instead of leaving a gap. */
+function hasRealImage(story: CardView): boolean {
+  return !!story.image && !story.image.includes('/cards/fallback');
+}
+
 function TitleLink({ story, children }: { story: CardView; children: ReactNode }) {
   const editing = useEditMode();
   if (!story.href) return <span>{children}</span>;
@@ -388,7 +394,7 @@ function TitleLink({ story, children }: { story: CardView; children: ReactNode }
 function LeadStory({ story }: { story: CardView }) {
   return (
     <article>
-      <img {...storyImg(story)} alt="" className="block w-full" style={{ aspectRatio: '4/3', objectFit: 'cover' }} />
+      {hasRealImage(story) && <img {...storyImg(story)} alt="" className="block w-full" style={{ aspectRatio: '4/3', objectFit: 'cover' }} />}
       <div className="pt-5">
         <Kicker text={story.kicker} />
         <h2 style={{ color: INK, fontSize: 'clamp(1.75rem, 2.6vw, 2.625rem)', fontWeight: 700, lineHeight: 1.04, letterSpacing: '-0.024em', fontVariationSettings: "'opsz' 144, 'SOFT' 0", textWrap: 'balance', marginTop: 10, marginBottom: 12 }}>
@@ -404,7 +410,7 @@ function LeadStory({ story }: { story: CardView }) {
 function HeroStory({ story }: { story: CardView }) {
   return (
     <article>
-      <img {...storyImg(story)} alt="" className="block w-full" style={{ aspectRatio: '16/10', objectFit: 'cover' }} />
+      {hasRealImage(story) && <img {...storyImg(story)} alt="" className="block w-full" style={{ aspectRatio: '16/10', objectFit: 'cover' }} />}
       <div className="pt-5">
         <Kicker text={story.kicker} />
         <h1 style={{ color: INK, fontSize: 'clamp(2.5rem, 4.6vw, 4.5rem)', fontWeight: 700, lineHeight: 1.02, letterSpacing: '-0.028em', fontVariationSettings: "'opsz' 144, 'SOFT' 0", textWrap: 'balance', marginTop: 14, marginBottom: 16 }}>
@@ -418,8 +424,9 @@ function HeroStory({ story }: { story: CardView }) {
 }
 
 function CompactWithImage({ story }: { story: CardView }) {
+  const img = hasRealImage(story);
   return (
-    <article className="grid gap-5 md:[grid-template-columns:1fr_150px] items-start">
+    <article className={img ? 'grid gap-5 md:[grid-template-columns:1fr_150px] items-start' : undefined}>
       <div>
         <Kicker text={story.kicker} />
         <h3 style={{ color: INK, fontSize: 'clamp(1.25rem, 1.7vw, 1.5rem)', fontWeight: 700, lineHeight: 1.12, letterSpacing: '-0.016em', fontVariationSettings: "'opsz' 24, 'SOFT' 10", textWrap: 'balance', marginTop: 6, marginBottom: 8 }}>
@@ -428,7 +435,7 @@ function CompactWithImage({ story }: { story: CardView }) {
         {story.deck && <p style={{ color: BODY, fontSize: 14.5, lineHeight: 1.5, marginBottom: 10 }}>{story.deck}</p>}
         <Byline story={story} small />
       </div>
-      <img {...storyImg(story)} alt="" className="block w-full" style={{ aspectRatio: '1/1', objectFit: 'cover' }} />
+      {img && <img {...storyImg(story)} alt="" className="block w-full" style={{ aspectRatio: '1/1', objectFit: 'cover' }} />}
     </article>
   );
 }
@@ -448,7 +455,7 @@ function TextOnlyStory({ story }: { story: CardView }) {
 function ImageHeroStory({ story }: { story: CardView }) {
   return (
     <article>
-      <img {...storyImg(story)} alt="" className="block w-full" style={{ aspectRatio: '16/10', objectFit: 'cover' }} />
+      {hasRealImage(story) && <img {...storyImg(story)} alt="" className="block w-full" style={{ aspectRatio: '16/10', objectFit: 'cover' }} />}
       <div className="pt-4">
         <Kicker text={story.kicker} />
         <h3 style={{ color: INK, fontSize: 'clamp(1.75rem, 2.8vw, 2.625rem)', fontWeight: 700, lineHeight: 1.04, letterSpacing: '-0.022em', fontVariationSettings: "'opsz' 144, 'SOFT' 0", textWrap: 'balance', marginTop: 10, marginBottom: 12 }}>

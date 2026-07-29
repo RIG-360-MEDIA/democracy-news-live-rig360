@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import Link from 'next/link';
 
@@ -17,8 +18,6 @@ const FAINT = 'var(--rw-faint)';
 const ACCENT = 'var(--rw-accent)';
 const RED = 'var(--rw-red)';
 const RULE = 'var(--rw-rule)';
-
-const NAV = ['World', 'Politics', 'Environment', 'Business', 'Global'];
 
 function asHeading(raw: string): string | null {
   const t = raw.trim();
@@ -67,12 +66,6 @@ function Figure({ img, ratio = '16/9' }: { img: StoryImage; ratio?: string }) {
       <img src={img.url} alt="Coverage" loading="lazy" className="block w-full"
         style={{ aspectRatio: ratio, objectFit: 'cover', borderRadius: 2, background: '#f0f0f0' }}
         onError={(e) => { (e.currentTarget.closest('figure') as HTMLElement).style.display = 'none'; }} />
-      {img.credit && (
-        <figcaption style={{ marginTop: 6, fontFamily: 'var(--font-mono), monospace', fontSize: 10, color: FAINT, letterSpacing: '0.02em' }}>
-          Photo: {img.credit}
-          {img.sourcePage && <> · <a href={img.sourcePage} target="_blank" rel="noopener noreferrer" style={{ color: FAINT, textDecoration: 'underline' }}>via {img.source}</a></>}
-        </figcaption>
-      )}
     </figure>
   );
 }
@@ -116,6 +109,28 @@ function CoverageChart({ data, sources }: { data: CoveragePoint[]; sources: numb
   );
 }
 
+// One-time reading hint: the poster (headline + photo) pins on the left while the article scrolls on
+// the right, which can confuse a first-time reader. Show a dismissible tip once per browser.
+function ScrollHint() {
+  const [show, setShow] = useState(false);
+  useEffect(() => {
+    try { if (!localStorage.getItem('dnl-read-hint')) setShow(true); } catch { /* no storage */ }
+  }, []);
+  if (!show) return null;
+  const dismiss = () => {
+    try { localStorage.setItem('dnl-read-hint', '1'); } catch { /* no storage */ }
+    setShow(false);
+  };
+  return (
+    <div role="dialog" aria-label="Reading tip"
+      style={{ position: 'fixed', left: '50%', bottom: 22, transform: 'translateX(-50%)', zIndex: 60, display: 'flex', alignItems: 'center', gap: 14, maxWidth: '92vw', background: INK, color: 'var(--rw-bg)', padding: '12px 18px', borderRadius: 999, boxShadow: '0 10px 34px rgba(0,0,0,0.28)', fontFamily: 'var(--font-jakarta), sans-serif', fontSize: 13.5, fontWeight: 600, lineHeight: 1.35 }}>
+      <span>Reading tip: the headline stays on the left — <b>scroll down to read the full story.</b></span>
+      <button onClick={dismiss} aria-label="Got it"
+        style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', fontSize: 15, lineHeight: 1, padding: 0, opacity: 0.8 }}>✕</button>
+    </div>
+  );
+}
+
 export function StoryRead({ story }: { story: StoryDetail }) {
   const blocks = toBlocks(story.paragraphs);
 
@@ -144,7 +159,7 @@ export function StoryRead({ story }: { story: StoryDetail }) {
         mdHeadings += 1;
       }
       nodes.push(
-        <div key={`h${i}`} style={{ ...label, fontSize: 11, color: RED, marginTop: firstPara ? 0 : 32, marginBottom: 12, paddingTop: firstPara ? 0 : 15, borderTop: firstPara ? 'none' : `1px solid ${RULE}`, fontFamily: 'var(--font-jakarta), sans-serif', letterSpacing: '0.13em' }}>
+        <div key={`h${i}`} style={{ ...label, fontSize: 15, fontWeight: 800, color: RED, marginTop: firstPara ? 0 : 34, marginBottom: 12, paddingTop: firstPara ? 0 : 16, borderTop: firstPara ? 'none' : `1px solid ${RULE}`, fontFamily: 'var(--font-jakarta), sans-serif', letterSpacing: '0.06em' }}>
           {b.text}
         </div>,
       );
@@ -175,18 +190,15 @@ export function StoryRead({ story }: { story: StoryDetail }) {
 
   return (
     <div className="min-h-dvh" style={{ background: 'var(--rw-bg)', color: BODY }}>
+      <ScrollHint />
       {/* ── Masthead ── */}
       <header style={{ borderBottom: `1px solid ${INK}` }}>
         <div className="flex items-center gap-8 px-8" style={{ maxWidth: 1620, height: 58 }}>
           <Wordmark size="md" href="/long-read" rigColor="var(--rw-ink)" />
-          <nav className="hidden md:flex items-center gap-6" style={{ flex: 1 }}>
-            {NAV.map((n) => (
-              <Link key={n} href="/long-read" style={{ fontFamily: 'var(--font-jakarta), sans-serif', fontSize: 12.5, fontWeight: 600, color: 'var(--rw-body)', textDecoration: 'none' }}>{n}</Link>
-            ))}
-          </nav>
+          <div style={{ flex: 1 }} />
           <ThemeToggle />
           <Link href="/long-read" style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontFamily: 'var(--font-mono), monospace', fontSize: 10.5, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: MUTED, textDecoration: 'none', whiteSpace: 'nowrap' }}>
-            <span style={{ fontSize: 14 }}>&larr;</span> Back to Worldwide
+            <span style={{ fontSize: 14 }}>&larr;</span> Back to DNL
           </Link>
         </div>
       </header>
@@ -209,20 +221,6 @@ export function StoryRead({ story }: { story: StoryDetail }) {
             <figure style={{ margin: '22px 0 0' }}>
               <img src={story.image} alt={story.title} className="block w-full" style={{ aspectRatio: '16/9', objectFit: 'cover', borderRadius: 2 }}
                 onError={(e) => { (e.currentTarget.closest('figure') as HTMLElement).style.display = 'none'; }} />
-              {story.heroImage && (
-                <figcaption style={{ marginTop: 6, fontFamily: 'var(--font-mono), monospace', fontSize: 10.5, color: FAINT, letterSpacing: '0.02em' }}>
-                  {story.heroImage.author ? `Photo: ${story.heroImage.author}` : 'Photo'}
-                  {story.heroImage.license && (
-                    <> · {story.heroImage.licenseUrl
-                      ? <a href={story.heroImage.licenseUrl} target="_blank" rel="noopener noreferrer" style={{ color: FAINT, textDecoration: 'underline' }}>{story.heroImage.license}</a>
-                      : story.heroImage.license}</>
-                  )}
-                  {' · '}
-                  {story.heroImage.sourcePage
-                    ? <a href={story.heroImage.sourcePage} target="_blank" rel="noopener noreferrer" style={{ color: FAINT, textDecoration: 'underline' }}>via {story.heroImage.source}</a>
-                    : <>via {story.heroImage.source}</>}
-                </figcaption>
-              )}
             </figure>
           )}
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginTop: 16, paddingTop: 15, borderTop: `1px solid ${RULE}` }}>
@@ -246,11 +244,6 @@ export function StoryRead({ story }: { story: StoryDetail }) {
                 </div>
               )}
             </div>
-            <div style={{ display: 'flex', gap: 14 }}>
-              {['Share', 'Save'].map((t) => (
-                <button key={t} style={{ ...label, fontSize: 10, color: MUTED, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>{t}</button>
-              ))}
-            </div>
           </div>
         </div>
 
@@ -258,7 +251,7 @@ export function StoryRead({ story }: { story: StoryDetail }) {
         <article className="lg:pl-14 lg:border-l order-last lg:order-none" style={{ borderColor: RULE, minWidth: 0, marginTop: 6 }}>
           {nodes}
           <div style={{ marginTop: 26 }}>
-            <Link href="/long-read" style={{ ...label, fontSize: 10.5, color: ACCENT }}>← Back to Worldwide</Link>
+            <Link href="/long-read" style={{ ...label, fontSize: 10.5, color: ACCENT }}>← Back to DNL</Link>
           </div>
         </article>
       </div>
