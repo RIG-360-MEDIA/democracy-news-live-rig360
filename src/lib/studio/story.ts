@@ -43,8 +43,9 @@ export interface StoryForEdit {
 
 /**
  * Load one story for the editor: generated content + cluster topic/country from
- * analytics, plus the editorial override from rigwire. Returns null when no
- * generated row exists for the id. `effective` applies edited_* over generated.
+ * analytics, plus the editorial override from rigwire. Falls back to the cluster's
+ * representative content when the story has no generated row yet, and returns null
+ * only when neither exists. `effective` applies edited_* over generated.
  */
 export async function getStoryForEdit(storyId: string): Promise<StoryForEdit | null> {
   const rows = (await sqlAnalytics`
@@ -59,7 +60,24 @@ export async function getStoryForEdit(storyId: string): Promise<StoryForEdit | n
     LIMIT 1
   `) as unknown as GenEditRow[];
 
-  const row = rows[0];
+  // A cluster on the page may have no generated row yet — fresh/provisional clusters, and the lead of
+  // an event hub, are shown to readers via the cluster's representative title + article photo. Without
+  // this fallback, "Edit" dead-ends on those rows ("Story not found"). Surface the representative
+  // content as the generated base (no body/deck yet); editorial overrides still layer on top.
+  const row =
+    rows[0] ??
+    (
+      (await sqlAnalytics`
+        SELECT sc.story_id, sc.representative_title AS headline, NULL AS deck, NULL AS body, sc.topic,
+               coalesce(nullif(sc.subject_country, ''), 'XX') AS country,
+               sc.status, 0 AS word_count, a.thumbnail_url AS image
+        FROM analytics.story_clusters_v8 sc
+        LEFT JOIN articles a ON a.id = sc.representative_article_id
+        WHERE sc.story_id = ${storyId}
+        LIMIT 1
+      `) as unknown as GenEditRow[]
+    )[0];
+
   if (!row) return null;
 
   const override = (await getOverrides([storyId])).get(storyId) ?? null;

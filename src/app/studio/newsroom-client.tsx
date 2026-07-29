@@ -32,12 +32,6 @@ import { countryName } from '@/lib/worldwide/country';
 
 type LaneKey = 'next' | 'live' | 'held';
 
-// Sections an editor can move a story into (the Section ▾ menu).
-const SECTION_ORDER = [
-  'POLITICS', 'SECURITY', 'BUSINESS', 'FINANCE', 'TECHNOLOGY',
-  'HEALTH', 'ENVIRONMENT', 'LEGAL', 'SPORTS', 'SOCIETY',
-] as const;
-
 // The hero block's first N slots are the page's real headline positions — flagged with the accent edge.
 const LIVE_EDGE_TOP_N = 3;
 
@@ -352,25 +346,6 @@ function Menu({ label, title, children }: { label: string; title?: string; child
   );
 }
 
-// Section override has no API kind yet (the override route stays publish/unpublish/kill/pin/boost).
-// Rendered so the desk shows the control; selecting a section flags that the wiring is pending
-// rather than firing a request that would 400. See the handoff note.
-function SectionMenu({ show }: { show: Show }) {
-  return (
-    <Menu label="Section ▾" title="Move to another section">
-      {SECTION_ORDER.map((sec) => (
-        <button
-          key={sec}
-          type="button"
-          className={MENU_ITEM}
-          onClick={() => show("Section override isn't wired yet — needs a 'section' kind on /api/studio/override.")}
-        >
-          {sectionTitle(sec)}
-        </button>
-      ))}
-    </Menu>
-  );
-}
 
 function OverflowMenu({ id, busy, act, show }: { id: string; busy: boolean; act: Act; show: Show }) {
   return (
@@ -477,7 +452,6 @@ function NextUpLane({
                       {!q.generated && <GenerateBtn id={q.storyId} busy={busy} onGenerate={onGenerate} />}
                       <PublishBtn id={q.storyId} busy={busy} onPublish={onPublish} />
                       <EditLink id={q.storyId} />
-                      <SectionMenu show={show} />
                       <OverflowMenu id={q.storyId} busy={busy} act={act} show={show} />
                     </>
                   )}
@@ -586,7 +560,6 @@ function LiveRowItem({
         <StatusChip state={lead ? 'published' : 'live'} label={lead ? 'Top' : 'Live'} />
         <HoldBtn id={row.storyId} busy={busy} act={act} show={show} />
         <EditLink id={row.storyId} />
-        <SectionMenu show={show} />
         <OverflowMenu id={row.storyId} busy={busy} act={act} show={show} />
       </StoryRowCard>
     </div>
