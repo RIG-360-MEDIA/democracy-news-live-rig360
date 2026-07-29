@@ -21,11 +21,14 @@
 //      minus featured, capped to 6; VISIBLE = [featured, ...list] (≤7). Anything
 //      in claimed past those 7 is CLAIMED-BUT-HIDDEN — eligible, shown nowhere.
 //
-// The one place this INTENTIONALLY diverges from the page: the page reshuffles
-// the top-stories order (pin → sports-can't-lead → hero-freshness) purely for
-// display. That reordering never changes band MEMBERSHIP or the dedup set (all of
-// pool ≤ 12 is claimed regardless of order), so it is omitted here — the Live lane
-// mirrors WHICH stories land where and their counts, not the cosmetic hero order.
+// The top area is mirrored to the page's REAL display, not raw rank order: the same reshuffle the page
+// applies to the top-stories pool (pin → sports-can't-lead → hero-freshness) runs here too, and the
+// pool is split into the page's TWO labelled bands — "Top Stories" (the hero grid) and "More Top
+// Stories" — so desk order and grouping match what a reader actually sees.
+//
+// One faithful quirk: the page's hero grid never renders pool[1] — the 2nd-ranked non-pinned card
+// falls through an unused slot (see long-read-page.tsx's TOP STORIES section). We mirror that: pool[1]
+// is counted in Top Stories' hiddenEligible, not shown as a live row.
 //
 // Pure: no I/O, no mutation of inputs. Local accumulator arrays/sets never escape.
 
@@ -59,6 +62,7 @@ export interface FrontPageLayout {
 }
 
 const TOP_STORIES_KEY = 'top-stories';
+const MORE_TOP_STORIES_KEY = 'more-top-stories';
 const AROUND_KEY = 'around-the-world';
 const DEMOCRACY_KEY = 'democracy';
 const LATEST_KEY = 'latest';
@@ -87,40 +91,72 @@ function storyToLaidOut(card: StoryCard): LaidOutStory {
   return { id: card.id, headline: card.title, dek: card.deck, image: card.image, isHub: false };
 }
 
-/** A hub renders as its LEAD member card, but the desk keeps the hub badge + angle count. */
-function hubToLaidOut(hub: EventHub): LaidOutStory | null {
-  const lead = hub.members[0];
-  if (!lead) return null;
-  return {
-    id: lead.id,
-    headline: lead.title,
-    dek: lead.deck,
-    image: lead.image,
-    isHub: true,
-    hubMemberCount: hub.memberCount,
-  };
+/** A representative top-stories card kept alongside its hub badge, before the pool is laid out. */
+interface RepCard {
+  card: StoryCard;
+  isHub: boolean;
+  hubMemberCount?: number;
 }
 
 /**
- * Flatten top-stories into the display pool (page's `cardPool`): a hub collapses to ONE lead card,
- * a plain card is itself; de-duplicated by id, order preserved.
+ * Flatten top-stories into representative cards (page's `cardPool`): a hub collapses to its LEAD
+ * member, a plain card is itself; de-duplicated by id, order preserved. The underlying StoryCard is
+ * retained so the display reshuffle can read its topic / freshness / pinned flags.
  */
-function buildPool(units: ReadonlyArray<StoryCard | EventHub>): LaidOutStory[] {
-  const out: LaidOutStory[] = [];
-  const poolSeen = new Set<string>();
+function flattenTopStories(units: ReadonlyArray<StoryCard | EventHub>): RepCard[] {
+  const out: RepCard[] = [];
+  const seen = new Set<string>();
   for (const unit of units) {
-    const card = isHub(unit) ? hubToLaidOut(unit) : storyToLaidOut(unit);
-    if (!card || poolSeen.has(card.id)) continue;
-    poolSeen.add(card.id);
-    out.push(card);
+    const card = isHub(unit) ? unit.members[0] : unit;
+    if (!card || seen.has(card.id)) continue;
+    seen.add(card.id);
+    out.push(isHub(unit) ? { card, isHub: true, hubMemberCount: unit.memberCount } : { card, isHub: false });
   }
   return out;
+}
+
+/**
+ * Reorder the pool for display exactly as long-read-page.tsx does: editor pins lead (exempt from the
+ * auto rules), then sports can't lead, then fresh (<8h) hero cards rise above stale ones. Pure — the
+ * input array and its cards are never mutated.
+ */
+function reorderForDisplay(entries: ReadonlyArray<RepCard>): RepCard[] {
+  const pinnedLead = entries.filter((e) => e.card.pinned);
+  let auto = entries.filter((e) => !e.card.pinned);
+
+  // Rule 1: Sports can never lead — a single match's sources inflate its score.
+  if (auto.length > 1 && auto[0].card.topic.toLowerCase() === 'sports') {
+    const idx = auto.findIndex((e) => e.card.topic.toLowerCase() !== 'sports');
+    if (idx > 0) auto = [auto[idx], ...auto.slice(0, idx), ...auto.slice(idx + 1)];
+  }
+
+  // Rule 2: Hero-grid freshness — fresh stories rise above stale within the hero window; order kept.
+  const FRESH_S = 8 * 3600;
+  const HERO_SLOTS = 12;
+  const heroHead = auto.slice(0, HERO_SLOTS);
+  const fresh = heroHead.filter((e) => e.card.freshnessSeconds <= FRESH_S);
+  const stale = heroHead.filter((e) => e.card.freshnessSeconds > FRESH_S);
+  auto = [...fresh, ...stale, ...auto.slice(HERO_SLOTS)];
+
+  return [...pinnedLead, ...auto];
+}
+
+/** Map a representative card to a laid-out story, keeping the hub badge + angle count. */
+function repToLaidOut(entry: RepCard): LaidOutStory {
+  return {
+    id: entry.card.id,
+    headline: entry.card.title,
+    dek: entry.card.deck,
+    image: entry.card.image,
+    isHub: entry.isHub,
+    ...(entry.isHub ? { hubMemberCount: entry.hubMemberCount } : {}),
+  };
 }
 
 /** Every story id already spoken for above the rails: the pool leads + every hub member. */
 function seedSeen(fp: FrontPage, pool: ReadonlyArray<LaidOutStory>): Set<string> {
   const seen = new Set<string>();
-  for (const card of pool) seen.add(card.id); // page: pool.slice(0,15); pool ≤ 12, so all
+  for (const card of pool.slice(0, 15)) seen.add(card.id); // page: pool.slice(0,15)
   for (const unit of fp.topStories) {
     if (isHub(unit)) for (const member of unit.members) seen.add(member.id);
   }
@@ -172,7 +208,7 @@ function buildRailPool(fp: FrontPage): StoryCard[] {
  * empty bands are dropped.
  */
 export function layoutFrontPage(fp: FrontPage): FrontPageLayout {
-  const pool = buildPool(fp.topStories);
+  const pool = reorderForDisplay(flattenTopStories(fp.topStories)).map(repToLaidOut);
   const seen = seedSeen(fp, pool);
 
   // 3. Around the World claims before the rails so the map stays full.
@@ -198,11 +234,21 @@ export function layoutFrontPage(fp: FrontPage): FrontPageLayout {
 
   const bands: LaidOutBand[] = [];
 
-  // The page renders THREE distinct labelled elements in its top area — the Top Stories hero/grid, the
-  // LIVE ticker (right column) and the "Most covered" sidebar. They are SEPARATE bands here so each CMS
-  // count matches a real page section; merging them made "Top Stories" over-count (pool + rails).
-  if (pool.length > 0) {
-    bands.push({ key: TOP_STORIES_KEY, label: 'Top Stories', stories: pool, hiddenEligible: 0 });
+  // The page's top area is FOUR labelled elements: the "Top Stories" hero grid, the "More Top Stories"
+  // band, the LIVE ticker (right column) and the "Most covered" sidebar. Each is a SEPARATE band here so
+  // every CMS count maps to a real page section.
+  //
+  // Hero grid renders pool[0] then pool[2..6] (pool[1] falls through an unused slot on the page — count
+  // it hidden, don't show it). "More Top Stories" renders pool[7..14].
+  const HERO_INDICES = [0, 2, 3, 4, 5, 6];
+  const heroStories = HERO_INDICES.map((i) => pool[i]).filter((s): s is LaidOutStory => Boolean(s));
+  const droppedLead = pool[1] ? 1 : 0;
+  if (heroStories.length > 0) {
+    bands.push({ key: TOP_STORIES_KEY, label: 'Top Stories', stories: heroStories, hiddenEligible: droppedLead });
+  }
+  const moreTopStories = pool.slice(7, 15);
+  if (moreTopStories.length > 0) {
+    bands.push({ key: MORE_TOP_STORIES_KEY, label: 'More Top Stories', stories: moreTopStories, hiddenEligible: 0 });
   }
   const latestStories = latest.map(storyToLaidOut);
   if (latestStories.length > 0) {
