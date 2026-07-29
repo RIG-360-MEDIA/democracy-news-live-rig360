@@ -26,9 +26,8 @@
 // pool is split into the page's TWO labelled bands — "Top Stories" (the hero grid) and "More Top
 // Stories" — so desk order and grouping match what a reader actually sees.
 //
-// One faithful quirk: the page's hero grid never renders pool[1] — the 2nd-ranked non-pinned card
-// falls through an unused slot (see long-read-page.tsx's TOP STORIES section). We mirror that: pool[1]
-// is counted in Top Stories' hiddenEligible, not shown as a live row.
+// The hero grid renders pool[0..5] contiguously and "More Top Stories" renders pool[6..13], so every
+// top story is shown at a real slot — no rank is skipped.
 //
 // Pure: no I/O, no mutation of inputs. Local accumulator arrays/sets never escape.
 
@@ -238,15 +237,12 @@ export function layoutFrontPage(fp: FrontPage): FrontPageLayout {
   // band, the LIVE ticker (right column) and the "Most covered" sidebar. Each is a SEPARATE band here so
   // every CMS count maps to a real page section.
   //
-  // Hero grid renders pool[0] then pool[2..6] (pool[1] falls through an unused slot on the page — count
-  // it hidden, don't show it). "More Top Stories" renders pool[7..14].
-  const HERO_INDICES = [0, 2, 3, 4, 5, 6];
-  const heroStories = HERO_INDICES.map((i) => pool[i]).filter((s): s is LaidOutStory => Boolean(s));
-  const droppedLead = pool[1] ? 1 : 0;
+  // Hero grid renders pool[0..5]; "More Top Stories" renders pool[6..13]. Contiguous — no slot skipped.
+  const heroStories = pool.slice(0, 6);
   if (heroStories.length > 0) {
-    bands.push({ key: TOP_STORIES_KEY, label: 'Top Stories', stories: heroStories, hiddenEligible: droppedLead });
+    bands.push({ key: TOP_STORIES_KEY, label: 'Top Stories', stories: heroStories, hiddenEligible: 0 });
   }
-  const moreTopStories = pool.slice(7, 15);
+  const moreTopStories = pool.slice(6, 14);
   if (moreTopStories.length > 0) {
     bands.push({ key: MORE_TOP_STORIES_KEY, label: 'More Top Stories', stories: moreTopStories, hiddenEligible: 0 });
   }

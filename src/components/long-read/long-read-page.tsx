@@ -155,19 +155,19 @@ export function LongReadPage({ data }: { data: FrontPage }) {
       {/* ═══════════ TOP STORIES BAND — 3 columns ═══════════ */}
       <section id="top" className="px-5 md:px-10 lg:px-16 pt-10 pb-6" style={{ scrollMarginTop: 96 }}>
         <div className="mx-auto grid gap-x-9 lg:[grid-template-columns:1fr_1.65fr_1fr]" style={{ maxWidth: 1600 }}>
-          {/* LEFT — secondary lead + stacked. (Formerly ended with a filler CompactWithImage of
-              heroPool[0] to fill whitespace under a tall centre hero, but it now overflows PAST the
-              centre and dangles alone with empty columns beside it — removed to close that gap.) */}
+          {/* LEFT — secondary lead + stacked. Hero slots run CONTIGUOUSLY over heroPool[0..4] (across
+              centre + left) so no top story is skipped — heroPool[0] (the #2 story) used to fall
+              through an unused slot and vanish from the whole page. */}
           <div className="lg:pr-7" style={{ borderRight: `1px solid ${RULE}` }}>
-            {heroPool[3] && <LeadStory story={heroPool[3]} />}
-            {heroPool[4] && <><Rule /><CompactWithImage story={heroPool[4]} /></>}
-            {heroPool[5] && <><Rule /><TextOnlyStory story={heroPool[5]} /></>}
+            {heroPool[2] && <LeadStory story={heroPool[2]} />}
+            {heroPool[3] && <><Rule /><CompactWithImage story={heroPool[3]} /></>}
+            {heroPool[4] && <><Rule /><TextOnlyStory story={heroPool[4]} /></>}
           </div>
-          {/* CENTRE — THE top headline (pool[0]) as the big hero + two stacked */}
+          {/* CENTRE — THE top headline (pool[0]) as the big hero + the next two (heroPool[0..1]) stacked */}
           <div className="lg:pr-7" style={{ borderRight: `1px solid ${RULE}` }}>
             {pool[0] && <HeroStory story={pool[0]} />}
-            {heroPool[1] && <><Rule /><CompactWithImage story={heroPool[1]} /></>}
-            {heroPool[2] && <><Rule /><TextOnlyStory story={heroPool[2]} /></>}
+            {heroPool[0] && <><Rule /><CompactWithImage story={heroPool[0]} /></>}
+            {heroPool[1] && <><Rule /><TextOnlyStory story={heroPool[1]} /></>}
           </div>
           {/* RIGHT — Live news ticker */}
           <div>
@@ -185,10 +185,10 @@ export function LongReadPage({ data }: { data: FrontPage }) {
           <BandTitle text="More Top Stories" />
           <div className="grid gap-x-9 gap-y-8 lg:[grid-template-columns:1.2fr_1.5fr_1fr]">
             <div className="lg:pr-7" style={{ borderRight: `1px solid ${RULE}` }}>
-              {heroPool[6] && <ImageHeroStory story={heroPool[6]} />}
+              {heroPool[5] && <ImageHeroStory story={heroPool[5]} />}
             </div>
             <div className="lg:pr-7" style={{ borderRight: `1px solid ${RULE}` }}>
-              <HeadlineStack stories={heroPool.slice(7, 14)} />
+              <HeadlineStack stories={heroPool.slice(6, 13)} />
             </div>
             <div>
               <SidebarHead title="Most covered" />
