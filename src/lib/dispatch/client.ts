@@ -125,28 +125,140 @@ async function callMock<T>(schema: z.ZodType<T>, call: Promise<MockResponse>): P
   return unwrap(schema, { status: raw.status, json: raw.body });
 }
 
+// ─── Live-box adapters ───────────────────────────────────────────────────────
+// The deployed box returns raw DB rows (id + snake internals) and splits the review
+// bundle across separate endpoints. These map its real responses onto the wire
+// contract (types.ts) before validation, so the CMS UI stays unchanged.
+
+/** Call the box, unwrap the { ok, data, error } envelope, return raw `data` (no schema). */
+async function callBoxRaw(path: string, editorId: string, init?: RequestInit): Promise<unknown> {
+  const token = process.env.BOX_STUDIO_TOKEN;
+  if (!token) throw new DispatchError('config', 'BOX_STUDIO_TOKEN is not configured', 500);
+  const res = await fetch(`${boxUrl()}${path}`, {
+    ...init,
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}`, 'X-Editor-Id': editorId, ...init?.headers },
+    cache: 'no-store',
+  });
+  let json: { ok?: boolean; data?: unknown; error?: { code?: string; message?: string; details?: unknown } };
+  try {
+    json = (await res.json()) as typeof json;
+  } catch {
+    throw new DispatchError('bad_gateway', `Box returned non-JSON (HTTP ${res.status})`, 502);
+  }
+  if (!json || json.ok !== true || json.data == null) {
+    const status = res.status >= 400 ? res.status : 502;
+    throw new DispatchError(json?.error?.code ?? 'unknown_error', json?.error?.message ?? 'Request failed', status, json?.error?.details);
+  }
+  return json.data;
+}
+
+/** Box job row (id + internals) → wire JobStatus (job_id + curated subset). */
+function toJobStatus(raw: Record<string, unknown>): JobStatus {
+  return jobStatusSchema.parse({
+    job_id: raw.id,
+    state: raw.state,
+    phase_detail: raw.phase_detail ?? null,
+    headline: raw.headline ?? null,
+    created_by: raw.created_by,
+    created_at: raw.created_at,
+    updated_at: raw.updated_at,
+  });
+}
+
+/** Box may store the resolve action verbatim ('dismiss'); the wire status enum is 'dismissed'. */
+function wireFlagStatus(status: unknown): unknown {
+  return status === 'dismiss' ? 'dismissed' : status;
+}
+
 export async function createJob(req: CreateJobRequest, editorId: string): Promise<JobStatus> {
   if (useMock()) return callMock(jobStatusSchema, mock.createJob(req, editorId));
-  return callBox('/jobs', jobStatusSchema, editorId, { method: 'POST', body: JSON.stringify(req) });
+  const raw = await callBoxRaw('/jobs', editorId, {
+    method: 'POST',
+    body: JSON.stringify({ input_text: req.input_text, dials: req.dials }),
+  });
+  return toJobStatus(raw as Record<string, unknown>);
 }
 
 export async function listJobs(ids: string[] | undefined, editorId: string): Promise<JobStatus[]> {
   if (useMock()) return callMock(z.array(jobStatusSchema), mock.listJobs(ids, editorId));
-  const qs = ids && ids.length > 0 ? `?ids=${ids.map(encodeURIComponent).join(',')}` : '';
-  return callBox(`/jobs${qs}`, z.array(jobStatusSchema), editorId);
+  // Box GET /jobs has no id filter — scope to this editor, then filter to requested ids client-side.
+  const raw = (await callBoxRaw(`/jobs?created_by=${encodeURIComponent(editorId)}&limit=200`, editorId)) as Record<string, unknown>[];
+  const out = raw.map(toJobStatus);
+  if (ids && ids.length > 0) {
+    const want = new Set(ids);
+    return out.filter((j) => want.has(j.job_id));
+  }
+  return out;
 }
 
 export async function getJob(jobId: string, editorId: string): Promise<DraftBundle> {
   if (useMock()) return callMock(draftBundleSchema, mock.getJob(jobId, editorId));
-  return callBox(`/jobs/${encodeURIComponent(jobId)}`, draftBundleSchema, editorId);
+  // The box splits the bundle across endpoints — job status, draft (nested), flags, images, evidence.
+  const id = encodeURIComponent(jobId);
+  const [job, draftResp, flagsRaw, imagesRaw, evidenceRaw] = (await Promise.all([
+    callBoxRaw(`/jobs/${id}`, editorId),
+    callBoxRaw(`/jobs/${id}/draft`, editorId),
+    callBoxRaw(`/jobs/${id}/flags`, editorId),
+    callBoxRaw(`/jobs/${id}/images`, editorId),
+    callBoxRaw(`/jobs/${id}/evidence`, editorId),
+  ])) as [
+    Record<string, unknown>,
+    { version: { draft: Record<string, unknown> } },
+    Record<string, unknown>[],
+    Record<string, unknown>[],
+    Record<string, unknown>[],
+  ];
+  const draft = draftResp.version.draft;
+  // The box returns the whole gather corpus; keep only evidence the draft actually cites.
+  const cited = new Set<string>();
+  const collect = (arr: unknown) => {
+    for (const item of (arr as { source_ids?: string[] }[] | undefined) ?? []) for (const s of item.source_ids ?? []) cited.add(s);
+  };
+  collect(draft.beats);
+  collect(draft.key_facts);
+  const pq = draft.pull_quote as { source_id?: string } | null;
+  if (pq?.source_id) cited.add(pq.source_id);
+  const evidence = evidenceRaw
+    .filter((e) => cited.has(e.source_id as string))
+    .map((e) => ({
+      source_id: e.source_id,
+      source_type: e.source_type,
+      trust_tier: e.trust_tier,
+      title: e.title ?? null,
+      url: e.url ?? null,
+      outlet: e.outlet ?? null,
+      snippet: e.text ?? '',
+      published_at: e.published_at ?? null,
+    }));
+  return draftBundleSchema.parse({
+    job_id: job.id,
+    state: job.state,
+    dials: job.dials,
+    draft,
+    flags: flagsRaw.map((f) => ({ ...f, status: wireFlagStatus(f.status) })),
+    evidence,
+    images: imagesRaw,
+  });
 }
 
 export async function saveEdit(jobId: string, req: SaveEditRequest, editorId: string): Promise<DraftBundle> {
   if (useMock()) return callMock(draftBundleSchema, mock.saveEdit(jobId, req, editorId));
-  return callBox(`/jobs/${encodeURIComponent(jobId)}`, draftBundleSchema, editorId, {
-    method: 'PATCH',
-    body: JSON.stringify(req),
+  // Box /edit needs the FULL draft; merge the editor's beats/headline/dek onto the current version.
+  const id = encodeURIComponent(jobId);
+  const cur = ((await callBoxRaw(`/jobs/${id}/draft`, editorId)) as { version: { draft: Record<string, unknown> } }).version.draft;
+  const beats = (req.beats ?? []).map((b) => ({ subhead: b.subhead, text: b.text, source_ids: b.source_ids ?? [] }));
+  await callBoxRaw(`/jobs/${id}/edit`, editorId, {
+    method: 'POST',
+    body: JSON.stringify({
+      headline: req.headline ?? cur.headline,
+      dek: req.dek ?? cur.dek,
+      beats,
+      key_facts: cur.key_facts ?? [],
+      pull_quote: cur.pull_quote ?? null,
+      unsourced_gaps: cur.unsourced_gaps ?? [],
+    }),
   });
+  return getJob(jobId, editorId);
 }
 
 export async function resolveFlag(
@@ -156,10 +268,13 @@ export async function resolveFlag(
   editorId: string,
 ): Promise<Flag> {
   if (useMock()) return callMock(flagSchema, mock.resolveFlag(jobId, flagId, req, editorId));
-  return callBox(`/jobs/${encodeURIComponent(jobId)}/flags/${encodeURIComponent(flagId)}`, flagSchema, editorId, {
+  // Box expects the resolved STATUS ('dismissed' | 'fixed'); the CMS action verb is 'dismiss' | 'fixed'.
+  const action = req.action === 'dismiss' ? 'dismissed' : req.action;
+  const raw = (await callBoxRaw(`/jobs/${encodeURIComponent(jobId)}/flags/${encodeURIComponent(flagId)}`, editorId, {
     method: 'POST',
-    body: JSON.stringify(req),
-  });
+    body: JSON.stringify({ action, note: req.note }),
+  })) as Record<string, unknown>;
+  return flagSchema.parse({ ...raw, status: wireFlagStatus(raw.status) });
 }
 
 export async function regenerate(jobId: string, editorId: string): Promise<JobStatus> {
@@ -179,7 +294,8 @@ export async function pickThumbnail(jobId: string, imageId: string, editorId: st
 
 export async function finalize(jobId: string, editorId: string): Promise<FinalizePayload> {
   if (useMock()) return callMock(finalizePayloadSchema, mock.finalize(jobId, editorId));
-  return callBox(`/jobs/${encodeURIComponent(jobId)}/finalize`, finalizePayloadSchema, editorId, { method: 'POST' });
+  const raw = await callBoxRaw(`/jobs/${encodeURIComponent(jobId)}/finalize`, editorId, { method: 'POST' });
+  return finalizePayloadSchema.parse(raw);
 }
 
 const confirmPublishedResponseSchema = z.object({ acknowledged: z.boolean() });
@@ -189,10 +305,11 @@ export async function confirmPublished(jobId: string, storyId: string, editorId:
     await callMock(confirmPublishedResponseSchema, mock.confirmPublished(jobId, storyId, editorId));
     return;
   }
-  await callBox(
-    `/jobs/${encodeURIComponent(jobId)}/confirm-publish`,
-    confirmPublishedResponseSchema,
-    editorId,
-    { method: 'POST', body: JSON.stringify({ story_id: storyId }) },
-  );
+  // Box path is /published and needs the draft version; fetch it, then confirm (best-effort).
+  const id = encodeURIComponent(jobId);
+  const cur = (await callBoxRaw(`/jobs/${id}/draft`, editorId)) as { version: { version: number } };
+  await callBoxRaw(`/jobs/${id}/published`, editorId, {
+    method: 'POST',
+    body: JSON.stringify({ version: cur.version.version, neon_story_id: storyId }),
+  });
 }
