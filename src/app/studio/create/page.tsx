@@ -3,7 +3,7 @@
 import { redirect } from 'next/navigation';
 
 import { CmsCard, CmsCardGrid } from '@/components/studio/cms-card';
-import { listJobs } from '@/lib/dispatch/client';
+import { isDispatchLive, listJobs } from '@/lib/dispatch/client';
 import { listManualStories } from '@/lib/studio/manual';
 import { requireEditor } from '@/lib/studio/session';
 import { countryName } from '@/lib/worldwide/country';
@@ -20,13 +20,20 @@ export default async function Page() {
 
   const recent = await listManualStories(30);
 
+  // Door B (AI topic drafts) is shown only when a real box is configured — or in dev, where mock mode
+  // is fine for testing. In production without BOX_STUDIO_URL the dispatch client is in mock mode, so
+  // exposing "From a topic" would let editors gather/publish fixture drafts as if they were real.
+  const doorBEnabled = isDispatchLive() || process.env.NODE_ENV !== 'production';
+
   let jobs: JobStatus[] = [];
-  try {
-    jobs = await listJobs(undefined, guard.editor.id);
-  } catch {
-    // The draft desk is optional context here — a box/mock hiccup must not 500
-    // the whole Create page. Fall back to an empty tray.
-    jobs = [];
+  if (doorBEnabled) {
+    try {
+      jobs = await listJobs(undefined, guard.editor.id);
+    } catch {
+      // The draft desk is optional context here — a box/mock hiccup must not 500
+      // the whole Create page. Fall back to an empty tray.
+      jobs = [];
+    }
   }
 
   return (
@@ -35,12 +42,12 @@ export default async function Page() {
         Create a story
       </h1>
       <p style={{ fontSize: 12.5, color: '#888', marginBottom: 20 }}>
-        Author a manual story, or hand the machine a topic brief and let it gather and draft. Manual
-        stories bypass the generator; topic drafts land in <em>My Drafts</em> below and go to review
-        once ready.
+        {doorBEnabled
+          ? 'Author a manual story, or hand the machine a topic brief and let it gather and draft. Manual stories bypass the generator; topic drafts land in My Drafts below and go to review once ready.'
+          : 'Author a story by hand. (AI topic drafts are unavailable until the generation service is configured.)'}
       </p>
 
-      <CreateClient initialJobs={jobs} />
+      <CreateClient initialJobs={jobs} doorBEnabled={doorBEnabled} />
 
       <h2 style={{ fontFamily: 'var(--font-fraunces), Georgia, serif', fontSize: 18, fontWeight: 600, margin: '30px 0 10px' }}>
         Recently created

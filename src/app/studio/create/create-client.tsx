@@ -25,11 +25,19 @@ const TABS: ReadonlyArray<SegmentedOption<Tab>> = [
 
 interface CreateClientProps {
   initialJobs: ReadonlyArray<JobStatus>;
+  /** When false (prod without a configured box), Door B is hidden — manual authoring only. */
+  doorBEnabled: boolean;
 }
 
-function CreateShell({ initialJobs }: CreateClientProps) {
+function CreateShell({ initialJobs, doorBEnabled }: CreateClientProps) {
   const [tab, setTab] = useState<Tab>('manual');
   const { jobs, addJob } = useDraftPolling(initialJobs);
+
+  // Door B off: no From-a-topic toggle, no brief form, no drafts tray — just manual authoring, so
+  // editors can't gather or publish mock fixture drafts before the generation box is configured.
+  if (!doorBEnabled) {
+    return <ManualForm />;
+  }
 
   return (
     <div>
@@ -48,10 +56,10 @@ function CreateShell({ initialJobs }: CreateClientProps) {
   );
 }
 
-export default function CreateClient({ initialJobs }: CreateClientProps) {
+export default function CreateClient({ initialJobs, doorBEnabled }: CreateClientProps) {
   return (
     <ToastProvider>
-      <CreateShell initialJobs={initialJobs} />
+      <CreateShell initialJobs={initialJobs} doorBEnabled={doorBEnabled} />
     </ToastProvider>
   );
 }

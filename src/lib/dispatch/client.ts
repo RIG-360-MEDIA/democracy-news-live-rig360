@@ -60,6 +60,14 @@ function useMock(): boolean {
   return !url || url === 'mock';
 }
 
+/**
+ * True when a REAL box is configured (not mock mode). Door B UI + publishing gate on this so
+ * production never serves — or worse, publishes — fixture drafts as if they were real stories.
+ */
+export function isDispatchLive(): boolean {
+  return !useMock();
+}
+
 function boxUrl(): string {
   const url = process.env.BOX_STUDIO_URL;
   if (!url || url === 'mock') {

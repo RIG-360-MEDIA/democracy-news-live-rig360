@@ -12,7 +12,7 @@ import { revalidateTag } from 'next/cache';
 import { NextResponse } from 'next/server';
 
 import { CACHE_TAGS } from '@/lib/cache';
-import { confirmPublished, DispatchError, finalize } from '@/lib/dispatch/client';
+import { confirmPublished, DispatchError, finalize, isDispatchLive } from '@/lib/dispatch/client';
 import { sql } from '@/lib/db';
 import { createPublishableManualStory } from '@/lib/studio/draft-publish';
 import { requireEditor } from '@/lib/studio/session';
@@ -39,6 +39,13 @@ export async function POST(_req: Request, { params }: RouteContext) {
     return fail('403', 'The local dev identity cannot publish. Sign in as a real editor.', 403);
   }
   const editorId = guard.editor.id;
+
+  // Defense-in-depth: in production without a configured box the dispatch client is in mock mode, so
+  // finalize() returns a FIXTURE payload. Never publish a fixture as a real story — the UI hides Door B
+  // in this state, but a deep link to the publish route must refuse too.
+  if (process.env.NODE_ENV === 'production' && !isDispatchLive()) {
+    return fail('503', 'Draft publishing is unavailable until the generation box is configured.', 503);
+  }
 
   const { id: jobId } = await params;
   if (!jobId) return fail('400', 'Job id is required', 400);
