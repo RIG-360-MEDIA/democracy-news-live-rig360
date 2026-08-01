@@ -397,10 +397,11 @@ export async function getStoryDetail(id: string): Promise<StoryDetail | null> {
   // strip stray markdown ("**", leading "#"/">") the generator sometimes leaves in the headline/deck
   const stripMd = (s: string): string => s.replace(/\*+/g, '').replace(/^\s*[#>]+\s*/, '').trim();
 
-  // Sourced licensed hero wins when present; otherwise fall back to the best member photo.
+  // The story's OWN news photo (rep/member, from the actual coverage) is the most RELEVANT, so it
+  // wins. A loosely place-matched Wikimedia Commons "hero" was overriding it and could surface an
+  // irrelevant photo (e.g. a Delhi-zoo goose on an LPG-price story); the Commons photo is now only
+  // a fallback for when there is no clean news photo, and its attribution caption shows only then.
   const heroImg = toHeroImage(r.generated_image);
-  // Inline article figures: use the sourced gallery (clean, credited) when we have it,
-  // else fall back to the deduped member photos.
   const sourcedGallery = toGallery(r.generated_image);
 
   return {
@@ -408,9 +409,9 @@ export async function getStoryDetail(id: string): Promise<StoryDetail | null> {
     kicker,
     title: stripMd(r.headline) || r.representative_title || r.headline,
     deck: stripMd(r.deck ?? '') || null,
-    image: heroImg?.url ?? r.image,
-    heroImage: heroImg,
-    images: sourcedGallery.length > 0 ? sourcedGallery : images,
+    image: heroImage ?? heroImg?.url ?? r.image,
+    heroImage: heroImage ? null : heroImg,
+    images: images.length > 0 ? images : sourcedGallery,
     pullQuote,
     stats,
     coverage,
