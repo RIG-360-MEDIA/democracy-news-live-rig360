@@ -9,7 +9,7 @@ import { ThemeToggle } from '@/components/brand/theme-toggle';
 
 import { TweetCard } from './tweet-card';
 
-import type { CoveragePoint, StoryDetail, StoryImage, TweetEmbed } from '@/lib/worldwide/detail';
+import type { CoveragePoint, LensView, StoryDetail, StoryImage, TweetEmbed } from '@/lib/worldwide/detail';
 
 const INK = 'var(--rw-ink)';
 const BODY = 'var(--rw-body)';
@@ -128,6 +128,68 @@ function ScrollHint() {
       <button onClick={dismiss} aria-label="Got it"
         style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', fontSize: 15, lineHeight: 1, padding: 0, opacity: 0.8 }}>✕</button>
     </div>
+  );
+}
+
+/**
+ * "See this from another side" — perspective retellings of the same story. All lenses ship
+ * with the page (pre-generated + synced), so switching is instant. Framed as a clearly-separate
+ * section (not masquerading as the neutral article) and carries a grounding/honesty note.
+ */
+function PerspectiveLenses({ lenses }: { lenses: LensView[] }) {
+  const [active, setActive] = useState<string | null>(null);
+  const current = lenses.find((l) => l.key === active) ?? null;
+  return (
+    <section style={{ marginTop: 40, paddingTop: 22, borderTop: `1px solid ${RULE}` }}>
+      <div style={{ ...label, fontSize: 15, fontWeight: 800, color: RED, letterSpacing: '0.06em', fontFamily: 'var(--font-jakarta), sans-serif', marginBottom: 6 }}>
+        See this from another side
+      </div>
+      <p style={{ fontFamily: 'var(--font-jakarta), sans-serif', fontSize: 13, color: MUTED, lineHeight: 1.5, marginBottom: 14 }}>
+        The same story, re-told through how each actor sees it — the facts stay the same, only the vantage shifts.
+      </p>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+        {lenses.map((l) => {
+          const on = l.key === active;
+          return (
+            <button
+              key={l.key}
+              type="button"
+              onClick={() => setActive(on ? null : l.key)}
+              style={{ fontFamily: 'var(--font-jakarta), sans-serif', fontSize: 12.5, fontWeight: 700, padding: '7px 13px', borderRadius: 999, cursor: 'pointer', border: `1px solid ${on ? RED : RULE}`, color: on ? '#fff' : INK, background: on ? RED : 'transparent' }}
+            >
+              {l.label}
+            </button>
+          );
+        })}
+      </div>
+      {current && (
+        <div style={{ marginTop: 20, padding: '20px 22px', border: `1px solid ${RULE}`, borderLeft: `3px solid ${RED}`, borderRadius: 3 }}>
+          <div style={{ ...label, fontSize: 10, color: ACCENT, marginBottom: 10 }}>Through the eyes of · {current.label}</div>
+          <h3 style={{ fontFamily: 'var(--font-fraunces), Georgia, serif', color: INK, fontSize: 'clamp(1.35rem, 1.7vw, 1.72rem)', fontWeight: 600, lineHeight: 1.14, letterSpacing: '-0.01em', margin: '0 0 14px' }}>
+            {current.headline}
+          </h3>
+          {toBlocks(current.paragraphs).map((b, i) =>
+            b.kind === 'heading' ? (
+              <div key={i} style={{ ...label, fontSize: 13, fontWeight: 800, color: RED, marginTop: 20, marginBottom: 9, fontFamily: 'var(--font-jakarta), sans-serif', letterSpacing: '0.05em' }}>
+                {b.text}
+              </div>
+            ) : (
+              <p key={i} style={{ fontFamily: 'var(--font-fraunces), Georgia, serif', color: BODY, fontSize: 'clamp(1rem, 1.05vw, 1.08rem)', lineHeight: 1.72, marginBottom: 15 }}>
+                {renderParagraph(b.text)}
+              </p>
+            ),
+          )}
+          {current.framingNote && (
+            <p style={{ marginTop: 16, paddingTop: 12, borderTop: `1px solid ${RULE}`, fontFamily: 'var(--font-jakarta), sans-serif', fontSize: 11.5, color: MUTED, lineHeight: 1.5, fontStyle: 'italic' }}>
+              How this lens is grounded: {current.framingNote}
+            </p>
+          )}
+          <div style={{ ...label, fontSize: 9.5, color: FAINT, marginTop: 10, fontFamily: 'var(--font-mono), monospace' }}>
+            A perspective retelling · same facts, one vantage
+          </div>
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -250,6 +312,7 @@ export function StoryRead({ story }: { story: StoryDetail }) {
         {/* RIGHT HALF — the article with woven media */}
         <article className="lg:pl-14 lg:border-l order-last lg:order-none" style={{ borderColor: RULE, minWidth: 0, marginTop: 6 }}>
           {nodes}
+          {story.lenses && story.lenses.length > 0 && <PerspectiveLenses lenses={story.lenses} />}
           <div style={{ marginTop: 26 }}>
             <Link href="/long-read" style={{ ...label, fontSize: 10.5, color: ACCENT }}>← Back to DNL</Link>
           </div>

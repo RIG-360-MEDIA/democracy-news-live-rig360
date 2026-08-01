@@ -115,6 +115,14 @@ export function toHeroImage(raw: unknown): HeroImage | null {
   };
 }
 
+export interface LensView {
+  key: string;
+  label: string; // e.g. "Iran's view", "Pakistani rescue authorities"
+  headline: string;
+  paragraphs: string[]; // lens body, split like the main body
+  framingNote: string | null; // what in the brief this lens is grounded in (honesty tag)
+}
+
 export interface StoryDetail {
   id: string;
   kicker: string; // "topic · country"
@@ -128,6 +136,7 @@ export interface StoryDetail {
   coverage: CoveragePoint[]; // real articles-per-day series for the coverage chart
   paragraphs: string[]; // body split into paragraphs
   tweets: TweetEmbed[]; // related tweets to weave between sub-sections (box-selected)
+  lenses?: LensView[]; // perspective retellings ("see this from another side"); absent for manual stories
   readTime: string;
   date: string; // formatted "10 Jun 2026"
 }
@@ -205,6 +214,31 @@ function pullQuoteFrom(paragraphs: string[]): string | null {
 }
 
 const isRuleLine = (raw: string): boolean => /^\s*([-*_]\s*){3,}$/.test(raw);
+
+/** Perspective retellings for a story ("see it from another side"), grounded per-actor on the box. */
+async function getStoryLenses(storyId: string): Promise<LensView[]> {
+  const rows = (await sqlAnalytics`
+    SELECT lens_key, lens_label, headline, body, framing_note
+    FROM analytics.story_lens
+    WHERE story_id = ${storyId}
+    ORDER BY ord ASC, lens_label ASC
+  `) as unknown as Array<{
+    lens_key: string;
+    lens_label: string;
+    headline: string;
+    body: string;
+    framing_note: string | null;
+  }>;
+  return rows
+    .filter((r) => r.body && r.body.trim().length > 0)
+    .map((r) => ({
+      key: r.lens_key,
+      label: r.lens_label,
+      headline: r.headline,
+      paragraphs: toParagraphs(r.body),
+      framingNote: r.framing_note,
+    }));
+}
 
 /** Real "articles added per day" series across all runs — the coverage chart's honest data. */
 async function getCoverage(storyId: string): Promise<CoveragePoint[]> {
@@ -330,7 +364,11 @@ export async function getStoryDetail(id: string): Promise<StoryDetail | null> {
     `) as unknown as { url: string }[];
     if (best?.url) heroImage = best.url;
   }
-  const [images, coverage] = await Promise.all([getStoryImages(id, heroImage), getCoverage(id)]);
+  const [images, coverage, lenses] = await Promise.all([
+    getStoryImages(id, heroImage),
+    getCoverage(id),
+    getStoryLenses(id),
+  ]);
   const pullQuote = pullQuoteFrom(paragraphs);
   const stats = r.article_count
     ? { articles: r.article_count, sources: r.independent_source_count ?? 0 }
@@ -358,6 +396,7 @@ export async function getStoryDetail(id: string): Promise<StoryDetail | null> {
     coverage,
     paragraphs: paragraphs.length > 0 ? paragraphs : [r.body.trim()],
     tweets: toTweetEmbeds(r.tweet_embeds),
+    lenses,
     readTime,
     date,
   };
