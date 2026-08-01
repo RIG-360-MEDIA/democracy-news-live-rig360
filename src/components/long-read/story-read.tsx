@@ -9,7 +9,7 @@ import { ThemeToggle } from '@/components/brand/theme-toggle';
 
 import { TweetCard } from './tweet-card';
 
-import type { CoveragePoint, LensView, StoryDetail, StoryImage, TweetEmbed } from '@/lib/worldwide/detail';
+import type { CoveragePoint, LensView, StoryAudio, StoryDetail, StoryImage, TweetEmbed } from '@/lib/worldwide/detail';
 
 const INK = 'var(--rw-ink)';
 const BODY = 'var(--rw-body)';
@@ -193,6 +193,22 @@ function PerspectiveLenses({ lenses }: { lenses: LensView[] }) {
   );
 }
 
+/** "Listen" — the two-host audio explainer. Rendered only when an MP3 has actually been produced. */
+function ListenPlayer({ audio }: { audio: StoryAudio }) {
+  const mins = audio.durationS ? Math.max(1, Math.round(audio.durationS / 60)) : null;
+  return (
+    <div style={{ marginTop: 18, padding: '13px 15px', border: `1px solid ${RULE}`, borderLeft: `3px solid ${RED}`, borderRadius: 3 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 9 }}>
+        <span style={{ ...label, fontSize: 10.5, color: RED, letterSpacing: '0.08em' }}>▶ Listen · two-host explainer</span>
+        {mins && <span style={{ fontFamily: 'var(--font-mono), monospace', fontSize: 10, color: FAINT }}>{mins} min</span>}
+      </div>
+      <audio controls preload="none" src={audio.url} style={{ width: '100%', height: 34 }}>
+        Your browser does not support audio playback.
+      </audio>
+    </div>
+  );
+}
+
 export function StoryRead({ story }: { story: StoryDetail }) {
   const blocks = toBlocks(story.paragraphs);
 
@@ -307,6 +323,7 @@ export function StoryRead({ story }: { story: StoryDetail }) {
               )}
             </div>
           </div>
+          {story.audio && <ListenPlayer audio={story.audio} />}
         </div>
 
         {/* RIGHT HALF — the article with woven media */}

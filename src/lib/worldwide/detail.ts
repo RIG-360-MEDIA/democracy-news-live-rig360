@@ -123,6 +123,12 @@ export interface LensView {
   framingNote: string | null; // what in the brief this lens is grounded in (honesty tag)
 }
 
+export interface StoryAudio {
+  url: string;
+  title: string | null;
+  durationS: number | null;
+}
+
 export interface StoryDetail {
   id: string;
   kicker: string; // "topic · country"
@@ -137,6 +143,7 @@ export interface StoryDetail {
   paragraphs: string[]; // body split into paragraphs
   tweets: TweetEmbed[]; // related tweets to weave between sub-sections (box-selected)
   lenses?: LensView[]; // perspective retellings ("see this from another side"); absent for manual stories
+  audio?: StoryAudio | null; // two-host audio explainer, present only once rendered
   readTime: string;
   date: string; // formatted "10 Jun 2026"
 }
@@ -238,6 +245,18 @@ async function getStoryLenses(storyId: string): Promise<LensView[]> {
       paragraphs: toParagraphs(r.body),
       framingNote: r.framing_note,
     }));
+}
+
+/** Two-host audio explainer for a story — only rows that have actually been rendered to an MP3. */
+async function getStoryAudio(storyId: string): Promise<StoryAudio | null> {
+  const rows = (await sqlAnalytics`
+    SELECT title, audio_url, duration_s
+    FROM analytics.story_audio
+    WHERE story_id = ${storyId} AND audio_url IS NOT NULL
+    LIMIT 1
+  `) as unknown as Array<{ title: string | null; audio_url: string; duration_s: number | null }>;
+  const r = rows[0];
+  return r ? { url: r.audio_url, title: r.title, durationS: r.duration_s } : null;
 }
 
 /** Real "articles added per day" series across all runs — the coverage chart's honest data. */
@@ -364,10 +383,11 @@ export async function getStoryDetail(id: string): Promise<StoryDetail | null> {
     `) as unknown as { url: string }[];
     if (best?.url) heroImage = best.url;
   }
-  const [images, coverage, lenses] = await Promise.all([
+  const [images, coverage, lenses, audio] = await Promise.all([
     getStoryImages(id, heroImage),
     getCoverage(id),
     getStoryLenses(id),
+    getStoryAudio(id),
   ]);
   const pullQuote = pullQuoteFrom(paragraphs);
   const stats = r.article_count
@@ -397,6 +417,7 @@ export async function getStoryDetail(id: string): Promise<StoryDetail | null> {
     paragraphs: paragraphs.length > 0 ? paragraphs : [r.body.trim()],
     tweets: toTweetEmbeds(r.tweet_embeds),
     lenses,
+    audio,
     readTime,
     date,
   };
