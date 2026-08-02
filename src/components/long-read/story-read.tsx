@@ -362,6 +362,7 @@ export function StoryRead({ story }: { story: StoryDetail }) {
               {story.deck}
             </p>
           )}
+          {story.audio && <AudioPlayer audio={story.audio} />}
           {story.image && (
             <figure style={{ margin: '22px 0 0' }}>
               <img src={story.image} alt={story.title} className="block w-full" style={{ aspectRatio: '16/9', objectFit: 'cover', borderRadius: 2 }}
@@ -390,7 +391,6 @@ export function StoryRead({ story }: { story: StoryDetail }) {
               )}
             </div>
           </div>
-          {story.audio && <AudioPlayer audio={story.audio} />}
         </div>
 
         {/* RIGHT HALF — the article; body swaps to the chosen perspective with one authored fade */}
