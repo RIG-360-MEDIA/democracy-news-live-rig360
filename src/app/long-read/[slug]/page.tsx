@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { unstable_cache } from 'next/cache';
 import { notFound } from 'next/navigation';
 
+import { BRAND } from '@/lib/brand';
 import { CACHE_TAGS, READER_CACHE_TTL } from '@/lib/cache';
 import { getStoryDetail } from '@/lib/worldwide/detail';
 import { StoryRead } from '@/components/long-read/story-read';
@@ -55,5 +56,21 @@ export default async function ArticlePage({ params }: PageProps) {
   const { slug } = await params;
   const story = await getCachedStoryDetail(slug);
   if (!story) notFound();
-  return <StoryRead story={story} />;
+  // Structured data (P06 D-4): lets search engines show this as a news article.
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'NewsArticle',
+    headline: story.title.slice(0, 110),
+    description: story.deck ?? undefined,
+    image: story.image ? [story.image] : undefined,
+    mainEntityOfPage: `${BRAND.siteUrl}/long-read/${slug}`,
+    author: { '@type': 'Organization', name: BRAND.byline },
+    publisher: { '@type': 'Organization', name: BRAND.name, logo: { '@type': 'ImageObject', url: `${BRAND.siteUrl}/logo.png` } },
+  };
+  return (
+    <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, '\\u003c') }} />
+      <StoryRead story={story} />
+    </>
+  );
 }

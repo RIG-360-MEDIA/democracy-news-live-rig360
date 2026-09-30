@@ -10,6 +10,7 @@ import { ThemeToggle } from '@/components/brand/theme-toggle';
 import { TweetCard } from './tweet-card';
 
 import type { CoveragePoint, LensView, StoryAudio, StoryDetail, StoryImage, TweetEmbed } from '@/lib/worldwide/detail';
+import { BRAND } from '@/lib/brand';
 
 const INK = 'var(--rw-ink)';
 const BODY = 'var(--rw-body)';
@@ -371,7 +372,7 @@ export function StoryRead({ story }: { story: StoryDetail }) {
           )}
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginTop: 16, paddingTop: 15, borderTop: `1px solid ${RULE}` }}>
             <div style={{ display: 'flex', gap: 28 }}>
-              {[['Author', 'Rig Wire'], ['Date', story.date], ['Read', story.readTime.replace(' read', '')]].map(([k, v]) => (
+              {[['Author', BRAND.byline], ['Date', story.date], ['Read', story.readTime.replace(' read', '')]].map(([k, v]) => (
                 <div key={k}>
                   <div style={{ ...label, fontSize: 9, color: FAINT, marginBottom: 4 }}>{k}</div>
                   <div style={{ fontFamily: 'var(--font-jakarta), sans-serif', fontSize: 12.5, fontWeight: 700, color: INK }}>{v}</div>

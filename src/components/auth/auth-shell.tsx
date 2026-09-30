@@ -6,6 +6,7 @@ import { motion } from 'framer-motion';
 import { Wordmark } from '@/components/brand/wordmark';
 import { signupAction, type SignupState } from '@/app/(auth)/signup/actions';
 import { signinAction, type SigninState } from '@/app/(auth)/signin/actions';
+import { BRAND } from '@/lib/brand';
 
 type AuthActionState = SignupState | SigninState;
 
@@ -37,7 +38,7 @@ const CONTENT: Record<AuthVariant, VariantContent> = {
     switchHref:    '/signin',
     successKicker: 'ACCOUNT CREATED',
     successHead:   'You’re in.',
-    successBody:   (email) => `Welcome to Rig Wire. Confirmation sent to ${email}.`,
+    successBody:   (email) => `Welcome to ${BRAND.name}. Confirmation sent to ${email}.`,
   },
   signin: {
     kicker:        'RETURNING READER',

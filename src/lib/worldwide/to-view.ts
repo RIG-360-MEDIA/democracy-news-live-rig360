@@ -8,6 +8,7 @@ import { countryName } from './country';
 import type { EventHub, StoryCard } from './types';
 
 import { pickFallback } from './fallback'; // DNL-branded fallback set, used only when a story has no thumbnail
+import { BRAND, cleanDeck } from '@/lib/brand';
 
 /** A card as the long-read components expect it (mirrors LongReadItem + a resolved href). */
 export interface CardView {
@@ -69,8 +70,8 @@ export function toCardView(card: StoryCard): CardView {
     slug: card.id,
     kicker: kickerFor(card),
     title: card.title,
-    deck: card.deck ?? '',
-    author: 'Rig Wire',
+    deck: cleanDeck(card.deck),
+    author: BRAND.byline,
     authorPhoto: '',
     readTime: estReadTime(card),
     image: card.image ?? pickFallback(card.id),

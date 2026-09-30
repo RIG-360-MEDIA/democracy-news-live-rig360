@@ -50,6 +50,8 @@ function isPublicPath(pathname: string): boolean {
     || pathname.startsWith('/signup')
     || pathname.startsWith('/long-read')   // Worldwide — public news surface (read without login)
     || pathname.startsWith('/api/auth')
+    || pathname === '/robots.txt'          // P06 D-4: crawler files are public
+    || pathname === '/sitemap.xml'
     || pathname.startsWith('/_next')
   );
 }
@@ -69,6 +71,9 @@ function isDnlPath(pathname: string): boolean {
     || pathname.startsWith('/onboarding')
     || pathname.startsWith('/api')
     || pathname.startsWith('/_next')
+    // P06 D-4: crawler files must be served, not redirected to the front page
+    || pathname === '/robots.txt'
+    || pathname === '/sitemap.xml'
   );
 }
 

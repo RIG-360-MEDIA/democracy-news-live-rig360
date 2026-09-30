@@ -9,9 +9,10 @@ import type { Metadata } from 'next';
 import { auth } from '@/lib/auth';
 import { sql, withUser } from '@/lib/db';
 import { OnboardingFlow } from '@/components/onboarding/onboarding-flow';
+import { BRAND } from '@/lib/brand';
 
 export const metadata: Metadata = {
-  title:       'Set up your reading · Rig Wire',
+  title:       `Set up your reading · ${BRAND.name}`,
   description: 'A short brief from the editor before your first edition.',
 };
 

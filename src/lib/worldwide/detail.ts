@@ -10,6 +10,7 @@ import { mergeEditorialOverride } from '@/lib/worldwide/override-merge';
 import { manualStoryDetail } from '@/lib/studio/manual-feed';
 
 import { countryName } from './country';
+import { cleanDeck } from '@/lib/brand';
 
 export interface StoryImage {
   url: string;
@@ -413,7 +414,7 @@ export async function getStoryDetail(id: string): Promise<StoryDetail | null> {
     id,
     kicker,
     title: stripMd(merged.headline) || r.representative_title || merged.headline,
-    deck: stripMd(merged.deck ?? '') || null,
+    deck: cleanDeck(stripMd(merged.deck ?? '')) || null,
     image: heroImage ?? heroImg?.url ?? r.image,
     heroImage: heroImage ? null : heroImg,
     images: images.length > 0 ? images : sourcedGallery,

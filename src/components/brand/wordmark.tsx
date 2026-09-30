@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { BRAND } from '@/lib/brand';
 
 interface WordmarkProps {
   size?:      'sm' | 'md' | 'lg' | 'xl';
@@ -64,7 +65,7 @@ export function Wordmark({
     <Link
       href={href}
       className="inline-flex group hover:opacity-85 transition-opacity"
-      aria-label="Rig Wire — home"
+      aria-label={`${BRAND.name} — home`}
     >
       {inner}
     </Link>
