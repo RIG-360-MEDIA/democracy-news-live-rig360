@@ -149,6 +149,13 @@ export const authConfigEdge: NextAuthConfig = {
         return hostSafeRedirect('/long-read', request);
       }
 
+      // (0b) DNL accounts are invitation-only (G2): the sign-up page redirects to sign-in unless
+      // DNL_ALLOW_SIGNUP=1. The sign-up server action refuses independently (defence in depth).
+      if (process.env.DEPLOY_TARGET === 'dnl' && process.env.DNL_ALLOW_SIGNUP !== '1'
+          && pathname.startsWith('/signup')) {
+        return hostSafeRedirect('/signin', request);
+      }
+
       const isPublic     = isPublicPath(pathname);
       const isOnboarding = pathname.startsWith('/onboarding');
 

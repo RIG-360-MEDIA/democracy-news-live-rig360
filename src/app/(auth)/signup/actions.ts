@@ -12,6 +12,7 @@ import { z } from 'zod';
 import { sql, withUser } from '@/lib/db';
 import { hashPassword } from '@/lib/auth/password';
 import { signIn } from '@/lib/auth';
+import { BRAND } from '@/lib/brand';
 
 const SignupSchema = z.object({
   email:        z.string().email().max(254),
@@ -30,6 +31,11 @@ export async function signupAction(
   _prevState: SignupState,
   formData: FormData,
 ): Promise<SignupState> {
+  // G2: DNL is an editor tool behind a public reader — accounts are created by admins (invitation only).
+  if (BRAND.key === 'dnl' && process.env.DNL_ALLOW_SIGNUP !== '1') {
+    return { ok: false, error: 'Sign-up is by invitation only. Please contact the Democracy News Live editors.' };
+  }
+
   const parsed = SignupSchema.safeParse({
     email:       formData.get('email'),
     password:    formData.get('password'),

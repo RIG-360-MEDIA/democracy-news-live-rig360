@@ -23,6 +23,7 @@ import { verifyPassword } from './password';
 import { authConfigEdge } from './config.edge';
 
 import './types';   // register module augmentation
+import { clientIp, currentCounts, isOverLimit, recordFailure } from '@/lib/auth/rate-limit';
 
 const CredentialsSchema = z.object({
   email:    z.string().email().max(254),
@@ -38,12 +39,16 @@ export const authConfig: NextAuthConfig = {
         email:    { label: 'Email',    type: 'email' },
         password: { label: 'Password', type: 'password' },
       },
-      async authorize(raw) {
+      async authorize(raw, request) {
         const parsed = CredentialsSchema.safeParse(raw);
         if (!parsed.success) return null;
 
         const { email, password } = parsed.data;
         const normalised = email.trim().toLowerCase();
+
+        // G3: rate limit failed logins per email + IP. While limited, fail like a wrong password.
+        const ip = clientIp(request as Request | undefined);
+        if (isOverLimit(await currentCounts(normalised, ip))) return null;
 
         // Step 1 — authenticate (auth.users has no RLS, so no app.user_id needed).
         const rows = await sql<
@@ -56,10 +61,10 @@ export const authConfig: NextAuthConfig = {
         `;
 
         const user = rows[0];
-        if (!user) return null;
+        if (!user) { await recordFailure(normalised, ip); return null; }
 
         const ok = await verifyPassword(password, user.password_hash);
-        if (!ok) return null;
+        if (!ok) { await recordFailure(normalised, ip); return null; }
 
         // Step 2 — read onboarded_at inside RLS context (FORCE RLS on
         // user_preferences requires app.user_id to be set).

@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-30T17:33:46.677Z",
+  "generated_at": "2026-09-30T17:38:28.383Z",
   "tables": {
     "analytics.merge_verdicts": {
       "columns": [
@@ -107,6 +107,14 @@
         "framing_note",
         "ord",
         "updated_at"
+      ],
+      "present_in_reference": true
+    },
+    "auth.login_attempts": {
+      "columns": [
+        "key",
+        "window_start",
+        "count"
       ],
       "present_in_reference": true
     },
