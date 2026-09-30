@@ -16,6 +16,7 @@ import { getWeights } from '@/lib/studio/weights';
 import { groupIntoHubs } from './eventhub';
 
 import type { EventHub, FrontPage, StoryCard, TopicSection } from './types';
+import { cleanDeck } from '@/lib/brand';
 
 // Topics that get their own front-page section (matches sections.sql EC8 set).
 const SECTION_TOPICS = [
@@ -116,7 +117,7 @@ function toCard(r: ScoredRow, now: number): StoryCard {
     id: r.id,
     title: cleanTitle(r.title),
     // strip leading gen markdown ("**", "#") from decks too, so no card renders raw markdown
-    deck: r.deck ? r.deck.replace(/^[\s*>#_`-]+/, '').trim() || null : r.deck,
+    deck: r.deck ? cleanDeck(r.deck.replace(/^[\s*>#_`-]+/, '')) || null : r.deck,
     image: r.generatedImageUrl ?? r.image,
     hasArticle: r.hasArticle,
     topic: r.topic,

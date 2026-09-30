@@ -26,9 +26,11 @@ export const REVALIDATE_TAGS: Record<string, string> = {
 
 function ttlFromEnv(): number {
   const raw = Number(process.env.READER_CACHE_TTL_SECONDS);
-  return Number.isFinite(raw) && raw >= 60 && raw <= 86_400 ? raw : 3_600;
+  // 30 min until REVALIDATE_SECRET is configured in Vercel (OA-2): hourly publish + 30-min TTL keeps
+  // SC1 (newest story ≤ 2 h) without revalidation; still ≤ 2 Neon wakes/hour from visitor traffic.
+  return Number.isFinite(raw) && raw >= 60 && raw <= 86_400 ? raw : 1_800;
 }
 
-// Seconds the reader's Neon reads may be served from cache before refetch. Default 1 h = the
-// publish cadence; /api/revalidate refreshes sooner whenever new data lands.
+// Seconds the reader's Neon reads may be served from cache before refetch (default 30 min);
+// /api/revalidate refreshes sooner whenever new data lands.
 export const READER_CACHE_TTL = ttlFromEnv();

@@ -10,8 +10,8 @@ async function ttlWith(value: string | undefined) {
 describe('READER_CACHE_TTL', () => {
   afterEach(() => { delete process.env.READER_CACHE_TTL_SECONDS; });
 
-  it('defaults to one hour (the publish cadence)', async () => {
-    expect(await ttlWith(undefined)).toBe(3600);
+  it('defaults to 30 minutes', async () => {
+    expect(await ttlWith(undefined)).toBe(1800);
   });
 
   it('accepts a sane override', async () => {
@@ -19,9 +19,9 @@ describe('READER_CACHE_TTL', () => {
   });
 
   it('ignores out-of-range or junk values', async () => {
-    expect(await ttlWith('5')).toBe(3600);
-    expect(await ttlWith('999999')).toBe(3600);
-    expect(await ttlWith('abc')).toBe(3600);
+    expect(await ttlWith('5')).toBe(1800);
+    expect(await ttlWith('999999')).toBe(1800);
+    expect(await ttlWith('abc')).toBe(1800);
   });
 
   it('maps every public revalidate name to a known cache tag', async () => {
