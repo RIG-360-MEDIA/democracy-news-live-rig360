@@ -6,6 +6,7 @@
 import { sqlAnalytics } from '@/lib/db';
 
 import { getOverrides } from '@/lib/studio/overrides';
+import { mergeEditorialOverride } from '@/lib/worldwide/override-merge';
 import { manualStoryDetail } from '@/lib/studio/manual-feed';
 
 import { countryName } from './country';
@@ -297,6 +298,8 @@ export async function getStoryDetail(id: string): Promise<StoryDetail | null> {
   // If an editor Published/Pinned this story, it opens even when the generator HELD it (mirrors the
   // front-page force-surface). The editor owns that call; we still require a real body below.
   const ov = (await getOverrides([id])).get(id);
+  // An editor killed/unpublished this story → it must not open by direct URL (F1).
+  if (ov?.action === 'killed') return null;
   const forced = ov?.action === 'live' || ov?.action === 'pinned';
   const gate = forced
     ? sqlAnalytics`AND g.strategy <> 'stub' AND length(g.body) >= 400`
@@ -362,7 +365,9 @@ export async function getStoryDetail(id: string): Promise<StoryDetail | null> {
     year: 'numeric',
   });
 
-  const paragraphs = toParagraphs(r.body);
+  // Editor edits (headline / deck / body) win over the generated text (F1).
+  const merged = mergeEditorialOverride({ headline: r.headline, deck: r.deck, body: r.body }, ov);
+  const paragraphs = toParagraphs(merged.body);
   // Hero image: editor override wins; else if the representative photo is a tabloid (tier ≥3) or
   // blank/flagged, swap for the best tier-1/2 photo in the same cluster.
   let heroImage = ov?.editedImage ?? r.image;
@@ -407,15 +412,15 @@ export async function getStoryDetail(id: string): Promise<StoryDetail | null> {
   return {
     id,
     kicker,
-    title: stripMd(r.headline) || r.representative_title || r.headline,
-    deck: stripMd(r.deck ?? '') || null,
+    title: stripMd(merged.headline) || r.representative_title || merged.headline,
+    deck: stripMd(merged.deck ?? '') || null,
     image: heroImage ?? heroImg?.url ?? r.image,
     heroImage: heroImage ? null : heroImg,
     images: images.length > 0 ? images : sourcedGallery,
     pullQuote,
     stats,
     coverage,
-    paragraphs: paragraphs.length > 0 ? paragraphs : [r.body.trim()],
+    paragraphs: paragraphs.length > 0 ? paragraphs : [merged.body.trim()],
     tweets: toTweetEmbeds(r.tweet_embeds),
     lenses,
     audio,
