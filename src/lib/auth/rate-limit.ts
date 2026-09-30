@@ -30,7 +30,18 @@ function windowStart(now = new Date()): Date {
   return new Date(Math.floor(now.getTime() / ms) * ms);
 }
 
+// Fail OPEN: a rate-limiter problem (DB hiccup, missing grant) must never take login down.
+// Errors are logged; the password check still runs.
 export async function currentCounts(email: string, ip: string): Promise<AttemptCounts> {
+  try {
+    return await readCounts(email, ip);
+  } catch (err) {
+    console.error('[rate-limit] read failed (failing open):', err);
+    return { email: 0, ip: 0 };
+  }
+}
+
+async function readCounts(email: string, ip: string): Promise<AttemptCounts> {
   const ws = windowStart();
   const rows = await sql<{ key: string; count: number }[]>`
     SELECT key, count FROM auth.login_attempts
@@ -41,6 +52,14 @@ export async function currentCounts(email: string, ip: string): Promise<AttemptC
 }
 
 export async function recordFailure(email: string, ip: string): Promise<void> {
+  try {
+    await writeFailure(email, ip);
+  } catch (err) {
+    console.error('[rate-limit] write failed (ignored):', err);
+  }
+}
+
+async function writeFailure(email: string, ip: string): Promise<void> {
   const ws = windowStart();
   await sql`
     INSERT INTO auth.login_attempts (key, window_start, count)

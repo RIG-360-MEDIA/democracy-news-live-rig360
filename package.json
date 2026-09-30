@@ -12,7 +12,8 @@
     "coverage": "vitest run --coverage",
     "typecheck": "tsc --noEmit",
     "contract:check": "node tools/contract/check.mjs",
-    "contract:generate": "node tools/contract/generate.mjs"
+    "contract:generate": "node tools/contract/generate.mjs",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@node-rs/argon2": "^2.0.2",
@@ -32,6 +33,7 @@
     "zustand": "^5.0.2"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "@types/node": "^22.10.2",
     "@types/react": "^19.0.1",
     "@types/react-dom": "^19.0.2",

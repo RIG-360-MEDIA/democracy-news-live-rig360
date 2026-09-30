@@ -54,9 +54,10 @@ export function Wordmark({
       className={`whitespace-nowrap inline-block ${className}`}
       style={{ lineHeight: 0.95 }}
     >
-      <span style={{ ...baseStyle, color: rigColor  }}>Rig</span>
+      {/* DNL deployment shows its own name (P06 D-4); same two-tone treatment. */}
+      <span style={{ ...baseStyle, color: rigColor  }}>{BRAND.key === 'dnl' ? 'Democracy' : 'Rig'}</span>
       {' '}
-      <span style={{ ...baseStyle, color: WIRE_COLOR }}>Wire</span>
+      <span style={{ ...baseStyle, color: WIRE_COLOR }}>{BRAND.key === 'dnl' ? 'News Live' : 'Wire'}</span>
     </span>
   );
 

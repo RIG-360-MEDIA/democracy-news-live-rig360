@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-30T17:38:28.383Z",
+  "generated_at": "2026-09-30T18:32:59.760Z",
   "tables": {
     "analytics.merge_verdicts": {
       "columns": [
@@ -115,6 +115,16 @@
         "key",
         "window_start",
         "count"
+      ],
+      "present_in_reference": true
+    },
+    "auth.password_reset_tokens": {
+      "columns": [
+        "token",
+        "user_id",
+        "expires_at",
+        "used",
+        "created_at"
       ],
       "present_in_reference": true
     },

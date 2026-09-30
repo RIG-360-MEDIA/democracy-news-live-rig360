@@ -10,6 +10,12 @@ DO $$ BEGIN
   IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'cms_rw') THEN
     GRANT SELECT, INSERT, UPDATE, DELETE ON auth.login_attempts TO cms_rw;
   END IF;
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'cms_dev') THEN          -- box local-dev role
+    GRANT SELECT, INSERT, UPDATE, DELETE ON auth.login_attempts TO cms_dev;
+  END IF;
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'rigwire_app') THEN      -- box app role
+    GRANT SELECT, INSERT, UPDATE, DELETE ON auth.login_attempts TO rigwire_app;
+  END IF;
   IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'contract_ro') THEN
     GRANT REFERENCES ON auth.login_attempts TO contract_ro;
   END IF;

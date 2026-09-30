@@ -62,7 +62,14 @@ const CONTENT: Record<AuthVariant, VariantContent> = {
    Short, sharp, brand-specific — each a passing signal. */
 /* Each quote is a single mode of the app — a name + its promise.
    Short enough that the cloud SVG never clips them mid-drift. */
-const SKY_QUOTES = [
+const SKY_QUOTES = BRAND.key === 'dnl' ? [
+  'Every region.',
+  'Every day.',
+  'Grounded in the reporting.',
+  'One read.',
+  'Independent.',
+  'Worldwide.',
+] : [
   'Flash — sixty seconds.',
   'Newsletter — 7:30 a.m.',
   'All Sides — every angle.',
@@ -297,15 +304,15 @@ function EditorialScene() {
         >
           <motion.span initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.9, ease: SPRING, delay: 0.40 }} className="block">
-            247 newsrooms.
+            {BRAND.key === 'dnl' ? 'The whole world.' : '247 newsrooms.'}
           </motion.span>
           <motion.span initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.9, ease: SPRING, delay: 0.62 }} className="block">
-            Six readings.
+            {BRAND.key === 'dnl' ? 'One read.' : 'Six readings.'}
           </motion.span>
           <motion.span initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.9, ease: SPRING, delay: 0.84 }} className="block">
-            One reader.
+            {BRAND.key === 'dnl' ? 'Every day.' : 'One reader.'}
           </motion.span>
         </motion.h2>
 
@@ -321,10 +328,13 @@ function EditorialScene() {
             textShadow: '0 1px 12px rgba(255,255,255,0.88)',
           }}
         >
-          From a <em>sixty-second Flash</em> to a <em>fourteen-minute Worldwide</em>{' '}— pick your length, pick your voice, get on with your day.
+          {BRAND.key === 'dnl'
+            ? BRAND.description
+            : <>From a <em>sixty-second Flash</em> to a <em>fourteen-minute Worldwide</em>{' '}— pick your length, pick your voice, get on with your day.</>}
         </motion.p>
 
         {/* Six mode names — animated in sequence */}
+        {BRAND.key !== 'dnl' && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -352,6 +362,7 @@ function EditorialScene() {
             </motion.span>
           ))}
         </motion.div>
+        )}
       </div>
 
       {/* ── Wordmark — top-left, anchored against the sky ── */}

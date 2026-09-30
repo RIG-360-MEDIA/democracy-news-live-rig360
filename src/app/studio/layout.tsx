@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 
 import { requireEditor } from '@/lib/studio/session';
+import { signOutAction } from './signout-action';
+import { BRAND } from '@/lib/brand';
 
 export const dynamic = 'force-dynamic';
 
@@ -32,7 +34,7 @@ export default async function StudioLayout({ children }: { children: React.React
             href="/studio"
             className="font-sans text-ui-lg font-bold uppercase tracking-[0.18em] text-studio-ink no-underline"
           >
-            RigWire Studio
+            {BRAND.key === 'dnl' ? 'DNL Studio' : 'RigWire Studio'}
           </Link>
 
           {/* Site-health dot — stubbed nominal; downstream wires real state. */}
@@ -56,8 +58,13 @@ export default async function StudioLayout({ children }: { children: React.React
             ))}
           </nav>
 
-          {/* Signed-in editor */}
+          {/* Signed-in editor + sign out (F5) */}
           <span className="font-mono text-ui-sm text-studio-muted">{id}</span>
+          <form action={signOutAction}>
+            <button type="submit" className="font-sans text-ui-sm font-semibold text-studio-muted underline hover:text-studio-ink">
+              Sign out
+            </button>
+          </form>
         </div>
       </header>
 

@@ -19,6 +19,11 @@ interface AdminSurface {
 // absent — it has no index page, only the dynamic `lens/[id]` story view.
 const SURFACES: readonly AdminSurface[] = [
   {
+    href: '/studio/admin/users',
+    label: 'People & access',
+    description: 'Create editor accounts, change roles, and issue one-time password links.',
+  },
+  {
     href: '/studio/sources',
     label: 'Sources',
     description: 'Tag each source’s political lean and see how many are still unrated.',

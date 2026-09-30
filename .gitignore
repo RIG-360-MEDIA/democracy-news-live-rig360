@@ -47,3 +47,7 @@ next-env.d.ts
 # claude — local overrides (committed sister files stay tracked)
 CLAUDE.local.md
 .claude/settings.local.json
+
+# Playwright
+test-results/
+playwright-report/

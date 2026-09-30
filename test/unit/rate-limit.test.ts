@@ -29,3 +29,19 @@ describe('login rate limit', () => {
     expect(clientIp(undefined)).toBe('unknown');
   });
 });
+
+describe('rate limit fails open', () => {
+  it('returns zero counts when the attempts table cannot be read (login must not break)', async () => {
+    const db = await import('@/lib/db');
+    (db.sql as unknown as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error('permission denied'));
+    const { currentCounts } = await import('@/lib/auth/rate-limit');
+    await expect(currentCounts('a@b.co', '1.2.3.4')).resolves.toEqual({ email: 0, ip: 0 });
+  });
+
+  it('swallows write failures', async () => {
+    const db = await import('@/lib/db');
+    (db.sql as unknown as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error('permission denied'));
+    const { recordFailure } = await import('@/lib/auth/rate-limit');
+    await expect(recordFailure('a@b.co', '1.2.3.4')).resolves.toBeUndefined();
+  });
+});
