@@ -1,0 +1,39 @@
+# CI for democracy-news-live (DNL production program P05 S05.05).
+# Every PR and push to main: install → typecheck → unit tests (+coverage summary) → build → audit.
+# Branch protection requires the `ci` job to pass before merging to main (which deploys production).
+name: ci
+on:
+  pull_request:
+  push:
+    branches: [main]
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+permissions:
+  contents: read
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      NEXT_TELEMETRY_DISABLED: '1'
+      DEPLOY_TARGET: dnl
+      # build-time placeholders only — no real credentials in CI
+      ANALYTICS_DB_URL: postgresql://ci:ci@127.0.0.1:1/ci
+      RIGWIRE_DB_URL: postgresql://ci:ci@127.0.0.1:1/ci
+      AUTH_SECRET: ci-build-secret-ci-build-secret-0000
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Typecheck
+        run: npx tsc --noEmit
+      - name: Unit tests
+        run: npx vitest run --coverage --coverage.reporter=text-summary
+      - name: Build
+        run: npx next build
+      - name: Security audit (production deps)
+        run: npm audit --omit=dev --audit-level=high
