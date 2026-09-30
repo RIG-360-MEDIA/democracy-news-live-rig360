@@ -55,9 +55,15 @@ export class DispatchError extends Error {
   }
 }
 
-function useMock(): boolean {
+function boxConfigured(): boolean {
   const url = process.env.BOX_STUDIO_URL;
-  return !url || url === 'mock';
+  return !!url && url !== 'mock';
+}
+
+// F4 (DNL program P07): fixtures are a dev/test aid only. In production an unconfigured box must
+// fail cleanly ("drafting unavailable"), never serve — or publish — fixture drafts as real stories.
+function useMock(): boolean {
+  return !boxConfigured() && process.env.NODE_ENV !== 'production';
 }
 
 /**
@@ -65,13 +71,13 @@ function useMock(): boolean {
  * production never serves — or worse, publishes — fixture drafts as if they were real stories.
  */
 export function isDispatchLive(): boolean {
-  return !useMock();
+  return boxConfigured();
 }
 
 function boxUrl(): string {
   const url = process.env.BOX_STUDIO_URL;
   if (!url || url === 'mock') {
-    throw new DispatchError('config', 'BOX_STUDIO_URL is not configured for a live box call', 500);
+    throw new DispatchError('config', 'Drafting service is not configured (BOX_STUDIO_URL)', 503);
   }
   return url.replace(/\/+$/, '');
 }
@@ -98,7 +104,7 @@ async function callBox<T>(
   init?: RequestInit,
 ): Promise<T> {
   const token = process.env.BOX_STUDIO_TOKEN;
-  if (!token) throw new DispatchError('config', 'BOX_STUDIO_TOKEN is not configured', 500);
+  if (!token) throw new DispatchError('config', 'Drafting service is not configured (BOX_STUDIO_TOKEN)', 503);
 
   const res = await fetch(`${boxUrl()}${path}`, {
     ...init,
@@ -133,7 +139,7 @@ async function callMock<T>(schema: z.ZodType<T>, call: Promise<MockResponse>): P
 /** Call the box, unwrap the { ok, data, error } envelope, return raw `data` (no schema). */
 async function callBoxRaw(path: string, editorId: string, init?: RequestInit): Promise<unknown> {
   const token = process.env.BOX_STUDIO_TOKEN;
-  if (!token) throw new DispatchError('config', 'BOX_STUDIO_TOKEN is not configured', 500);
+  if (!token) throw new DispatchError('config', 'Drafting service is not configured (BOX_STUDIO_TOKEN)', 503);
   const res = await fetch(`${boxUrl()}${path}`, {
     ...init,
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}`, 'X-Editor-Id': editorId, ...init?.headers },

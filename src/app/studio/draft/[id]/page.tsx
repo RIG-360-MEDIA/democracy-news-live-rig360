@@ -32,6 +32,16 @@ export default async function DraftReviewPage({ params }: PageProps) {
   } catch (e: unknown) {
     // 404 absent, 409 no-draft-yet — both mean "nothing to review here".
     if (e instanceof DispatchError && (e.status === 404 || e.status === 409)) notFound();
+    // F4: box not configured in this environment → say so instead of crashing or faking a draft.
+    if (e instanceof DispatchError && e.code === 'config') {
+      return (
+        <main style={{ maxWidth: 640, margin: '64px auto', padding: '0 16px', fontFamily: 'inherit' }}>
+          <h1 style={{ fontSize: 22, marginBottom: 8 }}>Drafting is unavailable</h1>
+          <p>The Door B drafting service isn&apos;t connected in this environment, so drafts can&apos;t be
+            reviewed right now. Manual stories and editorial overrides still work.</p>
+        </main>
+      );
+    }
     throw e;
   }
 
