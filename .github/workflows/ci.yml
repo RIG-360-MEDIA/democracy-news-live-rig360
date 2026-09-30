@@ -22,6 +22,8 @@ jobs:
       ANALYTICS_DB_URL: postgresql://ci:ci@127.0.0.1:1/ci
       RIGWIRE_DB_URL: postgresql://ci:ci@127.0.0.1:1/ci
       AUTH_SECRET: ci-build-secret-ci-build-secret-0000
+      # schema-only Neon role (REFERENCES privilege: can see definitions, cannot read rows)
+      CONTRACT_DB_URL: ${{ secrets.CONTRACT_DB_URL }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -37,3 +39,8 @@ jobs:
         run: npx next build
       - name: Security audit (production deps)
         run: npm audit --omit=dev --audit-level=high
+      - name: DB contract vs live reader DB (Neon)
+        # Every table/column the app queries must exist on the production reader DB — the class of bug
+        # that 500'd the site (public.sources, domain_reputation, migration columns). Schema-only role.
+        if: ${{ env.CONTRACT_DB_URL != '' }}
+        run: node tools/contract/check.mjs

@@ -1,0 +1,332 @@
+{
+  "generated_at": "2026-09-30T17:33:46.677Z",
+  "tables": {
+    "analytics.merge_verdicts": {
+      "columns": [
+        "story_a",
+        "story_b",
+        "cos",
+        "llm_same",
+        "llm_conf",
+        "reason",
+        "created_at"
+      ],
+      "present_in_reference": true
+    },
+    "analytics.story_audio": {
+      "columns": [
+        "story_id",
+        "title",
+        "audio_url",
+        "duration_s",
+        "voice",
+        "status",
+        "updated_at"
+      ],
+      "present_in_reference": true
+    },
+    "analytics.story_cluster_members_v8": {
+      "columns": [
+        "article_id",
+        "story_id",
+        "source_id",
+        "provisional",
+        "added_at",
+        "run_id"
+      ],
+      "present_in_reference": true
+    },
+    "analytics.story_clusters_v8": {
+      "columns": [
+        "story_id",
+        "created_at",
+        "updated_at",
+        "status",
+        "redirected_to",
+        "provisional",
+        "run_id",
+        "last_seen_at",
+        "article_count",
+        "source_count",
+        "independent_source_count",
+        "subject_country",
+        "topic",
+        "primary_entities",
+        "importance_score",
+        "representative_article_id",
+        "representative_title",
+        "suppression_reason"
+      ],
+      "present_in_reference": true
+    },
+    "analytics.story_dedup": {
+      "columns": [
+        "story_id",
+        "canonical_story_id",
+        "method",
+        "updated_at"
+      ],
+      "present_in_reference": true
+    },
+    "analytics.story_facts_v8": {
+      "columns": [
+        "id",
+        "story_id",
+        "unit",
+        "run_id"
+      ],
+      "present_in_reference": true
+    },
+    "analytics.story_generated_v8": {
+      "columns": [
+        "story_id",
+        "headline",
+        "deck",
+        "body",
+        "topic",
+        "tags",
+        "strategy",
+        "status",
+        "tier",
+        "verify",
+        "word_count",
+        "run_id",
+        "updated_at",
+        "tweet_embeds",
+        "generated_image"
+      ],
+      "present_in_reference": true
+    },
+    "analytics.story_lens": {
+      "columns": [
+        "story_id",
+        "lens_key",
+        "lens_label",
+        "headline",
+        "body",
+        "framing_note",
+        "ord",
+        "updated_at"
+      ],
+      "present_in_reference": true
+    },
+    "auth.users": {
+      "columns": [
+        "id",
+        "email",
+        "password_hash",
+        "display_name",
+        "role",
+        "created_at",
+        "updated_at"
+      ],
+      "present_in_reference": true
+    },
+    "editorial.audit": {
+      "columns": [
+        "id",
+        "product",
+        "content_id",
+        "editor_id",
+        "action",
+        "before",
+        "after",
+        "at"
+      ],
+      "present_in_reference": true
+    },
+    "editorial.decisions": {
+      "columns": [
+        "id",
+        "product",
+        "content_id",
+        "action",
+        "pinned_rank",
+        "importance_delta",
+        "section_override",
+        "human_locked",
+        "edited_headline",
+        "edited_dek",
+        "edited_body",
+        "edited_tags",
+        "edited_image",
+        "payload",
+        "editor_id",
+        "reason",
+        "created_at",
+        "updated_at"
+      ],
+      "present_in_reference": true
+    },
+    "public.articles": {
+      "columns": [
+        "id",
+        "source_id",
+        "url",
+        "title",
+        "published_at",
+        "is_duplicate",
+        "source_tier",
+        "thumbnail_url",
+        "topic_category",
+        "updated_at",
+        "word_count",
+        "language_iso",
+        "summary_preview",
+        "register_is_breaking",
+        "byline",
+        "author_name",
+        "source_country"
+      ],
+      "present_in_reference": true
+    },
+    "public.sources": {
+      "columns": [
+        "id",
+        "name",
+        "domain",
+        "source_type",
+        "source_tier",
+        "language",
+        "topics",
+        "is_active",
+        "created_at",
+        "country",
+        "political_lean"
+      ],
+      "present_in_reference": true
+    },
+    "public.youtube_clips_v2": {
+      "columns": [
+        "id",
+        "video_title",
+        "channel_name",
+        "video_published_at",
+        "clip_start_seconds",
+        "clip_end_seconds",
+        "embed_url",
+        "transcript_segment"
+      ],
+      "present_in_reference": true
+    },
+    "rigwire.domain_reputation": {
+      "columns": [
+        "domain",
+        "scanned",
+        "flagged",
+        "flag_rate",
+        "updated_at"
+      ],
+      "present_in_reference": true
+    },
+    "rigwire.editorial_audit": {
+      "columns": [
+        "id",
+        "story_id",
+        "editor_id",
+        "action",
+        "before",
+        "after",
+        "at"
+      ],
+      "present_in_reference": true
+    },
+    "rigwire.editorial_overrides": {
+      "columns": [
+        "story_id",
+        "action",
+        "pinned_rank",
+        "importance_delta",
+        "section_override",
+        "human_locked",
+        "edited_headline",
+        "edited_dek",
+        "edited_body",
+        "edited_tags",
+        "editor_id",
+        "reason",
+        "created_at",
+        "updated_at",
+        "edited_image"
+      ],
+      "present_in_reference": true
+    },
+    "rigwire.image_checks": {
+      "columns": [
+        "thumbnail_url",
+        "clean",
+        "detail",
+        "checked_at"
+      ],
+      "present_in_reference": true
+    },
+    "rigwire.manual_stories": {
+      "columns": [
+        "id",
+        "headline",
+        "dek",
+        "body",
+        "topic",
+        "country",
+        "image_url",
+        "status",
+        "importance",
+        "editor_id",
+        "created_at",
+        "updated_at",
+        "draft_job_id"
+      ],
+      "present_in_reference": true
+    },
+    "rigwire.onboarding_seed_articles": {
+      "columns": [
+        "id",
+        "headline",
+        "dek",
+        "source_label",
+        "topic_key",
+        "length_bucket",
+        "region_code",
+        "time_horizon",
+        "tone",
+        "display_order",
+        "body_excerpt",
+        "created_at"
+      ],
+      "present_in_reference": true
+    },
+    "rigwire.ranking_weights": {
+      "columns": [
+        "id",
+        "topic_weights",
+        "country_weights",
+        "recency_halflife_h",
+        "source_weight",
+        "velocity_weight",
+        "updated_by",
+        "updated_at"
+      ],
+      "present_in_reference": true
+    },
+    "rigwire.user_preferences": {
+      "columns": [
+        "user_id",
+        "topics",
+        "reader_intents",
+        "delivery_window",
+        "delivery_frequency",
+        "seed_picks",
+        "seed_skipped",
+        "primary_region",
+        "secondary_regions",
+        "voice_preference",
+        "signup_intent",
+        "locale",
+        "timezone",
+        "onboarded_at",
+        "updated_at"
+      ],
+      "present_in_reference": true
+    }
+  }
+}

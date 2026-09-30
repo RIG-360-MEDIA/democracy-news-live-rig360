@@ -10,7 +10,9 @@
     "validate": "node tests/validate-worldwide.mjs",
     "test:unit": "vitest run",
     "coverage": "vitest run --coverage",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "contract:check": "node tools/contract/check.mjs",
+    "contract:generate": "node tools/contract/generate.mjs"
   },
   "dependencies": {
     "@node-rs/argon2": "^2.0.2",
