@@ -1,6 +1,14 @@
 // Breaking-news ticker feed — freshest raw articles (not clustered stories) as they land.
+//
+// Cached (DNL program P06 D-2): every open reader tab polls this every 45 s. It used to be
+// force-dynamic with no cache, so each poll queried Neon and kept its free-tier compute awake.
+// Now the DB read sits in the Data Cache (tag `reader-ticker`, refreshed by /api/revalidate after
+// each hourly publish) and the response is CDN-cacheable for 5 min. Relative times ("12m ago") are
+// computed per request from the cached timestamps so they stay accurate.
+import { unstable_cache } from 'next/cache';
 import { NextResponse } from 'next/server';
 
+import { CACHE_TAGS, READER_CACHE_TTL } from '@/lib/cache';
 import { sqlAnalytics } from '@/lib/db';
 
 export const runtime = 'nodejs';
@@ -45,20 +53,31 @@ function relTime(ts: Date | string | null): string {
   return `${hrs}h ago`;
 }
 
+async function loadTickerRows(): Promise<TickerRow[]> {
+  const rows = (await sqlAnalytics`
+    SELECT id, title, topic_category AS topic, source_country AS country,
+           published_at, register_is_breaking AS breaking
+    FROM articles
+    WHERE published_at > now() - interval '24 hours'
+      AND published_at <= now() + interval '1 hour'
+      AND title IS NOT NULL AND length(title) > 14
+      AND language_iso = 'en'
+      AND is_duplicate IS NOT TRUE
+    ORDER BY register_is_breaking DESC NULLS LAST, published_at DESC
+    LIMIT 30
+  `) as unknown as TickerRow[];
+  // plain JSON-safe objects for the Data Cache
+  return rows.map((r) => ({ ...r, published_at: r.published_at ? new Date(r.published_at).toISOString() : null }));
+}
+
+const getCachedTickerRows = unstable_cache(loadTickerRows, ['reader-ticker'], {
+  revalidate: READER_CACHE_TTL,
+  tags: [CACHE_TAGS.ticker],
+});
+
 export async function GET() {
   try {
-    const rows = (await sqlAnalytics`
-      SELECT id, title, topic_category AS topic, source_country AS country,
-             published_at, register_is_breaking AS breaking
-      FROM articles
-      WHERE published_at > now() - interval '24 hours'
-        AND title IS NOT NULL AND length(title) > 14
-        AND language_iso = 'en'
-        AND is_duplicate IS NOT TRUE
-      ORDER BY register_is_breaking DESC NULLS LAST, published_at DESC
-      LIMIT 30
-    `) as unknown as TickerRow[];
-
+    const rows = await getCachedTickerRows();
     const data: TickerItem[] = rows
       .map((r) => ({
         id: r.id,
@@ -70,11 +89,16 @@ export async function GET() {
       }))
       .filter((it) => isEnglishTitle(it.title)); // English-only breaking strip (script guard, not just metadata)
 
-    return NextResponse.json({ ok: true, data, error: null });
-  } catch (e: unknown) {
     return NextResponse.json(
-      { ok: false, data: null, error: { code: '500', message: e instanceof Error ? e.message : 'ticker failed' } },
-      { status: 500 },
+      { ok: true, data, error: null },
+      { headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600' } },
+    );
+  } catch (e: unknown) {
+    // Never leak DB error text to the client; log it server-side.
+    console.error('[ticker] load failed:', e);
+    return NextResponse.json(
+      { ok: false, data: null, error: { code: '503', message: 'ticker temporarily unavailable' } },
+      { status: 503, headers: { 'Cache-Control': 'no-store' } },
     );
   }
 }

@@ -7,7 +7,10 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "validate": "node tests/validate-worldwide.mjs"
+    "validate": "node tests/validate-worldwide.mjs",
+    "test:unit": "vitest run",
+    "coverage": "vitest run --coverage",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@node-rs/argon2": "^2.0.2",
@@ -30,6 +33,7 @@
     "@types/node": "^22.10.2",
     "@types/react": "^19.0.1",
     "@types/react-dom": "^19.0.2",
+    "@vitest/coverage-v8": "^3.2.7",
     "autoprefixer": "^10.4.20",
     "d3-geo": "^3.1.1",
     "eslint": "^9.16.0",
@@ -38,9 +42,10 @@
     "tailwindcss": "^3.4.17",
     "topojson-client": "^3.1.0",
     "typescript": "^5.7.2",
+    "vitest": "^3.2.7",
     "world-atlas": "^2.0.2"
   },
   "overrides": {
-    "postcss": "$postcss"
+    "postcss": "^8.5.28"
   }
 }

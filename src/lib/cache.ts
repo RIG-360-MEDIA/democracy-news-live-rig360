@@ -6,15 +6,29 @@
 // monthly compute-hours, and force-dynamic per-request querying was the cost
 // driver. Studio write routes call `revalidateTag` with these tags so an
 // editor's publish/pin/edit still reflects immediately, not after the TTL.
+//
+// Quiet mode (DNL program P03/P06 D-2, 2026-09-30): the box publishes to Neon once an hour and then
+// POSTs /api/revalidate, so reader caches refresh right after new data lands and visitors never
+// wake Neon in between. The TTL is only the safety net if that call is missed.
 
 export const CACHE_TAGS = {
   frontPage: 'reader-front-page',
   storyDetail: 'reader-story-detail',
+  ticker: 'reader-ticker',
 } as const;
 
-// Seconds the reader's Neon reads may be served from cache before refetch.
-// The box→Neon sync only lands new data every ~20 min, so a 10-min cache is still
-// fresher than the underlying data changes — and a longer TTL means visitor traffic
-// wakes Neon's (compute-metered) endpoint far less often. Editor writes bust the
-// cache immediately via revalidateTag, so publish/pin/edit still reflect at once.
-export const READER_CACHE_TTL = 600;
+// Public names the box's publish job may ask to revalidate → internal tags.
+export const REVALIDATE_TAGS: Record<string, string> = {
+  frontpage: CACHE_TAGS.frontPage,
+  story: CACHE_TAGS.storyDetail,
+  ticker: CACHE_TAGS.ticker,
+};
+
+function ttlFromEnv(): number {
+  const raw = Number(process.env.READER_CACHE_TTL_SECONDS);
+  return Number.isFinite(raw) && raw >= 60 && raw <= 86_400 ? raw : 3_600;
+}
+
+// Seconds the reader's Neon reads may be served from cache before refetch. Default 1 h = the
+// publish cadence; /api/revalidate refreshes sooner whenever new data lands.
+export const READER_CACHE_TTL = ttlFromEnv();
