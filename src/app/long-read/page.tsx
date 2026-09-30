@@ -18,6 +18,16 @@ const getCachedFrontPage = unstable_cache(
   { revalidate: READER_CACHE_TTL, tags: [CACHE_TAGS.frontPage] },
 );
 
+// Resilience (P06 D-3): a second copy of the front page under a tag the hourly publish never
+// revalidates. unstable_cache serves it stale and refreshes in the background, keeping the old
+// value if the refresh fails — so right after a revalidation, a Neon outage still shows readers
+// the last good edition instead of an error page.
+const getLastGoodFrontPage = unstable_cache(
+  (scope: string) => getFrontPage(scope),
+  ['reader-front-page-lastgood'],
+  { revalidate: READER_CACHE_TTL, tags: ['reader-front-page-lastgood'] },
+);
+
 export const metadata = {
   title: 'Democracy News Live',
   description: 'The whole world, gathered into one read — every region’s biggest story today.',
@@ -36,6 +46,14 @@ export default async function Page({
   searchParams: Promise<{ scope?: string }>;
 }) {
   const { scope } = await searchParams;
-  const data = await getCachedFrontPage(resolveScope(scope));
+  const key = resolveScope(scope);
+  let data;
+  try {
+    data = await getCachedFrontPage(key);
+    await getLastGoodFrontPage(key); // keep the fallback copy warm (cache hit almost always)
+  } catch (err) {
+    console.error('[front-page] live read failed, serving last good edition:', err);
+    data = await getLastGoodFrontPage(key); // throws only if no copy exists → error.tsx
+  }
   return <LongReadPage data={data} />;
 }
