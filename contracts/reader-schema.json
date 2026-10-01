@@ -265,7 +265,8 @@
         "reason",
         "created_at",
         "updated_at",
-        "edited_image"
+        "edited_image",
+        "pinned_until"
       ],
       "present_in_reference": true
     },
@@ -322,7 +323,8 @@
         "source_weight",
         "velocity_weight",
         "updated_by",
-        "updated_at"
+        "updated_at",
+        "section_layout"
       ],
       "present_in_reference": true
     },

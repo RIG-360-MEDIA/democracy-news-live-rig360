@@ -81,7 +81,9 @@ function isDnlPath(pathname: string): boolean {
 
 export const authConfigEdge: NextAuthConfig = {
   trustHost: true,
-  session: { strategy: 'jwt', maxAge: 60 * 60 * 24 * 30 },   // 30 days
+  // 7 days (H1): with requireRole re-reading the DB role this is no longer the revocation window
+  // for Studio access, but it bounds how long a stolen cookie stays useful elsewhere.
+  session: { strategy: 'jwt', maxAge: 60 * 60 * 24 * 7 },
   pages: {
     signIn: '/signin',
     error:  '/signin',
@@ -133,7 +135,7 @@ export const authConfigEdge: NextAuthConfig = {
       const pathname = request.nextUrl.pathname;
 
       // DEV-ONLY: allow the CMS to run locally without a login. INERT in production (Vercel sets
-      // NODE_ENV=production). Pairs with the requireEditor() dev bypass. Never set CMS_DEV_EDITOR deployed.
+      // NODE_ENV=production). Pairs with the requireRole() dev bypass. Never set CMS_DEV_EDITOR deployed.
       if (process.env.NODE_ENV !== 'production' && process.env.CMS_DEV_EDITOR === '1') return true;
 
       // (0) DNL deploy: expose only the Democracy News Live surfaces; send everything else

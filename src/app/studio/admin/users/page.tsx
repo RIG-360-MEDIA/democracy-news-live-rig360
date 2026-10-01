@@ -1,8 +1,7 @@
 // Admin — people & access (P07 S07.01.05). DNL is invitation-only: admins create accounts and hand out
 // one-time set-password links (no email service — owner default O-7).
-import { redirect } from 'next/navigation';
 
-import { requireAdmin } from '@/lib/studio/session';
+import { guardPage } from '@/lib/studio/guard';
 import { listUsers } from '@/lib/studio/users';
 
 import { UsersClient, type UserView } from './users-client';
@@ -10,8 +9,7 @@ import { UsersClient, type UserView } from './users-client';
 export const dynamic = 'force-dynamic';
 
 export default async function AdminUsersPage() {
-  const guard = await requireAdmin();
-  if (!guard.ok) redirect(guard.status === 401 ? '/signin' : '/studio');
+  const editor = await guardPage('admin');
 
   const users: UserView[] = (await listUsers()).map((u) => ({
     id: u.id,
@@ -28,7 +26,7 @@ export default async function AdminUsersPage() {
         Sign-up is invitation-only. Create an account, then send the person the one-time link it gives you —
         they choose their own password. Use &ldquo;Password link&rdquo; if someone is locked out.
       </p>
-      <UsersClient users={users} me={guard.editor.id} />
+      <UsersClient users={users} me={editor.id} />
     </div>
   );
 }

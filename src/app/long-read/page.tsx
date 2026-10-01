@@ -3,7 +3,9 @@ import { unstable_cache } from 'next/cache';
 import { CACHE_TAGS, READER_CACHE_TTL } from '@/lib/cache';
 import { getFrontPage } from '@/lib/worldwide/ranking';
 import { apiScope } from '@/lib/worldwide/to-view';
+import { recentVideos } from '@/lib/worldwide/recent-videos';
 import { LongReadPage } from '@/components/long-read/long-read-page';
+import { videos } from '@/components/long-read/videos-data';
 
 // SSR against the live _v8 keeper (read-only). force-dynamic so a build without DB
 // connectivity doesn't try to statically render this page.
@@ -55,5 +57,6 @@ export default async function Page({
     console.error('[front-page] live read failed, serving last good edition:', err);
     data = await getLastGoodFrontPage(key); // throws only if no copy exists → error.tsx
   }
-  return <LongReadPage data={data} />;
+  // Watch rail: only clips from the last 30 days, decided here on the server (E6).
+  return <LongReadPage data={data} videos={recentVideos(videos, Date.now())} />;
 }

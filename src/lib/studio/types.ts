@@ -1,5 +1,7 @@
 // Editorial CMS — shared types for the /studio portal (epic 002).
 
+import type { SectionLayout } from '@/lib/worldwide/sections';
+
 export type OverrideAction = 'live' | 'killed' | 'pinned' | 'held';
 
 /** The single true state an editor sees per story — what readers actually get right now.
@@ -12,6 +14,7 @@ export interface EditorialOverride {
   storyId: string;
   action: OverrideAction;
   pinnedRank: number | null;
+  pinnedUntil: string | null; // ISO; a pin stops forcing its rank after this (F10). null = not pinned / legacy
   importanceDelta: number;
   sectionOverride: string | null;
   humanLocked: boolean;
@@ -77,6 +80,8 @@ export interface RankingWeights {
   recencyHalflifeH: number;
   sourceWeight: number;
   velocityWeight: number;
+  /** Front-page section order / visibility / band size (F12). Always complete (see resolveSectionLayout). */
+  sectionLayout: SectionLayout;
   updatedBy: string;
   updatedAt: string;
 }

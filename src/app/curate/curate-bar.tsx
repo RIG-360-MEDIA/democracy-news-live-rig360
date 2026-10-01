@@ -10,7 +10,8 @@ interface CurateBarProps {
   editor: string;
   view: CurateView;
   onViewChange: (view: CurateView) => void;
-  onOpenSections: () => void;
+  /** Omitted for non-admins: section prominence is feed-wide config (admin-only, F8). */
+  onOpenSections?: () => void;
 }
 
 const VIEW_OPTIONS = [
@@ -39,20 +40,22 @@ export function CurateBar({ editor, view, onViewChange, onOpenSections }: Curate
         </span>
       )}
 
-      <button
-        type="button"
-        onClick={onOpenSections}
-        disabled={view !== 'editor'}
-        style={{
-          marginLeft: 'auto', background: 'transparent', color: '#fff', border: '1px solid rgba(255,255,255,0.35)',
-          padding: '4px 10px', fontSize: 12, cursor: view === 'editor' ? 'pointer' : 'default',
-          opacity: view === 'editor' ? 1 : 0.4,
-        }}
-      >
-        Sections
-      </button>
+      {onOpenSections && (
+        <button
+          type="button"
+          onClick={onOpenSections}
+          disabled={view !== 'editor'}
+          style={{
+            marginLeft: 'auto', background: 'transparent', color: '#fff', border: '1px solid rgba(255,255,255,0.35)',
+            padding: '4px 10px', fontSize: 12, cursor: view === 'editor' ? 'pointer' : 'default',
+            opacity: view === 'editor' ? 1 : 0.4,
+          }}
+        >
+          Sections
+        </button>
+      )}
 
-      <span style={{ opacity: 0.6, fontFamily: 'var(--font-mono), monospace', fontSize: 11 }}>{editor}</span>
+      <span style={{ marginLeft: onOpenSections ? undefined : 'auto', opacity: 0.6, fontFamily: 'var(--font-mono), monospace', fontSize: 11 }}>{editor}</span>
       <Link href="/studio" style={{ color: '#e0837d', textDecoration: 'none', fontWeight: 700 }}>← Studio</Link>
     </div>
   );

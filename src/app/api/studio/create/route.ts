@@ -1,10 +1,12 @@
 // Editorial CMS — author a manual story (E6).
 import { revalidateTag } from 'next/cache';
+import { revalidateStoryPage } from '@/lib/revalidate-story';
 import { NextResponse } from 'next/server';
 
 import { CACHE_TAGS } from '@/lib/cache';
-import { createManualStory, MANUAL_TOPICS, type ManualTopic } from '@/lib/studio/manual';
-import { requireEditor } from '@/lib/studio/session';
+import { guardApi } from '@/lib/studio/guard';
+import { createSchema } from '@/lib/studio/input-schemas';
+import { createManualStory } from '@/lib/studio/manual';
 
 export const runtime = 'nodejs';
 
@@ -12,56 +14,34 @@ function fail(code: string, message: string, status: number) {
   return NextResponse.json({ ok: false, data: null, error: { code, message } }, { status });
 }
 
-/** A non-empty trimmed string, or null. */
-function str(v: unknown): string | null {
-  if (typeof v !== 'string') return null;
-  const t = v.trim();
-  return t.length ? t : null;
-}
-
-function isTopic(v: unknown): v is ManualTopic {
-  return typeof v === 'string' && (MANUAL_TOPICS as readonly string[]).includes(v);
-}
-
 export async function POST(req: Request) {
-  const guard = await requireEditor();
-  if (!guard.ok) return fail(String(guard.status), guard.status === 401 ? 'Not authenticated' : 'Editor access required', guard.status);
+  const guard = await guardApi('editor');
+  if (!guard.ok) return guard.response;
   const editor = guard.editor.id;
 
-  let body: Record<string, unknown>;
+  let raw: unknown;
   try {
-    body = (await req.json()) as Record<string, unknown>;
+    raw = await req.json();
   } catch {
     return fail('400', 'Malformed JSON', 400);
   }
 
-  const headline = str(body.headline);
-  const storyBody = str(body.body);
-  if (!headline) return fail('400', 'headline is required', 400);
-  if (!storyBody) return fail('400', 'body is required', 400);
-
-  const topic: ManualTopic = isTopic(body.topic) ? body.topic : 'OTHER';
-
-  const importanceRaw = Number(body.importance ?? 40);
-  const importance = Number.isFinite(importanceRaw) ? importanceRaw : 40;
+  // L1: required headline/body, length caps on every field, http(s)-only image_url, bounded importance.
+  const parsed = createSchema.safeParse(raw);
+  if (!parsed.success) {
+    const field = String(parsed.error.issues[0]?.path[0] ?? 'input');
+    return fail('400', `Invalid ${field}`, 400);
+  }
+  const { headline, body, dek, country, image_url: imageUrl, topic, importance } = parsed.data;
 
   try {
-    const id = await createManualStory(
-      {
-        headline,
-        dek: str(body.dek),
-        body: storyBody,
-        topic,
-        country: str(body.country),
-        imageUrl: str(body.image_url),
-        importance,
-      },
-      editor,
-    );
+    const id = await createManualStory({ headline, dek, body, topic, country, imageUrl, importance }, editor);
     // A new manual story can surface on the front page — bust the reader cache now.
     revalidateTag(CACHE_TAGS.frontPage);
+    revalidateStoryPage(id);
     return NextResponse.json({ ok: true, data: { id }, error: null });
   } catch (e: unknown) {
-    return fail('500', e instanceof Error ? e.message : 'Create failed', 500);
+    console.error('[studio/create] failed', { editor, error: e });
+    return fail('500', 'Create failed', 500);
   }
 }

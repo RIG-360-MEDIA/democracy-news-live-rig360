@@ -1,24 +1,33 @@
 'use client';
 
-// Editor-only slide-over to tune the front-page sections. There is NO sections
-// table today: the reader ranking (src/lib/worldwide/ranking.ts) fixes the section
-// ORDER (its SECTION_TOPICS array) and the per-section COUNT (a constant) in code.
-// What IS persisted and re-read is topic *prominence* via the ranking weights config
-// (/api/studio/weights → getWeights().topicWeights). So this panel exposes only the
-// lever that actually works — per-section weight — rather than order/count inputs that
-// would silently do nothing. Weights are admin-only (the route enforces it); a
-// non-admin editor gets a toast.
+// Editor-only slide-over to tune the front-page sections (F12): ORDER (up/down), VISIBILITY (show
+// toggle), band SIZE (stories shown, 1–7) and prominence WEIGHT. All of it is persisted in the ranking
+// weights config (/api/studio/weights → rigwire.ranking_weights: topic_weights + section_layout) and
+// re-applied by the reader ranking on every build, so a saved order survives reload and IS the
+// front-page order. Weights are admin-only (F8: the route enforces it, and /curate only mounts this
+// panel for admins).
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 
 import { useToast } from '@/components/studio/ui';
+import {
+  DEFAULT_SECTION_LAYOUT,
+  resolveSectionLayout,
+  SECTION_COUNT_MAX,
+  SECTION_COUNT_MIN,
+  type SectionSetting,
+} from '@/lib/worldwide/sections';
 
-// Mirrors SECTION_TOPICS in ranking.ts (rule 2 allows duplicating a small list over
-// coupling to a read-only reader module). Keep in sync if the reader set changes.
-const SECTION_TOPICS = [
-  'POLITICS', 'SPORTS', 'SECURITY', 'ENVIRONMENT', 'HEALTH',
-  'BUSINESS', 'FINANCE', 'LEGAL', 'TECHNOLOGY', 'SOCIETY',
-] as const;
+/** Move the item at `from` by `delta` places — returns a new array. */
+function moved<T>(xs: ReadonlyArray<T>, from: number, delta: number): T[] {
+  const to = from + delta;
+  if (to < 0 || to >= xs.length) return [...xs];
+  const next = [...xs];
+  const [item] = next.splice(from, 1);
+  next.splice(to, 0, item);
+  return next;
+}
 
 interface SectionManagerProps {
   open: boolean;
@@ -27,14 +36,16 @@ interface SectionManagerProps {
 
 interface WeightsResponse {
   ok: boolean;
-  data: { topicWeights: Record<string, number> } | null;
+  data: { topicWeights: Record<string, number>; sectionLayout?: unknown } | null;
   error: { message?: string } | null;
 }
 
 export default function SectionManager({ open, onClose }: SectionManagerProps) {
   const toast = useToast();
+  const router = useRouter();
 
   const [weights, setWeights] = useState<Record<string, number>>({});
+  const [layout, setLayout] = useState<SectionSetting[]>([...DEFAULT_SECTION_LAYOUT]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -46,7 +57,10 @@ export default function SectionManager({ open, onClose }: SectionManagerProps) {
       .then((r) => r.json() as Promise<WeightsResponse>)
       .then((json) => {
         if (!active) return;
-        if (json.ok && json.data) setWeights({ ...json.data.topicWeights });
+        if (json.ok && json.data) {
+          setWeights({ ...json.data.topicWeights });
+          setLayout([...resolveSectionLayout(json.data.sectionLayout)]);
+        }
         else toast.show(`Couldn't load weights — ${json.error?.message ?? 'unknown error'}`, 'error');
       })
       .catch((e: unknown) => {
@@ -66,14 +80,15 @@ export default function SectionManager({ open, onClose }: SectionManagerProps) {
       const res = await fetch('/api/studio/weights', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ topicWeights: weights }),
+        body: JSON.stringify({ topicWeights: weights, sectionLayout: layout }),
       });
       const json = (await res.json().catch(() => null)) as WeightsResponse | null;
       if (!res.ok || !json || json.ok !== true) {
         toast.show(`Couldn't save weights — ${json?.error?.message ?? `HTTP ${res.status}`}`, 'error');
         return;
       }
-      toast.show('Section prominence saved');
+      toast.show('Sections saved — the front page uses this order now');
+      router.refresh(); // re-render the live preview below with the saved layout
     } finally {
       setSaving(false);
     }
@@ -104,9 +119,8 @@ export default function SectionManager({ open, onClose }: SectionManagerProps) {
         </header>
 
         <p className="border-b border-studio-rule px-4 py-2 font-sans text-ui-sm text-studio-muted">
-          Section order and per-section count are fixed by the reader ranking (no sections table yet).
-          Adjust each section&rsquo;s <b className="text-studio-ink">weight</b> below — it is persisted
-          and re-applied at read.
+          Order, visibility, how many stories each band shows, and each section&rsquo;s{' '}
+          <b className="text-studio-ink">weight</b> are saved and applied to the reader front page.
         </p>
 
         <div className="flex-1 overflow-y-auto px-4 py-3">
@@ -114,28 +128,85 @@ export default function SectionManager({ open, onClose }: SectionManagerProps) {
             <p className="font-sans text-ui-sm text-studio-muted">Loading weights…</p>
           ) : (
             <div className="flex flex-col gap-2">
-              {SECTION_TOPICS.map((topic) => (
-                <div
-                  key={topic}
-                  className="flex items-center gap-3 border border-studio-rule bg-studio-paper px-3 py-2"
-                >
-                  <span className="flex-1 font-mono text-ui-sm uppercase tracking-wider text-studio-ink">
-                    {topic}
-                  </span>
-                  <label className="flex items-center gap-1 font-mono text-ui-sm text-studio-muted">
-                    weight
-                    <input
-                      type="number"
-                      step="0.1"
-                      value={weights[topic] ?? 1}
-                      onChange={(e) =>
-                        setWeights((prev) => ({ ...prev, [topic]: Number(e.target.value) }))
-                      }
-                      className="w-16 border border-studio-rule bg-studio-paper px-1 py-0.5 text-right text-studio-ink outline-none"
-                    />
-                  </label>
-                </div>
-              ))}
+              {layout.map((setting, i) => {
+                const update = (patch: Partial<SectionSetting>) =>
+                  setLayout((prev) => prev.map((x, j) => (j === i ? { ...x, ...patch } : x)));
+                return (
+                  <div
+                    key={setting.topic}
+                    className="flex flex-col gap-1 border border-studio-rule bg-studio-paper px-3 py-2"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="w-5 font-mono text-ui-sm text-studio-muted">{i + 1}</span>
+                      <span
+                        className={[
+                          'flex-1 font-mono text-ui-sm uppercase tracking-wider',
+                          setting.visible ? 'text-studio-ink' : 'text-studio-muted line-through',
+                        ].join(' ')}
+                      >
+                        {setting.topic}
+                      </span>
+                      <button
+                        type="button"
+                        aria-label={`Move ${setting.topic} up`}
+                        disabled={i === 0}
+                        onClick={() => setLayout((prev) => moved(prev, i, -1))}
+                        className="px-1 font-mono text-ui-sm text-studio-ink disabled:opacity-30"
+                      >
+                        ↑
+                      </button>
+                      <button
+                        type="button"
+                        aria-label={`Move ${setting.topic} down`}
+                        disabled={i === layout.length - 1}
+                        onClick={() => setLayout((prev) => moved(prev, i, 1))}
+                        className="px-1 font-mono text-ui-sm text-studio-ink disabled:opacity-30"
+                      >
+                        ↓
+                      </button>
+                    </div>
+                    <div className="flex items-center gap-3 pl-7 font-mono text-ui-sm text-studio-muted">
+                      <label className="flex items-center gap-1">
+                        <input
+                          type="checkbox"
+                          checked={setting.visible}
+                          onChange={(e) => update({ visible: e.target.checked })}
+                        />
+                        show
+                      </label>
+                      <label className="flex items-center gap-1">
+                        stories
+                        <input
+                          type="number"
+                          min={SECTION_COUNT_MIN}
+                          max={SECTION_COUNT_MAX}
+                          step="1"
+                          value={setting.count}
+                          onChange={(e) => {
+                            const n = Math.round(Number(e.target.value));
+                            if (Number.isFinite(n)) {
+                              update({ count: Math.min(SECTION_COUNT_MAX, Math.max(SECTION_COUNT_MIN, n)) });
+                            }
+                          }}
+                          className="w-12 border border-studio-rule bg-studio-paper px-1 py-0.5 text-right text-studio-ink outline-none"
+                        />
+                      </label>
+                      <label className="flex items-center gap-1">
+                        weight
+                        <input
+                          type="number"
+                          step="0.1"
+                          value={weights[setting.topic] ?? 1}
+                          onChange={(e) =>
+                            setWeights((prev) => ({ ...prev, [setting.topic]: Number(e.target.value) }))
+                          }
+                          className="w-14 border border-studio-rule bg-studio-paper px-1 py-0.5 text-right text-studio-ink outline-none"
+                        />
+                      </label>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
@@ -147,7 +218,7 @@ export default function SectionManager({ open, onClose }: SectionManagerProps) {
             disabled={saving || loading}
             className="w-full border border-studio-rule bg-studio-paper px-3 py-2 font-sans text-ui-sm font-semibold text-studio-ink disabled:opacity-50"
           >
-            {saving ? 'Saving…' : 'Save prominence'}
+            {saving ? 'Saving…' : 'Save sections'}
           </button>
         </footer>
       </aside>

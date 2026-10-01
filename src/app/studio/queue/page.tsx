@@ -1,4 +1,5 @@
 // Editorial CMS — Coming-up queue (E4): ranked-but-not-yet-promoted stories the editor watches.
+import { guardPage } from '@/lib/studio/guard';
 import { getQueue } from '@/lib/studio/queue';
 
 import { QueueClient } from './queue-client';
@@ -6,6 +7,7 @@ import { QueueClient } from './queue-client';
 export const dynamic = 'force-dynamic';
 
 export default async function Queue() {
+  await guardPage('editor');
   const items = await getQueue(50);
   const generated = items.filter((i) => i.generated).length;
   const pending = items.length - generated;

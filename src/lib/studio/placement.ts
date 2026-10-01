@@ -1,6 +1,6 @@
 // Editorial CMS — projected front-page placement for a story (Newsroom next-up + publish toast).
 //
-// Best-effort projection: mirrors the reader ranking's topic→section map and orders by
+// Best-effort projection: uses the reader ranking's shared topic→section map (worldwide/sections.ts) and orders by
 // importance_score within a section. Read-only via sqlAnalytics. The true reader order is computed
 // by worldwide/ranking.ts (recency-decayed, diversity-capped); this approximates *where a story
 // would land* so an editor sees a stable "→ Politics #4" before promoting it. Next-up and the
@@ -8,32 +8,13 @@
 
 import { sqlAnalytics } from '@/lib/db';
 
+import { sectionOf } from '@/lib/worldwide/sections';
+
 export interface Placement {
   /** Canonical section token (e.g. 'POLITICS'), matching ranking.ts SECTION_TOPICS. */
   section: string;
   /** 1-based position within that section. */
   position: number;
-}
-
-// Mirrors worldwide/ranking.ts TOPIC_TO_SECTION. That module is read-only and does not export the
-// map, so this is a deliberate small copy (code-style rule 1: two copies of 15 lines beat one wrong
-// abstraction that couples Newsroom projection to the reader ranking's internals).
-const TOPIC_TO_SECTION: Record<string, string | null> = {
-  POLITICS: 'POLITICS', GOVERNANCE: 'POLITICS',
-  SPORTS: 'SPORTS',
-  SECURITY: 'SECURITY',
-  ENVIRONMENT: 'ENVIRONMENT', AGRICULTURE: 'ENVIRONMENT',
-  HEALTH: 'HEALTH',
-  BUSINESS: 'BUSINESS', INFRASTRUCTURE: 'BUSINESS',
-  FINANCE: 'FINANCE',
-  LEGAL: 'LEGAL',
-  TECHNOLOGY: 'TECHNOLOGY', SCIENCE: 'TECHNOLOGY', TECH: 'TECHNOLOGY',
-  CULTURE: 'SOCIETY', SOCIETY: 'SOCIETY', SOCIAL: 'SOCIETY',
-  INTERNATIONAL: null, OTHER: null,
-};
-
-function sectionOf(topic: string): string | null {
-  return TOPIC_TO_SECTION[topic.toUpperCase()] ?? null;
 }
 
 interface TopicImp {

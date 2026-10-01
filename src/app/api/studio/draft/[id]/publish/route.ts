@@ -2,20 +2,20 @@
 //
 // Flow: finalize on the box (its own verification gate — a 422 there means
 // "not ready to publish" and is surfaced to the editor verbatim) → one insert
-// into Neon rigwire.manual_stories (PUBLISHABLE, idempotent per job) → one
-// editorial_audit row → bust the reader cache → best-effort tell the box it
+// into Neon rigwire.manual_stories (PUBLISHABLE, idempotent per job) + one
+// editorial_audit row in the same transaction → bust the reader cache → best-effort tell the box it
 // published. The box's confirm-publish is nice-to-have only: once the Neon
 // row exists the story is live, and we never roll that back because the box
 // round-trip failed.
 
 import { revalidateTag } from 'next/cache';
+import { revalidateStoryPage } from '@/lib/revalidate-story';
 import { NextResponse } from 'next/server';
 
 import { CACHE_TAGS } from '@/lib/cache';
 import { confirmPublished, DispatchError, finalize, isDispatchLive } from '@/lib/dispatch/client';
-import { sql } from '@/lib/db';
 import { createPublishableManualStory } from '@/lib/studio/draft-publish';
-import { requireEditor } from '@/lib/studio/session';
+import { guardApi } from '@/lib/studio/guard';
 
 export const runtime = 'nodejs';
 
@@ -28,10 +28,8 @@ interface RouteContext {
 }
 
 export async function POST(_req: Request, { params }: RouteContext) {
-  const guard = await requireEditor();
-  if (!guard.ok) {
-    return fail(String(guard.status), guard.status === 401 ? 'Not authenticated' : 'Editor access required', guard.status);
-  }
+  const guard = await guardApi('editor');
+  if (!guard.ok) return guard.response;
 
   // The CMS_DEV_EDITOR bypass (session.ts) exists only to verify UI against the
   // box without a real login — it must never be able to publish a live story.
@@ -62,6 +60,7 @@ export async function POST(_req: Request, { params }: RouteContext) {
 
   let storyId: string;
   try {
+    // The manual_stories insert and its 'doorb_publish' audit row commit together (F7).
     storyId = await createPublishableManualStory(
       {
         headline: payload.headline,
@@ -74,30 +73,15 @@ export async function POST(_req: Request, { params }: RouteContext) {
         draftJobId: payload.job_id,
       },
       editorId,
+      { job_id: payload.job_id, version: payload.version, flags_summary: payload.flags_summary },
     );
   } catch (e: unknown) {
     return fail('500', e instanceof Error ? e.message : 'Publishing the story failed', 500);
   }
 
-  try {
-    await sql`
-      INSERT INTO rigwire.editorial_audit (story_id, editor_id, action, before, after)
-      VALUES (
-        ${storyId}, ${editorId}, 'doorb_publish', null,
-        ${sql.json({
-          job_id: payload.job_id,
-          version: payload.version,
-          flags_summary: payload.flags_summary,
-        } as unknown as Parameters<typeof sql.json>[0])}
-      )
-    `;
-  } catch (e: unknown) {
-    // Audit is best-effort visibility, not a publish gate — the story already landed.
-    console.error(`[doorb_publish] audit insert failed for job=${jobId} story=${storyId}`, e);
-  }
-
   // A new manual story can surface on the front page — bust the reader cache now.
   revalidateTag(CACHE_TAGS.frontPage);
+  revalidateStoryPage(storyId); // an editor may have opened the id before publish (cached 404)
 
   try {
     await confirmPublished(jobId, storyId, editorId);

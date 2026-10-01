@@ -10,7 +10,8 @@ import { z } from 'zod';
 
 import { CACHE_TAGS } from '@/lib/cache';
 import { getAuditEntry, isUndoable, listAudit, undoAudit } from '@/lib/studio/audit';
-import { requireEditor } from '@/lib/studio/session';
+import { CONFLICT_MESSAGE, isWriteConflict } from '@/lib/studio/db-errors';
+import { guardApi } from '@/lib/studio/guard';
 
 export const runtime = 'nodejs';
 
@@ -21,14 +22,10 @@ function fail(code: string, message: string, status: number) {
   return NextResponse.json({ ok: false, data: null, error: { code, message } }, { status });
 }
 
-function guardMessage(status: 401 | 403): string {
-  return status === 401 ? 'Not authenticated' : 'Editor access required';
-}
-
 const filterSchema = z.object({
   editor: z.string().trim().min(1).optional(),
   action: z.string().trim().min(1).optional(),
-  storyId: z.string().trim().min(1).optional(),
+  storyId: z.guid().optional(),
   from: z.string().trim().min(1).optional(),
   to: z.string().trim().min(1).optional(),
   limit: z.coerce.number().int().min(1).max(MAX_LIMIT).default(DEFAULT_LIMIT),
@@ -36,8 +33,8 @@ const filterSchema = z.object({
 });
 
 export async function GET(req: Request) {
-  const guard = await requireEditor();
-  if (!guard.ok) return fail(String(guard.status), guardMessage(guard.status), guard.status);
+  const guard = await guardApi('editor');
+  if (!guard.ok) return guard.response;
 
   const params = new URL(req.url).searchParams;
   const parsed = filterSchema.safeParse({
@@ -52,18 +49,20 @@ export async function GET(req: Request) {
   if (!parsed.success) return fail('400', 'Invalid filters', 400);
 
   try {
-    const rows = await listAudit(parsed.data);
+    // M2: editors see the newsroom ledger; admin-scope config rows are admin-only.
+    const rows = await listAudit(parsed.data, { isAdmin: guard.editor.isAdmin });
     return NextResponse.json({ ok: true, data: rows, error: null });
   } catch (e: unknown) {
-    return fail('500', e instanceof Error ? e.message : 'Failed to load audit log', 500);
+    console.error('[studio/audit] list failed', { editor: guard.editor.id, filters: parsed.data, error: e });
+    return fail('500', 'Failed to load audit log', 500);
   }
 }
 
 const undoSchema = z.object({ id: z.coerce.number().int().positive() });
 
 export async function POST(req: Request) {
-  const guard = await requireEditor();
-  if (!guard.ok) return fail(String(guard.status), guardMessage(guard.status), guard.status);
+  const guard = await guardApi('editor');
+  if (!guard.ok) return guard.response;
   const editorId = guard.editor.id;
 
   let body: unknown;
@@ -76,11 +75,10 @@ export async function POST(req: Request) {
   const parsed = undoSchema.safeParse(body);
   if (!parsed.success) return fail('400', 'A numeric audit entry id is required', 400);
 
-  const entry = await getAuditEntry(parsed.data.id);
-  if (!entry) return fail('404', 'Audit entry not found', 404);
-  if (!isUndoable(entry)) return fail('422', 'This entry carries no prior state to restore', 422);
-
   try {
+    const entry = await getAuditEntry(parsed.data.id);
+    if (!entry) return fail('404', 'Audit entry not found', 404);
+    if (!isUndoable(entry)) return fail('422', 'This entry carries no prior state to restore', 422);
     const restored = await undoAudit(entry, editorId);
     // The revert changes what readers see — bust the front-page cache now.
     revalidateTag(CACHE_TAGS.frontPage);
@@ -90,6 +88,9 @@ export async function POST(req: Request) {
       error: null,
     });
   } catch (e: unknown) {
-    return fail('500', e instanceof Error ? e.message : 'Undo failed', 500);
+    // Undoing to a pinned snapshot can race a concurrent pin/reorder (one_pin_per_rank, deadlock).
+    if (isWriteConflict(e)) return fail('409', CONFLICT_MESSAGE, 409);
+    console.error('[studio/audit] undo failed', { editor: editorId, auditId: parsed.data.id, error: e });
+    return fail('500', 'Undo failed', 500);
   }
 }

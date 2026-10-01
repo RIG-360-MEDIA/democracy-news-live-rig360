@@ -21,7 +21,7 @@ export interface StoryCard {
   facts: number;
   lastSeenAt: string; // ISO timestamp
   freshnessSeconds: number; // age vs last_seen_at — used for internal editorial freshness rules
-  publishedSeconds?: number; // age vs when we PUBLISHED the story on our site (generation run) — used for the displayed timestamp
+  publishedSeconds?: number; // age of the story's newest source article (displayedTimeMs) — the "X ago" label and "Latest first" order
   isScoop: boolean; // single-article story
   dominantEntity: string | null; // top entity — the B+ hub grouping key
   pinned?: boolean; // editor pinned this as the top headline (CMS override) — exempt from auto lead rules
@@ -44,6 +44,7 @@ export interface EventHub {
 export interface TopicSection {
   topic: string;
   stories: StoryCard[];
+  maxVisible?: number; // editor-saved band size (featured + list); absent → the page default (7)
 }
 
 /** The whole front page for a given scope. */

@@ -1,12 +1,14 @@
 // STEP 3 — source management. Tag each source's political lean to sharpen the Story-Lens bias view.
-// Auth-gated by the studio layout.
+// Admin-only (F8): sources are feed-wide configuration.
 import { listSources, unratedSourceCount } from '@/lib/editorial/sources';
+import { guardPage } from '@/lib/studio/guard';
 
 import SourcesClient from './sources-client';
 
 export const dynamic = 'force-dynamic';
 
 export default async function SourcesPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
+  await guardPage('admin');
   const { q } = await searchParams;
   const [rows, unrated] = await Promise.all([listSources(q ?? ''), unratedSourceCount()]);
 

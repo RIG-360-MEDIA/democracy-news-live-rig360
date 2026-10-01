@@ -1,7 +1,12 @@
-// Editorial CMS — Section fill dashboard (E6). Read-only.
-// Maps each desk story's generator topic onto one of the 10 sections and
-// shows how full each section is against the target of 6 publishable stories.
+// Editorial CMS — Section fill dashboard (E6). Read-only; admin-only (F8).
+// Maps each desk story's generator topic onto one of the 10 sections (the SAME shared map the reader
+// ranking uses — worldwide/sections.ts, F12) and shows how full each section is against the target of
+// 6 publishable stories, in the editor-saved front-page order (order/visibility/size are edited in
+// /curate → Sections and stored in the ranking weights row).
 import { getDeskFeed } from '@/lib/studio/feed';
+import { guardPage } from '@/lib/studio/guard';
+import { getWeights } from '@/lib/studio/weights';
+import { sectionOf, type SectionLayout, type SectionTopic } from '@/lib/worldwide/sections';
 
 import type { DeskStory } from '@/lib/studio/types';
 
@@ -9,45 +14,15 @@ export const dynamic = 'force-dynamic';
 
 const TARGET = 6;
 
-// The 10 sections, in display order.
-const SECTIONS = [
-  'Politics',
-  'Sports',
-  'Security',
-  'Environment',
-  'Health',
-  'Business',
-  'Finance',
-  'Legal',
-  'Technology',
-  'Society',
-] as const;
+type Section = SectionTopic;
 
-type Section = (typeof SECTIONS)[number];
-
-// Generator emits ~17 topic labels; collapse them onto the 10 sections.
-// INTERNATIONAL / OTHER (and anything unmapped) fall into no section.
-const TOPIC_TO_SECTION: Record<string, Section> = {
-  POLITICS: 'Politics',
-  GOVERNANCE: 'Politics',
-  SPORTS: 'Sports',
-  SECURITY: 'Security',
-  ENVIRONMENT: 'Environment',
-  AGRICULTURE: 'Environment',
-  HEALTH: 'Health',
-  BUSINESS: 'Business',
-  INFRASTRUCTURE: 'Business',
-  FINANCE: 'Finance',
-  LEGAL: 'Legal',
-  TECHNOLOGY: 'Technology',
-  SCIENCE: 'Technology',
-  CULTURE: 'Society',
-  SOCIETY: 'Society',
-};
+const titleCase = (t: string) => t.charAt(0) + t.slice(1).toLowerCase();
 
 interface SectionFill {
   section: Section;
   count: number;
+  visible: boolean;
+  bandSize: number;
 }
 
 interface FillReport {
@@ -55,24 +30,13 @@ interface FillReport {
   unsectioned: number;
 }
 
-/** Count publishable (non-killed) stories per section from the desk feed. */
-function tally(stories: readonly DeskStory[]): FillReport {
-  const counts: Record<Section, number> = SECTIONS.reduce(
-    (acc, s) => ({ ...acc, [s]: 0 }),
-    {} as Record<Section, number>,
-  );
-
-  const unsectioned = stories.reduce((noSection, story) => {
-    if (story.action === 'killed') return noSection;
-    const section = TOPIC_TO_SECTION[story.topic];
-    if (!section) return noSection + 1;
-    counts[section] += 1;
-    return noSection;
-  }, 0);
-
+/** Count publishable (non-killed) stories per section from the desk feed, in the saved layout order. */
+function tally(stories: readonly DeskStory[], layout: SectionLayout): FillReport {
+  const live = stories.filter((story) => story.action !== 'killed');
+  const countOf = (section: Section) => live.filter((story) => sectionOf(story.topic) === section).length;
   return {
-    fills: SECTIONS.map((section) => ({ section, count: counts[section] })),
-    unsectioned,
+    fills: layout.map((s) => ({ section: s.topic, count: countOf(s.topic), visible: s.visible, bandSize: s.count })),
+    unsectioned: live.filter((story) => sectionOf(story.topic) === null).length,
   };
 }
 
@@ -108,7 +72,12 @@ function SectionRow({ fill }: { fill: SectionFill }) {
         background: '#fff',
       }}
     >
-      <span style={{ fontWeight: 600, fontSize: 14, color: '#111' }}>{fill.section}</span>
+      <span style={{ fontWeight: 600, fontSize: 14, color: fill.visible ? '#111' : '#aaa' }}>
+        {titleCase(fill.section)}
+        <span style={{ display: 'block', fontFamily: 'var(--font-mono), monospace', fontSize: 10, fontWeight: 400, color: '#999' }}>
+          {fill.visible ? `shows ${fill.bandSize}` : 'hidden'}
+        </span>
+      </span>
 
       <div style={{ height: 10, borderRadius: 6, background: '#f0f0ef', overflow: 'hidden' }}>
         <div style={{ height: '100%', width: `${pct}%`, background: st.bar, borderRadius: 6 }} />
@@ -137,8 +106,9 @@ function SectionRow({ fill }: { fill: SectionFill }) {
 }
 
 export default async function Page() {
-  const stories = await getDeskFeed();
-  const { fills, unsectioned } = tally(stories);
+  await guardPage('admin');
+  const [stories, weights] = await Promise.all([getDeskFeed(), getWeights()]);
+  const { fills, unsectioned } = tally(stories, weights.sectionLayout);
 
   const fullCount = fills.filter((f) => stateOf(f.count) === 'full').length;
   const starvingCount = fills.filter((f) => stateOf(f.count) === 'starving').length;
@@ -147,7 +117,7 @@ export default async function Page() {
     <div>
       <h1 style={{ fontFamily: headingFont, fontSize: 26, fontWeight: 600 }}>Sections</h1>
       <p style={{ color: '#888', fontSize: 13, marginTop: 8 }}>
-        Publishable fill across the 10 front-page sections. Target is {TARGET} stories each —{' '}
+        Publishable fill across the 10 front-page sections, in front-page order. Target is {TARGET} stories each —{' '}
         <span style={{ color: STATE_STYLE.full.fg, fontWeight: 600 }}>{fullCount} full</span>,{' '}
         <span style={{ color: STATE_STYLE.starving.fg, fontWeight: 600 }}>{starvingCount} starving</span>.
       </p>

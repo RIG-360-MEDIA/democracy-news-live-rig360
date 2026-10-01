@@ -6,7 +6,7 @@ import { NextResponse } from 'next/server';
 
 import { DispatchError, getJob, saveEdit } from '@/lib/dispatch/client';
 import { saveEditRequestSchema } from '@/lib/dispatch/types';
-import { requireEditor } from '@/lib/studio/session';
+import { guardApi } from '@/lib/studio/guard';
 
 export const runtime = 'nodejs';
 
@@ -19,10 +19,8 @@ interface RouteContext {
 }
 
 export async function GET(_req: Request, { params }: RouteContext) {
-  const guard = await requireEditor();
-  if (!guard.ok) {
-    return fail(String(guard.status), guard.status === 401 ? 'Not authenticated' : 'Editor access required', guard.status);
-  }
+  const guard = await guardApi('editor');
+  if (!guard.ok) return guard.response;
 
   const { id: jobId } = await params;
   if (!jobId) return fail('400', 'Job id is required', 400);
@@ -37,10 +35,8 @@ export async function GET(_req: Request, { params }: RouteContext) {
 }
 
 export async function PATCH(req: Request, { params }: RouteContext) {
-  const guard = await requireEditor();
-  if (!guard.ok) {
-    return fail(String(guard.status), guard.status === 401 ? 'Not authenticated' : 'Editor access required', guard.status);
-  }
+  const guard = await guardApi('editor');
+  if (!guard.ok) return guard.response;
 
   const { id: jobId } = await params;
   if (!jobId) return fail('400', 'Job id is required', 400);

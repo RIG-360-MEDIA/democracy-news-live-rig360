@@ -11,6 +11,7 @@
 
 import { sql } from '@/lib/db';
 
+import { ADMIN_SCOPE_AUDIT_ACTIONS, OVERRIDE_AUDIT_ACTIONS } from './audit-log';
 import { applyOverride } from './overrides';
 import type { EditorialOverride } from './types';
 
@@ -67,14 +68,22 @@ function toRow(r: AuditDbRow): AuditRow {
   };
 }
 
+/** Who is reading the ledger (M2): non-admins never see admin-scope configuration rows. */
+export interface AuditViewer {
+  isAdmin: boolean;
+}
+
 /** List audit rows, reverse-chronological, filtered and paginated. All filters
- *  are optional; every value is bound as a parameter (no string interpolation). */
-export async function listAudit(filters: AuditFilters): Promise<AuditRow[]> {
+ *  are optional; every value is bound as a parameter (no string interpolation).
+ *  For a non-admin viewer, admin-scope actions (users, sources, weights) are excluded
+ *  regardless of the filters. */
+export async function listAudit(filters: AuditFilters, viewer: AuditViewer): Promise<AuditRow[]> {
   const { editor, action, storyId, from, to, limit, offset } = filters;
   const rows = (await sql`
     SELECT id, story_id, editor_id, action, before, after, at
     FROM rigwire.editorial_audit
-    WHERE ${editor ? sql`editor_id = ${editor}` : sql`TRUE`}
+    WHERE ${viewer.isAdmin ? sql`TRUE` : sql`action <> ALL(${ADMIN_SCOPE_AUDIT_ACTIONS as string[]})`}
+      AND ${editor ? sql`editor_id = ${editor}` : sql`TRUE`}
       AND ${action ? sql`action = ${action}` : sql`TRUE`}
       AND ${storyId ? sql`story_id = ${storyId}` : sql`TRUE`}
       AND ${from ? sql`at >= ${from}` : sql`TRUE`}
@@ -97,14 +106,15 @@ export async function getAuditEntry(id: number): Promise<AuditRow | null> {
   return r ? toRow(r) : null;
 }
 
-/** True when an entry carries a full override snapshot we can restore. Door B
- *  publishes and first-touch rows (before === null) have nothing to revert to. */
+/** True when an entry carries a full override snapshot we can restore. Only rows
+ *  written by applyOverride qualify (not Door B publishes, manual stories or config
+ *  rows), and first-touch rows (before === null) have nothing to revert to. */
 export function isUndoable(entry: AuditRow): entry is AuditRow & {
   storyId: string;
   before: EditorialOverride;
 } {
   return (
-    entry.action !== 'doorb_publish' &&
+    OVERRIDE_AUDIT_ACTIONS.includes(entry.action) &&
     entry.storyId !== null &&
     entry.before !== null &&
     typeof entry.before === 'object' &&

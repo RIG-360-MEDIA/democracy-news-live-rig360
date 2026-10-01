@@ -282,7 +282,9 @@ export function layoutFrontPage(fp: FrontPage): FrontPageLayout {
     if (claimed.length === 0) continue;
     const leadIdx = Math.max(0, claimed.findIndex(hasRealImage));
     const featured = claimed[leadIdx];
-    const list = claimed.filter((_, idx) => idx !== leadIdx).slice(0, SECTION_LIST_MAX);
+    // Editor-saved band size (F12): featured + (maxVisible − 1) list items; default featured + 6.
+    const listMax = section.maxVisible ? Math.max(0, section.maxVisible - 1) : SECTION_LIST_MAX;
+    const list = claimed.filter((_, idx) => idx !== leadIdx).slice(0, listMax);
     const visible = [featured, ...list];
     bands.push({
       key: `section:${section.topic.toLowerCase()}`,

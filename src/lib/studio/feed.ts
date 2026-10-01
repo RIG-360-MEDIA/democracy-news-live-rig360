@@ -4,18 +4,21 @@ import { sqlAnalytics } from '@/lib/db';
 import { isPastBuffer } from '@/lib/publish-buffer';
 
 import { getOverrides } from './overrides';
-import type { DeskState, DeskStory, OverrideAction } from './types';
+import { isPinActive } from './pins';
+import type { DeskState, DeskStory, EditorialOverride, OverrideAction } from './types';
 
 /** The one true state readers get: explicit editor decisions win; otherwise follow the machine.
  *  Pure — derives only from its inputs (and the wall clock, same as the reader ranking's now()). */
 function deskState(
   genStatus: string,
-  action: OverrideAction | undefined,
+  override: EditorialOverride | undefined,
   generatedAt: string,
 ): DeskState {
+  const action: OverrideAction | undefined = override?.action;
   if (action === 'killed') return 'hidden';
-  if (action === 'pinned') return 'top';
+  if (isPinActive(override, Date.now())) return 'top';
   if (action === 'live') return 'live'; // editor Published — force-surfaced, bypasses machine hold + buffer
+  // An EXPIRED pin forces nothing: it follows the machine exactly like an untouched story (F10).
   if (!/^PUBLISHABLE/i.test(genStatus)) return 'held'; // machine held it → needs the editor's OK
   // Publishable, no editor decision → follow the machine, but honour the hold-and-release buffer:
   // live once past the window, otherwise scheduled (in the buffer — Next Up with a countdown).
@@ -104,7 +107,7 @@ export async function getDeskFeed(limit = 120): Promise<DeskStory[]> {
       effectiveImportance: base + (o?.importanceDelta ?? 0),
       generatedAt,
       updatedAt: generatedAt,
-      state: deskState(r.status || '', o?.action, generatedAt),
+      state: deskState(r.status || '', o, generatedAt),
       action,
       pinnedRank: o?.pinnedRank ?? null,
       humanLocked: o?.humanLocked ?? false,

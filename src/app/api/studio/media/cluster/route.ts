@@ -12,7 +12,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
 import { sqlAnalytics } from '@/lib/db';
-import { requireEditor } from '@/lib/studio/session';
+import { guardApi } from '@/lib/studio/guard';
 
 export const runtime = 'nodejs';
 
@@ -77,10 +77,8 @@ async function generatedImage(storyId: string): Promise<string | null> {
 }
 
 export async function GET(req: Request) {
-  const guard = await requireEditor();
-  if (!guard.ok) {
-    return fail(String(guard.status), guard.status === 401 ? 'Not authenticated' : 'Editor access required', guard.status);
-  }
+  const guard = await guardApi('editor');
+  if (!guard.ok) return guard.response;
 
   const parsed = querySchema.safeParse({ storyId: new URL(req.url).searchParams.get('storyId') ?? '' });
   if (!parsed.success) return fail('400', 'Query `storyId` is required', 400);

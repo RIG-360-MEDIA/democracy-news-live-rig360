@@ -6,7 +6,7 @@ import { NextResponse } from 'next/server';
 
 import { createJob, DispatchError, listJobs } from '@/lib/dispatch/client';
 import { createJobRequestSchema } from '@/lib/dispatch/types';
-import { requireEditor } from '@/lib/studio/session';
+import { guardApi } from '@/lib/studio/guard';
 
 export const runtime = 'nodejs';
 
@@ -15,10 +15,8 @@ function fail(code: string, message: string, status: number, details?: unknown) 
 }
 
 export async function POST(req: Request) {
-  const guard = await requireEditor();
-  if (!guard.ok) {
-    return fail(String(guard.status), guard.status === 401 ? 'Not authenticated' : 'Editor access required', guard.status);
-  }
+  const guard = await guardApi('editor');
+  if (!guard.ok) return guard.response;
 
   let body: unknown;
   try {
@@ -42,10 +40,8 @@ export async function POST(req: Request) {
 }
 
 export async function GET(req: Request) {
-  const guard = await requireEditor();
-  if (!guard.ok) {
-    return fail(String(guard.status), guard.status === 401 ? 'Not authenticated' : 'Editor access required', guard.status);
-  }
+  const guard = await guardApi('editor');
+  if (!guard.ok) return guard.response;
 
   const idsParam = new URL(req.url).searchParams.get('ids');
   const ids = idsParam

@@ -1,12 +1,12 @@
 'use client';
 
 // Editor-only overlay: a drag-to-reorder list of the current front-page top stories.
-// On drop, the new order is committed as SEQUENTIAL INDIVIDUAL pinStory(id, rank)
-// calls (rank 1..n) via /api/studio/override — no bulk write. Each card shows its own
-// tick; the first failure toasts and reverts the list to the last committed order.
-// After a clean commit we router.refresh() so getFrontPage re-applies the pins at read.
+// On drop, the new order is committed in ONE call to /api/studio/reorder, which replaces the
+// whole pin set in a single transaction (rank 1..n, each pin with an expiry — F10). A failure
+// writes nothing: we toast and revert the list to the last committed order. After a clean
+// commit we router.refresh() so getFrontPage re-applies the pins at read.
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Reorder } from 'framer-motion';
 
@@ -18,13 +18,15 @@ import type { CurateItem, SaveState } from './types';
 
 interface ReorderOverlayProps {
   items: ReadonlyArray<CurateItem>;
+  /** Fingerprint of the pin set this page was rendered with (stale-tab guard, F10). */
+  pinToken: string;
 }
 
 function sameOrder(a: ReadonlyArray<CurateItem>, b: ReadonlyArray<CurateItem>): boolean {
   return a.length === b.length && a.every((it, i) => it.id === b[i]?.id);
 }
 
-export default function ReorderOverlay({ items }: ReorderOverlayProps) {
+export default function ReorderOverlay({ items, pinToken }: ReorderOverlayProps) {
   const router = useRouter();
   const toast = useToast();
   const actions = useCurateActions();
@@ -36,6 +38,11 @@ export default function ReorderOverlay({ items }: ReorderOverlayProps) {
   const committedRef = useRef<CurateItem[]>([...items]);
   const dirtyRef = useRef(false);
   const busyRef = useRef(false);
+  const pinTokenRef = useRef(pinToken);
+  // A router.refresh() after another curate action re-renders with a fresh token — adopt it.
+  useEffect(() => {
+    pinTokenRef.current = pinToken;
+  }, [pinToken]);
 
   function handleReorder(next: CurateItem[]) {
     orderRef.current = next;
@@ -50,24 +57,20 @@ export default function ReorderOverlay({ items }: ReorderOverlayProps) {
     if (sameOrder(current, previous)) return;
 
     busyRef.current = true;
-    for (let i = 0; i < current.length; i += 1) {
-      const item = current[i];
-      const rank = i + 1;
-      // A card only needs a write if its rank actually changed.
-      if (previous[i]?.id === item.id) continue;
-      setPinState((prev) => ({ ...prev, [item.id]: 'saving' }));
-      // eslint-disable-next-line no-await-in-loop -- sequential by design: one tick per card.
-      const res = await actions.pin(item.id, rank);
-      if (!res.ok) {
-        setPinState((prev) => ({ ...prev, [item.id]: 'error' }));
-        toast.show(`Couldn't pin “${item.title}” — ${res.error}`, 'error');
-        orderRef.current = previous;
-        setOrder([...previous]);
-        busyRef.current = false;
-        return;
-      }
-      setPinState((prev) => ({ ...prev, [item.id]: 'saved' }));
+    // Only cards whose rank changed show a saving tick; the write itself is all-or-nothing.
+    const moved = current.filter((item, i) => previous[i]?.id !== item.id).map((item) => item.id);
+    setPinState((prev) => ({ ...prev, ...Object.fromEntries(moved.map((id) => [id, 'saving' as SaveState])) }));
+    const res = await actions.reorder(current.map((item) => item.id), pinTokenRef.current);
+    const outcome: SaveState = res.ok ? 'saved' : 'error';
+    setPinState((prev) => ({ ...prev, ...Object.fromEntries(moved.map((id) => [id, outcome])) }));
+    if (!res.ok) {
+      toast.show(`Couldn't save the new order — ${res.error}`, 'error');
+      orderRef.current = previous;
+      setOrder([...previous]);
+      busyRef.current = false;
+      return;
     }
+    if (res.pinToken) pinTokenRef.current = res.pinToken;
     committedRef.current = current;
     busyRef.current = false;
     router.refresh();

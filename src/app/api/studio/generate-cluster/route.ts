@@ -7,7 +7,7 @@
 
 import { NextResponse } from 'next/server';
 
-import { requireEditor } from '@/lib/studio/session';
+import { guardApi } from '@/lib/studio/guard';
 
 export const runtime = 'nodejs';
 
@@ -16,10 +16,8 @@ function fail(code: string, message: string, status: number) {
 }
 
 export async function POST(req: Request) {
-  const guard = await requireEditor();
-  if (!guard.ok) {
-    return fail(String(guard.status), guard.status === 401 ? 'Not authenticated' : 'Editor access required', guard.status);
-  }
+  const guard = await guardApi('editor');
+  if (!guard.ok) return guard.response;
   const editorId = guard.editor.id;
 
   let body: Record<string, unknown>;

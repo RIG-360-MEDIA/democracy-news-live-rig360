@@ -13,36 +13,17 @@ import { manualStoryCards } from '@/lib/studio/manual-feed';
 import { getOverrides } from '@/lib/studio/overrides';
 import { getWeights } from '@/lib/studio/weights';
 
+import { forcedStoryIds, rankWithOverrides } from './editorial-rank';
 import { groupIntoHubs } from './eventhub';
+import { placeManualCards } from './manual-importance';
+import { scoreStory, type ScoringKnobs } from './scoring';
+import { applySectionLayout, SECTION_TOPICS, sectionOf } from './sections';
 
 import type { EventHub, FrontPage, StoryCard, TopicSection } from './types';
 import { cleanDeck } from '@/lib/brand';
+import { displayedTimeMs } from './displayed-time';
 
-// Topics that get their own front-page section (matches sections.sql EC8 set).
-const SECTION_TOPICS = [
-  'POLITICS', 'SPORTS', 'SECURITY', 'ENVIRONMENT', 'HEALTH',
-  'BUSINESS', 'FINANCE', 'LEGAL', 'TECHNOLOGY', 'SOCIETY',
-] as const;
-
-// The generator emits ~16 topic labels; the page renders the sections above.
-// Map every label onto a section so no story is orphaned. `null` = the label has
-// no section of its own (it can still surface in Top Stories / Around the World).
-const TOPIC_TO_SECTION: Record<string, (typeof SECTION_TOPICS)[number] | null> = {
-  POLITICS: 'POLITICS', GOVERNANCE: 'POLITICS',
-  SPORTS: 'SPORTS',
-  SECURITY: 'SECURITY',
-  ENVIRONMENT: 'ENVIRONMENT',
-  HEALTH: 'HEALTH',
-  BUSINESS: 'BUSINESS', INFRASTRUCTURE: 'BUSINESS',
-  FINANCE: 'FINANCE',
-  LEGAL: 'LEGAL',
-  TECHNOLOGY: 'TECHNOLOGY', SCIENCE: 'TECHNOLOGY', TECH: 'TECHNOLOGY',
-  AGRICULTURE: 'ENVIRONMENT',
-  CULTURE: 'SOCIETY', SOCIETY: 'SOCIETY', SOCIAL: 'SOCIETY',
-  INTERNATIONAL: null, OTHER: null,
-};
-const sectionOf = (topic: string): (typeof SECTION_TOPICS)[number] | null =>
-  TOPIC_TO_SECTION[topic] ?? null;
+// Section set + topic→section map live in ./sections (shared with the Studio, F12).
 
 const TITLE_FLAG =
   '(share price|top picks|result 20[0-9]{2}|gainers (and|&) losers|dream ?11|sensex|nifty|share market)';
@@ -72,6 +53,8 @@ interface ScoredRow {
   articleCount: number;
   facts: number;
   lastSeenAt: Date;
+  firstSeenAt: Date | null; // cluster's first article — velocity = articles per hour of span
+  pileDemoted: boolean; // confirmed multi-event pile (HELD stub) — demoted by the scorer
   runId: string | number | null; // generation run = unix epoch we published the story on our site
   repTier: number | null; // representative article's source_tier (1 best) — drives image upgrade
   repClean: boolean | null; // rep thumbnail's scan verdict (true=clean, false=flagged, null=unscanned)
@@ -107,12 +90,28 @@ function cleanTitle(s: string | null): string {
   return t === t.toLowerCase() ? t.replace(/\p{L}/u, (ch) => ch.toUpperCase()) : t;
 }
 
-function toCard(r: ScoredRow, now: number): StoryCard {
+/** Re-score a row with the editor ranking knobs (F11). The SQL `importance` only picks the pool. */
+function knobScore(r: ScoredRow, now: number, knobs: ScoringKnobs): number {
   const lastSeen = new Date(r.lastSeenAt).getTime();
-  // "Published on our site" = the generation run timestamp (run_id is a unix epoch, seconds).
-  // Guard a missing/garbage run_id by falling back to last-seen so the age is never nonsensical.
-  const pub = Number(r.runId);
-  const publishedMs = pub > 1_000_000_000 && pub < 20_000_000_000 ? pub * 1000 : lastSeen;
+  const firstSeen = r.firstSeenAt ? new Date(r.firstSeenAt).getTime() : lastSeen;
+  return scoreStory(
+    {
+      independentSources: r.independentSources,
+      facts: r.facts,
+      repTier: r.repTier,
+      articleCount: r.articleCount,
+      ageSeconds: (now - lastSeen) / 1000,
+      spanHours: Math.max(0, lastSeen - firstSeen) / 3600_000,
+      pileDemoted: r.pileDemoted === true,
+      topic: r.topic,
+    },
+    knobs,
+  );
+}
+
+function toCard(r: ScoredRow, now: number, knobs: ScoringKnobs): StoryCard {
+  const lastSeen = new Date(r.lastSeenAt).getTime();
+  const publishedMs = displayedTimeMs(lastSeen, r.runId, now);
   return {
     id: r.id,
     title: cleanTitle(r.title),
@@ -122,7 +121,7 @@ function toCard(r: ScoredRow, now: number): StoryCard {
     hasArticle: r.hasArticle,
     topic: r.topic,
     country: r.country,
-    importance: Number(r.importance),
+    importance: knobScore(r, now, knobs),
     independentSources: r.independentSources,
     articleCount: r.articleCount,
     facts: r.facts,
@@ -217,9 +216,10 @@ export async function getFrontPage(scope: string): Promise<FrontPage> {
   // Published or Pinned a machine-HELD story can force it into the pool — the base SQL only keeps
   // PUBLISHABLE rows, so without this the override would have nothing to attach to (silent no-op).
   const overrides = await getOverrides();
-  const forcedIds = [...overrides.values()]
-    .filter((o) => o.action === 'live' || o.action === 'pinned')
-    .map((o) => o.storyId);
+  // Ranking knobs + section layout (Studio → Ranking / Sections). Read once, applied below.
+  const weights = await getWeights();
+  // Expired pins are NOT forced (F10 review): they fall back to the machine's gate like any untouched story.
+  const forcedIds = forcedStoryIds(overrides, Date.now());
   const forcedClause = forcedIds.length
     ? sqlAnalytics`OR (sc.story_id = ANY(${forcedIds}) AND length(g.body) >= 400 AND g.body NOT ILIKE '%no facts available%')`
     : sqlAnalytics``;
@@ -263,6 +263,11 @@ export async function getFrontPage(scope: string): Promise<FrontPage> {
            sc.article_count                             AS "articleCount",
            coalesce(f.fc, 0)                            AS facts,
            sc.last_seen_at                              AS "lastSeenAt",
+           sc.first_seen_at                             AS "firstSeenAt",
+           (g.strategy = 'stub' AND g.status ILIKE '%HELD%') IS TRUE AS "pileDemoted",
+           -- POOL-SELECTION score only (ORDER BY … LIMIT). The displayed order is re-scored in TS by
+           -- ./scoring.ts with the editor ranking knobs (half-life, source/velocity weight — F11); at
+           -- the default knobs (velocity aside) the two formulas agree.
            round((
                 -- base = breadth + substance + scoop
                 (1.0 * ln(1 + sc.independent_source_count)
@@ -334,7 +339,8 @@ export async function getFrontPage(scope: string): Promise<FrontPage> {
   // Surface ONLY clickable stories — a card with no generated article (hasArticle=false) can't open,
   // so it never appears anywhere (top stories, sections, hubs, around-the-world). Everything you see opens.
   // Editor-authored manual stories join the automated pool (epic 002) and flow through the same
-  // override/weight/sort/section logic below.
+  // override/weight/sort/section logic below — with their 0–100 editor importance re-expressed on the
+  // automated pool's scale first (placeManualCards; stored values are untouched).
   const manual = await manualStoryCards();
   // Image resolution: build an ordered list of clean cluster photos per story (best-first). The first
   // is the primary; the rest ride along as backups the client walks when a photo fails to load in the
@@ -342,44 +348,20 @@ export async function getFrontPage(scope: string): Promise<FrontPage> {
   // looks clean needs backups, since its single chosen URL may still 403 in the browser. Falls back to
   // the rep image only if the cluster yielded no clean candidate (then the view layer shows the brand).
   const candMap = await clusterImageCandidates(rows.map((r) => r.id));
-  const basePool = [
-    ...rows.map((r) => {
-      const cands = candMap.get(r.id) ?? [];
-      // Sourced licensed hero (Commons/Pexels) wins as the primary; the cluster's member
-      // photos ride along as browser fallbacks if the sourced image ever fails to load.
-      const primary = r.generatedImageUrl ?? cands[0] ?? r.image ?? null;
-      const alts = cands.filter((u) => u !== primary).slice(0, 3);
-      return { ...toCard(r, now), image: primary, imageAlts: alts };
-    }),
-    ...manual,
-  ].filter((c) => c.title.length > 0 && isEnglishTitle(c.title) && c.hasArticle);
+  const automated = rows.map((r) => {
+    const cands = candMap.get(r.id) ?? [];
+    // Sourced licensed hero (Commons/Pexels) wins as the primary; the cluster's member
+    // photos ride along as browser fallbacks if the sourced image ever fails to load.
+    const primary = r.generatedImageUrl ?? cands[0] ?? r.image ?? null;
+    const alts = cands.filter((u) => u !== primary).slice(0, 3);
+    return { ...toCard(r, now, weights), image: primary, imageAlts: alts };
+  });
+  const basePool = [...automated, ...placeManualCards(manual, automated)].filter(
+    (c) => c.title.length > 0 && isEnglishTitle(c.title) && c.hasArticle,
+  );
 
-  // ── Editorial overrides win on read (epic 002) — empty table => reader feed is pure automation. ──
-  //   killed → hide everywhere · edited_* → replace headline/deck · importance_delta → re-rank ·
-  //   pinned → large boost (top of Top Stories) · live → force-surface a held story (fetched above).
-  const weights = await getWeights();
-  const tw = weights.topicWeights;
-  const cw = weights.countryWeights;
-  let pool = basePool
-    .filter((c) => overrides.get(c.id)?.action !== 'killed')
-    .map((c) => {
-      const o = overrides.get(c.id);
-      // editor ranking knobs: per-section topic weight × per-country weight (default 1 → no change)
-      const section = sectionOf(c.topic);
-      const wMul = (section ? tw[section] ?? 1 : 1) * (cw[c.country] ?? 1);
-      const pinBoost = o?.action === 'pinned' ? 10000 - (o.pinnedRank ?? 1) : 0;
-      const importance = c.importance * wMul + (o?.importanceDelta ?? 0) + pinBoost;
-      if (importance === c.importance && !o?.editedHeadline && !o?.editedDek && !o?.editedImage) return c;
-      return {
-        ...c,
-        image: o?.editedImage ?? c.image,
-        title: o?.editedHeadline ?? c.title,
-        deck: o?.editedDek ?? c.deck,
-        importance,
-        pinned: o?.action === 'pinned',
-      };
-    })
-    .sort((a, b) => b.importance - a.importance);
+  // ── Editorial overrides win on read (epic 002) — see ./editorial-rank.ts. ──
+  let pool = rankWithOverrides(basePool, overrides, weights, now);
 
   // Collapse re-clustered duplicates of one event (same entity, near-identical headline) so a story never
   // appears many times across the page as if it were separate coverage. Applied to the whole pool.
@@ -419,10 +401,12 @@ export async function getFrontPage(scope: string): Promise<FrontPage> {
   const freshPool = pool.filter((c) => c.freshnessSeconds <= SECTION_MAX_AGE_S);
 
   // Topic sections — top N per topic, excluding anything already in Top Stories, non-empty only.
-  const sections: TopicSection[] = SECTION_TOPICS.map((section) => ({
+  // Built in canonical order, then ordered / hidden / capped by the editor-saved layout (F12).
+  const built: TopicSection[] = SECTION_TOPICS.map((section) => ({
     topic: section,
     stories: freshPool.filter((c) => sectionOf(c.topic) === section && !shownInTop.has(c.id)).slice(0, TOPIC_SECTION_MAX),
   })).filter((s) => s.stories.length > 0);
+  const sections: TopicSection[] = applySectionLayout(built, weights.sectionLayout);
 
   // Around the World — one (not-already-shown) story per country, eligible countries only.
   const countryCounts = new Map<string, number>();

@@ -1,10 +1,12 @@
 // Editorial CMS — inline edit (headline/dek/body/tags). Locks the story. Epic 002.
 import { revalidateTag } from 'next/cache';
+import { revalidateStoryPage } from '@/lib/revalidate-story';
 import { NextResponse } from 'next/server';
 
 import { CACHE_TAGS } from '@/lib/cache';
 import { editStory } from '@/lib/studio/overrides';
-import { requireEditor } from '@/lib/studio/session';
+import { guardApi } from '@/lib/studio/guard';
+import { editSchema } from '@/lib/studio/input-schemas';
 
 export const runtime = 'nodejs';
 
@@ -13,40 +15,33 @@ function fail(code: string, message: string, status: number) {
 }
 
 export async function POST(req: Request) {
-  const guard = await requireEditor();
-  if (!guard.ok) return fail(String(guard.status), guard.status === 401 ? 'Not authenticated' : 'Editor access required', guard.status);
+  const guard = await guardApi('editor');
+  if (!guard.ok) return guard.response;
   const editor = guard.editor.id;
 
-  let body: Record<string, unknown>;
+  let raw: unknown;
   try {
-    body = (await req.json()) as Record<string, unknown>;
+    raw = await req.json();
   } catch {
     return fail('400', 'Malformed JSON', 400);
   }
 
-  const storyId = typeof body.storyId === 'string' ? body.storyId : '';
-  if (!storyId) return fail('400', 'storyId is required', 400);
-
-  const fields: { headline?: string; dek?: string; body?: string; tags?: string[]; image?: string } = {};
-  if (typeof body.headline === 'string') fields.headline = body.headline;
-  if (typeof body.dek === 'string') fields.dek = body.dek;
-  if (typeof body.body === 'string') fields.body = body.body;
-  if (Array.isArray(body.tags)) fields.tags = body.tags.filter((t): t is string => typeof t === 'string');
-  if (typeof body.image === 'string') {
-    const url = body.image.trim();
-    // Empty clears the override; otherwise require an absolute http(s) image URL.
-    if (url && !/^https?:\/\/\S+$/i.test(url)) return fail('400', 'Image must be an http(s) URL', 400);
-    fields.image = url;
+  // L1: uuid story id, length-capped fields, http(s)-only image ('' clears the override).
+  const parsed = editSchema.safeParse(raw);
+  if (!parsed.success) {
+    const message = parsed.error.issues[0]?.message === 'No fields to edit' ? 'No fields to edit' : 'Invalid edit request';
+    return fail('400', message, 400);
   }
-  if (Object.keys(fields).length === 0) return fail('400', 'No fields to edit', 400);
+  const { storyId, ...fields } = parsed.data;
 
   try {
     const data = await editStory(storyId, editor, fields);
     // Edited headline/deck/image/section changes the reader view — bust the cache now.
     revalidateTag(CACHE_TAGS.frontPage);
-    revalidateTag(CACHE_TAGS.storyDetail);
+    revalidateStoryPage(storyId);
     return NextResponse.json({ ok: true, data, error: null });
   } catch (e: unknown) {
-    return fail('500', e instanceof Error ? e.message : 'Edit failed', 500);
+    console.error('[studio/edit] failed', { editor, storyId, fields: Object.keys(fields), error: e });
+    return fail('500', 'Edit failed', 500);
   }
 }

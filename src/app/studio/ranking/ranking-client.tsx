@@ -3,21 +3,12 @@
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
 
+import { SECTION_TOPICS } from '@/lib/worldwide/sections';
+
 import type { RankingWeights } from '@/lib/studio/types';
 
-// The ten reader-facing sections. Topic weights default to 1 when unset.
-const SECTIONS = [
-  'POLITICS',
-  'SPORTS',
-  'SECURITY',
-  'ENVIRONMENT',
-  'HEALTH',
-  'BUSINESS',
-  'FINANCE',
-  'LEGAL',
-  'TECHNOLOGY',
-  'SOCIETY',
-] as const;
+// The ten reader-facing sections (shared with the reader ranking — F12). Topic weights default to 1.
+const SECTIONS = SECTION_TOPICS;
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error';
 

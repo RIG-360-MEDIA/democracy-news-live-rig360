@@ -1,5 +1,5 @@
 // RigWire Studio — Newsroom: the desk as three lanes (Next up / Live / Held). Replaces the old
-// Review desk (desk-client.tsx). Server component: gate on requireEditor, load the desk feed + wire
+// Review desk (desk-client.tsx). Server component: gate on guardPage('editor'), load the desk feed + wire
 // queue, project front-page placement, and join live/held provenance, then hand plain objects to the
 // client. Epic 002.
 //
@@ -7,7 +7,6 @@
 // populations disagreed, so the lane could not be trusted. NEXT UP and HELD still come from the desk
 // feed + wire queue.
 import { unstable_cache } from 'next/cache';
-import { redirect } from 'next/navigation';
 
 import { CACHE_TAGS, READER_CACHE_TTL } from '@/lib/cache';
 import { getDeskFeed } from '@/lib/studio/feed';
@@ -17,7 +16,7 @@ import { buildLiveView, liveStoryIds } from '@/lib/studio/live-view';
 import { projectPlacements } from '@/lib/studio/placement';
 import type { Placement } from '@/lib/studio/placement';
 import { getQueue } from '@/lib/studio/queue';
-import { requireEditor } from '@/lib/studio/session';
+import { guardPage } from '@/lib/studio/guard';
 import { getFrontPage } from '@/lib/worldwide/ranking';
 
 import { NewsroomClient } from './newsroom-client';
@@ -34,8 +33,7 @@ const getCachedFrontPage = unstable_cache(
 );
 
 export default async function Newsroom() {
-  const guard = await requireEditor();
-  if (!guard.ok) redirect(guard.status === 401 ? '/signin' : '/');
+  await guardPage('editor');
 
   const [feed, queue, frontPage] = await Promise.all([
     getDeskFeed(120),

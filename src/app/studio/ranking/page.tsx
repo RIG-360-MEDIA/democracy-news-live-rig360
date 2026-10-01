@@ -1,15 +1,14 @@
 // Editorial CMS — Ranking knobs (E5): topic weights, recency, source & velocity.
-// Feed-wide config → editing is admin-only (E7); plain editors see it read-only.
+// Feed-wide config → the whole surface is admin-only (F8).
+import { guardPage } from '@/lib/studio/guard';
 import { getWeights } from '@/lib/studio/weights';
-import { requireEditor } from '@/lib/studio/session';
 
 import { RankingClient } from './ranking-client';
 
 export const dynamic = 'force-dynamic';
 
 export default async function Ranking() {
-  const guard = await requireEditor();
-  const canWrite = guard.ok && guard.editor.isAdmin;
+  await guardPage('admin');
   const weights = await getWeights();
 
   return (
@@ -23,22 +22,7 @@ export default async function Ranking() {
       <p style={{ fontSize: 12.5, color: '#888', marginBottom: 16 }}>
         The weights the machine ranks by. Nudge them; the feed picks the new values up on its next build.
       </p>
-      {!canWrite && (
-        <div
-          style={{
-            fontSize: 12.5,
-            color: '#7a1e22',
-            background: '#fbecec',
-            border: '1px solid #f0cccd',
-            borderRadius: 7,
-            padding: '9px 12px',
-            marginBottom: 16,
-          }}
-        >
-          Read-only — ranking weights are feed-wide configuration. Ask an admin to change them.
-        </div>
-      )}
-      <RankingClient weights={weights} canWrite={canWrite} />
+      <RankingClient weights={weights} canWrite />
     </div>
   );
 }

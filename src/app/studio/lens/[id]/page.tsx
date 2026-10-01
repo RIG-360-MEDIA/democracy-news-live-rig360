@@ -1,6 +1,7 @@
 // STEP 3 — Story Lens: one merged event seen three ways (timeline / bias / perspectives),
-// computed from the PRESERVED cluster fragments. Auth-gated by the studio layout.
+// computed from the PRESERVED cluster fragments. Editor-gated (guardPage).
 import { storyLens, type Lean } from '@/lib/editorial/story-lens';
+import { guardPage } from '@/lib/studio/guard';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,6 +22,7 @@ function Chip({ lean }: { lean: Lean }) {
 }
 
 export default async function LensPage({ params }: { params: Promise<{ id: string }> }) {
+  await guardPage('editor');
   const { id } = await params;
   const { timeline, bias, perspectives } = await storyLens(id);
   const order: Lean[] = ['left', 'center', 'right', 'state', 'unknown'];

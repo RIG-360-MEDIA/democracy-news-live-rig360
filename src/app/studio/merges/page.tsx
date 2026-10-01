@@ -1,10 +1,12 @@
 // STEP 3 — Merge review: the AI's same-event verdicts (analytics.merge_verdicts), so an editor can
-// sanity-check what the machine folded together. Auth-gated by the studio layout.
+// sanity-check what the machine folded together. Editor-gated (guardPage).
 import { recentMerges } from '@/lib/editorial/merges';
+import { guardPage } from '@/lib/studio/guard';
 
 export const dynamic = 'force-dynamic';
 
 export default async function MergesPage() {
+  await guardPage('editor');
   const merges = await recentMerges(120);
   const sameN = merges.filter((m) => m.same).length;
 

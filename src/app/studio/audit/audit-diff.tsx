@@ -142,3 +142,39 @@ export function DoorBRecord({ after }: DoorBRecordProps) {
     </dl>
   );
 }
+
+interface SnapshotDiffProps {
+  before: Record<string, unknown> | null;
+  after: Record<string, unknown> | null;
+}
+
+/** Generic before/after diff for config rows (sources, weights, users, manual stories). The
+ *  `target` stamp is shown in the Story column, so it is left out here. */
+export function SnapshotDiff({ before, after }: SnapshotDiffProps) {
+  const keys = Array.from(new Set([...Object.keys(before ?? {}), ...Object.keys(after ?? {})]))
+    .filter((k) => k !== 'target' && !eq(before?.[k], after?.[k]));
+
+  if (keys.length === 0) {
+    return <p className="font-mono text-ui-sm text-studio-muted">No field-level changes recorded.</p>;
+  }
+
+  return (
+    <dl className="grid grid-cols-[7rem_1fr] gap-x-4 gap-y-1.5 font-mono text-ui-sm">
+      {keys.map((k) => {
+        const oldV = before?.[k];
+        const newV = after?.[k];
+        return (
+          <Fragment key={k}>
+            <dt className="uppercase tracking-wider text-studio-muted">{k}</dt>
+            <dd className="flex flex-wrap items-baseline gap-x-2 break-words">
+              {present(oldV) && <span className="text-studio-accent line-through">{scalarDeep(oldV)}</span>}
+              {present(oldV) && present(newV) && <span className="text-studio-muted">→</span>}
+              {present(newV) && <span className={ADD_CLASS}>{scalarDeep(newV)}</span>}
+              {!present(oldV) && !present(newV) && <span className="text-studio-muted">cleared</span>}
+            </dd>
+          </Fragment>
+        );
+      })}
+    </dl>
+  );
+}

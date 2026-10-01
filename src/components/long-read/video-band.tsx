@@ -2,14 +2,16 @@
 
 import { useEffect, useState } from 'react';
 
-import { videos, type Video } from './videos-data';
+import type { Video } from './videos-data';
 
 /* ═════════════════════════════════════════════════════════════════
    WATCH — Democracy News Live's channel, embedded, as a dark-cinema
    CONTACT SHEET: an asymmetric mosaic of red-duotone 16:9 frames (the
    feature is the big one) that lift + bloom to full colour on hover.
    Click any → Theater mode with AMBIENT glow (the backdrop blooms with
-   the film's own colours) and a browsable reel. Renders only with data.
+   the film's own colours) and a browsable reel. Renders only with data:
+   `videos` arrives pre-filtered to the last 30 days (recentVideos, E6);
+   an empty list hides the whole band.
 ═════════════════════════════════════════════════════════════════ */
 
 const SERIF = 'var(--font-fraunces), Georgia, serif';
@@ -32,7 +34,7 @@ function Expand({ stroke }: { stroke: string }) {
   return <svg width={14} height={14} viewBox="0 0 14 14" aria-hidden="true"><path d="M1 5V1h4M13 5V1H9M1 9v4h4M13 9v4H9" fill="none" stroke={stroke} strokeWidth="1.6" /></svg>;
 }
 
-export function VideoBand() {
+export function VideoBand({ videos }: { videos: readonly Video[] }) {
   const feature = videos.find((v) => v.kind === 'feature') ?? videos[0];
   const [active, setActive] = useState<Video | undefined>(feature);
   const [theater, setTheater] = useState(false);
@@ -50,9 +52,9 @@ export function VideoBand() {
     const prev = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     return () => { window.removeEventListener('keydown', onKey); document.body.style.overflow = prev; };
-  }, [theater, active]);
+  }, [theater, active, videos]);
 
-  if (videos.length === 0 || !active) return null;
+  if (videos.length === 0 || !feature || !active) return null;
 
   const gridItems = videos.filter((v) => v.youtubeId !== feature.youtubeId).slice(0, 8);
   const idx = videos.findIndex((v) => v.youtubeId === active.youtubeId);

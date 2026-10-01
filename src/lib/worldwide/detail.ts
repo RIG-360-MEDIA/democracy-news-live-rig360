@@ -6,6 +6,7 @@
 import { sqlAnalytics } from '@/lib/db';
 
 import { getOverrides } from '@/lib/studio/overrides';
+import { isForceSurfaced } from '@/lib/worldwide/editorial-rank';
 import { mergeEditorialOverride } from '@/lib/worldwide/override-merge';
 import { manualStoryDetail } from '@/lib/studio/manual-feed';
 
@@ -150,7 +151,7 @@ export interface StoryDetail {
   date: string; // formatted "10 Jun 2026"
 }
 
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+export const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
  * Split a markdown body into render blocks. The generator writes headings with a SINGLE trailing
@@ -301,7 +302,7 @@ export async function getStoryDetail(id: string): Promise<StoryDetail | null> {
   const ov = (await getOverrides([id])).get(id);
   // An editor killed/unpublished this story → it must not open by direct URL (F1).
   if (ov?.action === 'killed') return null;
-  const forced = ov?.action === 'live' || ov?.action === 'pinned';
+  const forced = isForceSurfaced(ov, Date.now()); // an expired pin forces nothing (F10)
   const gate = forced
     ? sqlAnalytics`AND g.strategy <> 'stub' AND length(g.body) >= 400`
     : sqlAnalytics`AND g.status LIKE 'PUBLISHABLE%' AND g.strategy <> 'stub'

@@ -1,22 +1,29 @@
 // Editorial CMS — Create a story (E6): manual authoring (Door A) plus AI-assisted
 // topic briefs (Door B), with the editor's recent manual stories beneath.
-import { redirect } from 'next/navigation';
 
 import { CmsCard, CmsCardGrid } from '@/components/studio/cms-card';
 import { isDispatchLive, listJobs } from '@/lib/dispatch/client';
 import { listManualStories } from '@/lib/studio/manual';
-import { requireEditor } from '@/lib/studio/session';
+import { guardPage } from '@/lib/studio/guard';
+import { promptLeakLevel } from '@/lib/studio/prompt-leak';
 import { countryName } from '@/lib/worldwide/country';
 
 import CreateClient from './create-client';
+import ManualStoryControls from './manual-story-controls';
 
 import type { JobStatus } from '@/lib/dispatch/types';
 
 export const dynamic = 'force-dynamic';
 
+/** The stronger prompt-leak level of headline and dek — surfaced on the card so editors can fix it. */
+function worstLeak(headline: string, dek: string | null) {
+  const levels = [promptLeakLevel(headline), promptLeakLevel(dek)];
+  if (levels.includes('leak')) return 'leak' as const;
+  return levels.includes('suspect') ? ('suspect' as const) : ('none' as const);
+}
+
 export default async function Page() {
-  const guard = await requireEditor();
-  if (!guard.ok) redirect(guard.status === 401 ? '/signin' : '/');
+  const editor = await guardPage('editor');
 
   const recent = await listManualStories(30);
 
@@ -28,7 +35,7 @@ export default async function Page() {
   let jobs: JobStatus[] = [];
   if (doorBEnabled) {
     try {
-      jobs = await listJobs(undefined, guard.editor.id);
+      jobs = await listJobs(undefined, editor.id);
     } catch {
       // The draft desk is optional context here — a box/mock hiccup must not 500
       // the whole Create page. Fall back to an empty tray.
@@ -61,9 +68,21 @@ export default async function Page() {
             kicker={`${s.topic} · ${countryName(s.country) || s.country || 'XX'} · imp ${s.importance}`}
             headline={s.headline}
             badge={{ label: 'MANUAL', bg: '#e6f0ff', fg: '#1b4b91' }}
+            dim={!s.status.startsWith('PUBLISHABLE')}
             footer={
-              <div style={{ fontFamily: 'var(--font-mono), monospace', fontSize: 10, color: '#999' }}>
-                by {s.editorId} · {new Date(s.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+              <div>
+                <div style={{ fontFamily: 'var(--font-mono), monospace', fontSize: 10, color: '#999' }}>
+                  by {s.editorId} · {new Date(s.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+                </div>
+                <ManualStoryControls
+                  id={s.id}
+                  headline={s.headline}
+                  dek={s.dek}
+                  body={s.body}
+                  status={s.status}
+                  canDelete={editor.isAdmin}
+                  promptFlag={worstLeak(s.headline, s.dek)}
+                />
               </div>
             }
           />

@@ -36,6 +36,11 @@
 .dnl-ticker-track:hover { animation-play-state: paused; }
 @keyframes dnl-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
 .dnl-pulse { animation: dnl-pulse 1.2s ease-in-out infinite; }
+/* LIVE / Developing badge dot. Plain CSS, not framer-motion: three dots were the only motion on the
+   reader front page and pulled ~37 kB gz of framer-motion into its bundle (E8). */
+@keyframes dnl-dot { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.25; transform: scale(1.15); } }
+.dnl-dot { animation: dnl-dot 1.4s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .dnl-dot { animation: none; } }
 /* Blinking clock separators — the "alive" tick. */
 @keyframes dnl-blink { 0%, 49% { opacity: 1; } 50%, 100% { opacity: 0.2; } }
 .dnl-blink { animation: dnl-blink 1s step-end infinite; }

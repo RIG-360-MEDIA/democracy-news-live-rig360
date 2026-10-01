@@ -1,9 +1,11 @@
 // src/lib/editorial/sources.ts
 //
-// STEP 3 — source management. Editors set each source's political_lean; that directly sharpens the
+// STEP 3 — source management. Admins set each source's political_lean; that directly sharpens the
 // Story-Lens bias view (a source with no lean lands in the "Unknown" bucket). Reads/writes public.sources.
+// Lean changes are admin-only (F8) and audited atomically (F7).
 
 import { sql } from '@/lib/db';
+import { writeAudit } from '@/lib/studio/audit-log';
 
 export const LEAN_OPTIONS = ['left', 'lean-left', 'center', 'lean-right', 'right', 'state', 'unknown'] as const;
 
@@ -34,6 +36,22 @@ export async function unratedSourceCount(): Promise<number> {
   return n;
 }
 
-export async function setSourceLean(id: string, lean: string | null): Promise<void> {
-  await sql`UPDATE public.sources SET political_lean = ${lean} WHERE id = ${id}::uuid`;
+/** Set (or clear, with null) a source's lean and audit the change in the same transaction.
+ *  Throws when the source does not exist, so nothing is audited for a no-op. */
+export async function setSourceLean(id: string, lean: string | null, actor: string): Promise<void> {
+  await sql.begin(async (tx) => {
+    const rows = (await tx`
+      SELECT domain, political_lean FROM public.sources WHERE id = ${id}::uuid FOR UPDATE
+    `) as unknown as Array<{ domain: string; political_lean: string | null }>;
+    const prev = rows[0];
+    if (!prev) throw new Error('Source not found');
+    await tx`UPDATE public.sources SET political_lean = ${lean} WHERE id = ${id}::uuid`;
+    await writeAudit(tx, {
+      actor,
+      action: 'source_lean',
+      target: `source:${id}`,
+      before: { domain: prev.domain, lean: prev.political_lean },
+      after: { domain: prev.domain, lean },
+    });
+  });
 }

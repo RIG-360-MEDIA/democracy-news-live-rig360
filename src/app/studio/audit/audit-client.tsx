@@ -4,12 +4,13 @@ import { useCallback, useState } from 'react';
 
 import { useToast } from '@/components/studio/ui';
 import type { AuditRow, DoorBPublishRecord } from '@/lib/studio/audit';
+import { CONFIG_AUDIT_ACTIONS } from '@/lib/studio/audit-log';
 import type { EditorialOverride } from '@/lib/studio/types';
 
-import { DoorBRecord, OverrideDiff } from './audit-diff';
+import { DoorBRecord, OverrideDiff, SnapshotDiff } from './audit-diff';
 
 // The audit actions an editor can filter by. Free-text stays possible via the
-// story/editor fields; this list covers what the override + publish paths emit.
+// story/editor fields; this list covers what the override, publish and config (F7) paths emit.
 const ACTIONS = [
   'publish',
   'unpublish',
@@ -17,17 +18,23 @@ const ACTIONS = [
   'kill',
   'revive',
   'pin',
+  'reorder',
   'boost',
   'suppress',
   'lock',
   'unlock',
   'edit',
   'undo',
+  'revert',
   'doorb_publish',
+  ...CONFIG_AUDIT_ACTIONS,
+  // one-off legacy pin clean-up by migration 008 (informational; never undoable)
+  'pin_dedupe',
+  'pin_normalise',
 ] as const;
 
 // Actions that read as destructive/reverting — the only ones that earn the accent.
-const DESTRUCTIVE = new Set(['kill', 'unpublish', 'suppress', 'lock', 'undo']);
+const DESTRUCTIVE = new Set(['kill', 'unpublish', 'suppress', 'lock', 'undo', 'manual_unpublish', 'manual_delete']);
 
 interface Filters {
   editor: string;
@@ -50,8 +57,22 @@ function undoable(row: AuditRow): boolean {
   return row.action !== 'doorb_publish' && row.storyId !== null && row.before !== null;
 }
 
-/** The story label: an editor headline (Fraunces) if we have one, else the id. */
+/** True for rows whose snapshots are story overrides (vs Door B / config / manual-story rows). */
+function isOverrideRow(row: AuditRow): boolean {
+  const snap = (row.after ?? row.before) as Record<string, unknown> | null;
+  return row.action !== 'doorb_publish' && snap !== null && typeof snap === 'object' && 'storyId' in snap;
+}
+
+/** The non-story target stamped into config rows (e.g. "user:<uuid>"), if any. */
+function targetOf(row: AuditRow): string | null {
+  const snap = (row.after ?? row.before) as Record<string, unknown> | null;
+  return snap && typeof snap.target === 'string' ? snap.target : null;
+}
+
+/** The story label: an editor headline (Fraunces) if we have one, else the id / config target. */
 function storyLabel(row: AuditRow): { text: string; isHeadline: boolean } {
+  const target = targetOf(row);
+  if (target) return { text: target, isHeadline: false };
   const snap =
     row.action !== 'doorb_publish'
       ? ((row.after as EditorialOverride | null) ?? row.before)
@@ -299,10 +320,15 @@ export function AuditClient({ initialRows, limit }: AuditClientProps) {
                         <div className="border-l-2 border-studio-rule pl-4">
                           {isDoorB ? (
                             <DoorBRecord after={(row.after as DoorBPublishRecord | null) ?? null} />
-                          ) : (
+                          ) : isOverrideRow(row) ? (
                             <OverrideDiff
                               before={row.before}
                               after={(row.after as EditorialOverride | null) ?? null}
+                            />
+                          ) : (
+                            <SnapshotDiff
+                              before={row.before as Record<string, unknown> | null}
+                              after={row.after as Record<string, unknown> | null}
                             />
                           )}
                           {row.storyId && (

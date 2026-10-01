@@ -2,9 +2,8 @@
 // every /studio page (epic 002). Studio tokens + Tailwind utilities only; the
 // public reader site is untouched (these tokens are additive).
 import Link from 'next/link';
-import { redirect } from 'next/navigation';
 
-import { requireEditor } from '@/lib/studio/session';
+import { guardPage } from '@/lib/studio/guard';
 import { signOutAction } from './signout-action';
 import { BRAND } from '@/lib/brand';
 
@@ -19,9 +18,9 @@ const NAV: ReadonlyArray<{ label: string; href: string }> = [
 ];
 
 export default async function StudioLayout({ children }: { children: React.ReactNode }) {
-  const guard = await requireEditor();
-  if (!guard.ok) redirect(guard.status === 401 ? '/signin' : '/');
-  const { id, isAdmin } = guard.editor;
+  // Chrome gate only — every page ALSO calls guardPage() with its own role (layouts are not
+  // re-run on every navigation, so they must never be the only check).
+  const { id, isAdmin } = await guardPage('editor');
 
   const nav = isAdmin ? [...NAV, { label: 'Admin', href: '/studio/admin' }] : NAV;
 

@@ -2,7 +2,8 @@
 
 import type { ReactNode } from 'react';
 import Link from 'next/link';
-import { motion } from 'framer-motion';
+
+import { BRAND } from '@/lib/brand';
 
 import { Wordmark } from '@/components/brand/wordmark';
 import { ThemeToggle } from '@/components/brand/theme-toggle';
@@ -16,6 +17,7 @@ import { isWorldScope } from './worldwide-scope-data';
 import { useEditMode } from './edit-mode';
 import { StoryPuck } from './story-puck';
 import { VideoBand } from './video-band';
+import type { Video } from './videos-data';
 
 import type { FrontPage, StoryCard, EventHub } from '@/lib/worldwide/types';
 
@@ -58,7 +60,7 @@ function cardPool(units: Array<StoryCard | EventHub>): CardView[] {
   return out;
 }
 
-export function LongReadPage({ data }: { data: FrontPage }) {
+export function LongReadPage({ data, videos }: { data: FrontPage; videos: readonly Video[] }) {
   // Repair images that failed to load before hydration (their error event was lost) — walk them to a
   // real backup photo, so a publisher hotlink-403 on the initial pick doesn't strand a broken image.
   useImageFallbackRepair();
@@ -177,7 +179,7 @@ export function LongReadPage({ data }: { data: FrontPage }) {
       </section>
 
       {/* ═══════════ VIDEO — Democracy News Live channel, embedded (right after Top Stories) ═══════════ */}
-      <VideoBand />
+      <VideoBand videos={videos} />
 
       {/* ═══════════ MORE TOP STORIES — image / headline-stack / most-read ═══════════ */}
       <section className="px-5 md:px-10 lg:px-16 pt-8 pb-16" style={{ borderTop: `3px solid ${RULE2}` }}>
@@ -219,7 +221,9 @@ export function LongReadPage({ data }: { data: FrontPage }) {
         const hasRealImage = (c: CardView) => !!c.image && !c.image.includes('/cards/fallback');
         const leadIdx = Math.max(0, cards.findIndex(hasRealImage));
         const featured = cards[leadIdx];
-        const list = cards.filter((_, idx) => idx !== leadIdx).slice(0, 6);
+        // Editor-saved band size (Studio → Sections, F12); default featured + 6.
+        const listMax = section.maxVisible ? Math.max(0, section.maxVisible - 1) : 6;
+        const list = cards.filter((_, idx) => idx !== leadIdx).slice(0, listMax);
         return <ThemedBand key={section.topic} anchor={section.topic.toLowerCase()} title={titleCase(section.topic)} featured={featured} list={list} darker={i % 2 === 1} />;
       })}
 
@@ -323,7 +327,7 @@ function TopNav() {
       <div className="grid items-center px-5 md:px-10 lg:px-16 py-5" style={{ gridTemplateColumns: '1fr auto 1fr', borderBottom: `1px solid ${RULE}` }}>
         <MastheadDate />
         <Link
-          href="/today"
+          href={BRAND.key === 'dnl' ? '/long-read' : '/today'}
           className="justify-self-center"
           aria-label="Democracy News Live — home"
           style={{
@@ -493,7 +497,7 @@ function FullCoverageSection({ hubs }: { hubs: HubView[] }) {
       <div className="mx-auto" style={{ maxWidth: 1600 }}>
         <div className="flex items-center gap-3 flex-wrap" style={{ borderBottom: `2px solid ${INK}`, paddingBottom: 10, marginBottom: 26 }}>
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '3px 9px', background: '#a8141a', color: '#fff', fontFamily: 'var(--font-jakarta), sans-serif', fontSize: 10, fontWeight: 800, letterSpacing: '0.2em', textTransform: 'uppercase', borderRadius: 3 }}>
-            <motion.span aria-hidden animate={{ opacity: [1, 0.25, 1], scale: [1, 1.15, 1] }} transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }} style={{ width: 6, height: 6, background: '#fff', borderRadius: 999, display: 'inline-block' }} />
+            <span aria-hidden className="dnl-dot" style={{ width: 6, height: 6, background: '#fff', borderRadius: 999, display: 'inline-block' }} />
             Developing
           </span>
           <h2 style={{ color: INK, fontSize: 'clamp(1.6rem, 2.4vw, 2.25rem)', fontWeight: 700, lineHeight: 1, letterSpacing: '-0.02em', fontVariationSettings: "'opsz' 144, 'SOFT' 0" }}>Full coverage</h2>
@@ -549,7 +553,7 @@ function LiveNewsRail({ items }: { items: CardView[] }) {
       <div className="flex items-center justify-between gap-3" style={{ borderBottom: `2px solid ${INK}`, paddingBottom: 8 }}>
         <div className="flex items-center gap-3">
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '3px 8px', background: '#a8141a', color: '#fff', fontFamily: 'var(--font-jakarta), sans-serif', fontSize: 10, fontWeight: 800, letterSpacing: '0.22em', textTransform: 'uppercase', borderRadius: 3 }}>
-            <motion.span aria-hidden animate={{ opacity: [1, 0.25, 1], scale: [1, 1.15, 1] }} transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }} style={{ width: 6, height: 6, background: '#fff', borderRadius: 999, display: 'inline-block' }} />
+            <span aria-hidden className="dnl-dot" style={{ width: 6, height: 6, background: '#fff', borderRadius: 999, display: 'inline-block' }} />
             LIVE
           </span>
           <h2 style={{ color: INK, fontSize: 'clamp(1.5rem, 1.9vw, 1.75rem)', fontWeight: 700, lineHeight: 1, letterSpacing: '-0.018em', fontVariationSettings: "'opsz' 144, 'SOFT' 0" }}>Top news</h2>
@@ -575,7 +579,7 @@ function LiveNewsItemView({ item, isNew }: { item: CardView; isNew: boolean }) {
       <div className="flex items-center flex-wrap gap-2 mb-2">
         {breaking ? (
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '2px 7px', background: '#a8141a', color: '#fff', fontFamily: 'var(--font-jakarta), sans-serif', fontSize: 9.5, fontWeight: 800, letterSpacing: '0.18em', textTransform: 'uppercase', borderRadius: 2 }}>
-            <motion.span aria-hidden animate={{ opacity: [1, 0.3, 1] }} transition={{ duration: 1.2, repeat: Infinity }} style={{ width: 5, height: 5, background: '#fff', borderRadius: 999, display: 'inline-block' }} />
+            <span aria-hidden className="dnl-pulse" style={{ width: 5, height: 5, background: '#fff', borderRadius: 999, display: 'inline-block' }} />
             BREAKING
           </span>
         ) : (

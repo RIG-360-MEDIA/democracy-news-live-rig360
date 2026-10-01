@@ -1,11 +1,10 @@
 // Editorial CMS — Admin hub. The studio nav links here for admins, but the route
 // did not exist (plain 404). This is a directory of the existing admin surfaces,
-// not new functionality. The studio layout only gates with requireEditor(), so
-// this page re-gates with requireAdmin() and mirrors the layout's 401/403 redirects.
+// not new functionality. The studio layout only gates on the editor role, so
+// this page re-gates on admin (F8).
 import Link from 'next/link';
-import { redirect } from 'next/navigation';
 
-import { requireAdmin } from '@/lib/studio/session';
+import { guardPage } from '@/lib/studio/guard';
 
 export const dynamic = 'force-dynamic';
 
@@ -51,8 +50,7 @@ const SURFACES: readonly AdminSurface[] = [
 ];
 
 export default async function AdminHub() {
-  const guard = await requireAdmin();
-  if (!guard.ok) redirect(guard.status === 401 ? '/signin' : '/');
+  await guardPage('admin');
 
   return (
     <div>
