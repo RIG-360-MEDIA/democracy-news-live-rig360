@@ -7,6 +7,7 @@
 // Diversity: ≤2 per real topic in Top Stories; OTHER never capped.
 
 import { sqlAnalytics } from '@/lib/db';
+import { MALFORMED_BODY_PATTERN } from '@/lib/worldwide/body-guard';
 
 import { BUFFER_MINUTES } from '@/lib/publish-buffer';
 import { manualStoryCards } from '@/lib/studio/manual-feed';
@@ -314,6 +315,7 @@ export async function getFrontPage(scope: string): Promise<FrontPage> {
       -- never begins with a brace. The generator should mark these HELD; this is defence-in-depth.
       AND g.headline NOT ILIKE '%(parse-fail)%'
       AND left(btrim(g.body), 1) <> '{'
+      AND g.body !~ ${MALFORMED_BODY_PATTERN}
       AND (
         -- machine-publishable: verified prose with substance (fact-ledger OR a real body),
         -- AND past the 15-min HOLD-AND-RELEASE BUFFER (BUFFER_MINUTES). A freshly generated
