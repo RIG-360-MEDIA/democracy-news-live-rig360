@@ -7,8 +7,8 @@ import type { BulletinVideo } from '@/lib/worldwide/video-bulletin';
 
 /* ═════════════════════════════════════════════════════════════════
    VIDEO BULLETIN — the day's anchor videos, first thing on the page.
-   One story video at a time. It autoplays muted (browser rule); the first time the reader
-   touches the player (play/pause, seek, click) the sound comes on. Hovering the video shows
+   One story video at a time. It autoplays with sound when the browser allows it; otherwise it
+   starts muted and the reader's first click/tap/key anywhere on the page turns the sound on. Hovering the video shows
    YouTube-style controls: play/pause, a seek bar and the time. When a video ends the next one
    starts, wrapping around. Arrows sit on the band's left/right edges; keyboard ←/→, the dots
    and a phone swipe also switch. The story's name and link sit under the video. Pauses off-screen; no
@@ -23,7 +23,7 @@ const SANS = 'var(--font-jakarta), system-ui, sans-serif';
 const SERIF = 'var(--font-fraunces), Georgia, serif';
 const label = { fontFamily: SANS, fontSize: 11, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase' as const, whiteSpace: 'nowrap' as const };
 // Player width: capped by viewport height so the band (title + video + story name) stays on the first screen.
-const PLAYER_W = 'min(100%, calc(46vh * 16 / 9))';
+const PLAYER_W = 'min(100%, calc(38vh * 16 / 9))';
 
 function mmss(s: number): string {
   const t = Math.max(0, Math.floor(s || 0));
@@ -46,11 +46,29 @@ export function VideoBulletin({ items }: { items: readonly BulletinVideo[] }) {
 
   const go = useCallback((k: number) => { setT(0); setDur(0); setI(((k % n) + n) % n); }, [n]);
 
+  // Try with sound first (allowed once the reader has interacted with the site); if the browser refuses
+  // unmuted autoplay, start muted - the first click/tap/key anywhere on the page then turns the sound on.
   const play = useCallback(() => {
     const v = video.current;
     if (!v || !visible.current) return;
-    v.muted = !soundOn.current; // React does not reliably set `muted` on a freshly mounted <video>
-    v.play().then(() => setBlocked(false)).catch(() => setBlocked(true));
+    v.muted = false;
+    v.play().then(() => setBlocked(false)).catch(() => {
+      if (video.current !== v) return;
+      v.muted = true;
+      v.play().then(() => setBlocked(false)).catch(() => setBlocked(true));
+    });
+  }, []);
+
+  // First interaction anywhere on the page = browser permission for sound: unmute the playing video.
+  useEffect(() => {
+    const unmute = () => {
+      soundOn.current = true;
+      if (video.current) video.current.muted = false;
+    };
+    const opts = { once: true, capture: true } as const;
+    window.addEventListener('pointerdown', unmute, opts);
+    window.addEventListener('keydown', unmute, opts);
+    return () => { window.removeEventListener('pointerdown', unmute, opts); window.removeEventListener('keydown', unmute, opts); };
   }, []);
 
   /** Any deliberate touch of the player is a user gesture: the browser now allows sound. */
@@ -103,14 +121,14 @@ export function VideoBulletin({ items }: { items: readonly BulletinVideo[] }) {
         const dx = x0 === null ? 0 : e.changedTouches[0].clientX - x0;
         if (Math.abs(dx) > 60) go(dx < 0 ? i + 1 : i - 1);
       }}
-      className="relative px-5 md:px-20 pt-5 pb-6" style={{ background: BG, color: '#fff' }}>
+      className="relative px-5 md:px-20 pt-4 pb-4" style={{ background: BG, color: '#fff' }}>
       {/* Arrows on the band's left/right edges, vertically centred */}
       {n > 1 && <BandArrow dir="prev" onClick={() => go(i - 1)} />}
       {n > 1 && <BandArrow dir="next" onClick={() => go(i + 1)} />}
 
       <div className="mx-auto" style={{ width: PLAYER_W }}>
         {/* Band title */}
-        <div className="flex items-center justify-between gap-4" style={{ marginBottom: 12 }}>
+        <div className="flex items-center justify-between gap-4" style={{ marginBottom: 9 }}>
           <div className="flex items-center gap-3">
             <span aria-hidden style={{ background: RED, color: '#fff', fontSize: 11, padding: '5px 8px', borderRadius: 2, lineHeight: 1 }}>▶</span>
             <h2 style={{ fontFamily: SERIF, color: '#fff', fontSize: 'clamp(1.15rem, 1.5vw, 1.5rem)', fontWeight: 600, letterSpacing: '-0.01em', margin: 0 }}>
@@ -156,14 +174,14 @@ export function VideoBulletin({ items }: { items: readonly BulletinVideo[] }) {
         </div>
 
         {/* The story this video is about — under the video */}
-        <div aria-live="polite" style={{ paddingTop: 14 }}>
+        <div aria-live="polite" style={{ paddingTop: 10 }}>
           <div style={{ ...label, color: RED, marginBottom: 6 }}>{cur.kicker}</div>
           <Link href={href} style={{ color: '#fff', textDecoration: 'none' }}>
-            <h3 style={{ fontFamily: SERIF, color: '#fff', fontSize: 'clamp(1.2rem, 1.6vw, 1.7rem)', fontWeight: 600, lineHeight: 1.15, letterSpacing: '-0.015em', margin: 0, textWrap: 'pretty' }}>
+            <h3 style={{ fontFamily: SERIF, color: '#fff', fontSize: 'clamp(1.1rem, 1.4vw, 1.5rem)', fontWeight: 600, lineHeight: 1.15, letterSpacing: '-0.015em', margin: 0, textWrap: 'pretty' }}>
               {cur.title}
             </h3>
           </Link>
-          <div className="flex flex-wrap items-center justify-between gap-x-5 gap-y-3" style={{ marginTop: 10 }}>
+          <div className="flex flex-wrap items-center justify-between gap-x-5 gap-y-3" style={{ marginTop: 8 }}>
             <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
               <Link href={href} style={{ ...label, color: '#fff', borderBottom: `2px solid ${RED}`, paddingBottom: 2, textDecoration: 'none' }}>
                 Read the full story →
