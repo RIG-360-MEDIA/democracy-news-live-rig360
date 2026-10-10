@@ -1,0 +1,57 @@
+[
+ {
+  "storyId": "65bd9e6b-3653-472b-8b8c-aca45948ee06",
+  "title": "Russian Strikes Kill Seven in Ukraine One Day After Trump Announces Diesel Deal with Moscow",
+  "kicker": "News · Ukraine",
+  "anchorName": "Maren Ashcroft",
+  "url": "/seed-videos/demo-bulletin.mp4",
+  "poster": "/seed-videos/demo-poster.jpg",
+  "durationS": 62,
+  "publishedAt": "2026-10-10T13:10:03.161444+00:00",
+  "note": "demo clip: every slide uses the approved NAZA render until real videos exist"
+ },
+ {
+  "storyId": "475794d0-1004-417f-8f52-0e26ebc7effb",
+  "title": "A Powerful Quake Shakes Panama, Leaving Dozens Injured and Infrastructure Crippled",
+  "kicker": "Environment · Panama",
+  "anchorName": "Mateo Reyes",
+  "url": "/seed-videos/demo-bulletin.mp4",
+  "poster": "/seed-videos/demo-poster.jpg",
+  "durationS": 62,
+  "publishedAt": "2026-10-10T08:30:04.800283+00:00",
+  "note": "demo clip: every slide uses the approved NAZA render until real videos exist"
+ },
+ {
+  "storyId": "bc54cc68-f41e-4785-a81c-7727fe6bb567",
+  "title": "Missile Strikes Hit Saudi Airports as Turkey Condemns Terror",
+  "kicker": "Security · Saudi Arabia",
+  "anchorName": "Emre Yildiz",
+  "url": "/seed-videos/demo-bulletin.mp4",
+  "poster": "/seed-videos/demo-poster.jpg",
+  "durationS": 62,
+  "publishedAt": "2026-10-10T07:40:03.029340+00:00",
+  "note": "demo clip: every slide uses the approved NAZA render until real videos exist"
+ },
+ {
+  "storyId": "e07c458b-a24f-4aab-b77f-70108e951b0a",
+  "title": "Grandmother’s Death and Detention: The Colliding Stories of Abhijeet Dipke",
+  "kicker": "Politics · India",
+  "anchorName": "Arjun Malhotra",
+  "url": "/seed-videos/demo-bulletin.mp4",
+  "poster": "/seed-videos/demo-poster.jpg",
+  "durationS": 62,
+  "publishedAt": "2026-10-10T11:20:02.563761+00:00",
+  "note": "demo clip: every slide uses the approved NAZA render until real videos exist"
+ },
+ {
+  "storyId": "bf564eaf-80bb-4cd9-93d1-31476503b1c2",
+  "title": "The Long Wait for the Ballot: Why Palestinian Elections Have Been Pushed to 2027",
+  "kicker": "Politics · Palestine",
+  "anchorName": "Eleanor Marsh",
+  "url": "/seed-videos/demo-bulletin.mp4",
+  "poster": "/seed-videos/demo-poster.jpg",
+  "durationS": 62,
+  "publishedAt": "2026-10-10T13:40:03.170073+00:00",
+  "note": "demo clip: every slide uses the approved NAZA render until real videos exist"
+ }
+]

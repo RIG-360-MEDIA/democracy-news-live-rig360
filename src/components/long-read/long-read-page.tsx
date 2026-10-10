@@ -17,9 +17,11 @@ import { isWorldScope } from './worldwide-scope-data';
 import { useEditMode } from './edit-mode';
 import { StoryPuck } from './story-puck';
 import { VideoBand } from './video-band';
+import { VideoBulletin } from './video-bulletin';
 import type { Video } from './videos-data';
 
 import type { FrontPage, StoryCard, EventHub } from '@/lib/worldwide/types';
+import type { BulletinVideo } from '@/lib/worldwide/video-bulletin';
 
 /* ═════════════════════════════════════════════════════════════════
    WORLDWIDE — live edition. Washington-Post-style section homepage.
@@ -60,7 +62,7 @@ function cardPool(units: Array<StoryCard | EventHub>): CardView[] {
   return out;
 }
 
-export function LongReadPage({ data, videos }: { data: FrontPage; videos: readonly Video[] }) {
+export function LongReadPage({ data, videos, bulletin = [] }: { data: FrontPage; videos: readonly Video[]; bulletin?: readonly BulletinVideo[] }) {
   // Repair images that failed to load before hydration (their error event was lost) — walk them to a
   // real backup photo, so a publisher hotlink-403 on the initial pick doesn't strand a broken image.
   useImageFallbackRepair();
@@ -153,6 +155,9 @@ export function LongReadPage({ data, videos }: { data: FrontPage; videos: readon
   return (
     <div className="min-h-dvh" style={{ background: 'var(--rw-bg)', color: BODY, fontFamily: 'var(--font-fraunces), Georgia, serif' }}>
       <TopNav />
+
+      {/* ═══════════ VIDEO BULLETIN — today's anchor videos, first thing on the page ═══════════ */}
+      {bulletin.length > 0 && <VideoBulletin items={bulletin} />}
 
       {/* ═══════════ TOP STORIES BAND — 3 columns ═══════════ */}
       <section id="top" className="px-5 md:px-10 lg:px-16 pt-10 pb-6" style={{ scrollMarginTop: 96 }}>

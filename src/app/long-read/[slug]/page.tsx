@@ -6,6 +6,8 @@ import { BRAND } from '@/lib/brand';
 import { CACHE_TAGS, READER_CACHE_TTL } from '@/lib/cache';
 import { getStoryDetail, UUID_RE } from '@/lib/worldwide/detail';
 import { StoryRead } from '@/components/long-read/story-read';
+import { SEED_MODE, seedStoryDetail } from '@/lib/seed';
+import { getStoryVideo } from '@/lib/worldwide/video-bulletin';
 
 // ISR (E8): story pages were force-dynamic, so every view re-rendered on the server (always a CDN
 // MISS, ~1 s TTFB). Now each slug is rendered on first visit and the HTML is cached for `revalidate`
@@ -25,7 +27,7 @@ export function generateStaticParams(): { slug: string }[] {
 // (generateMetadata + the page body); caching collapses that to one query and
 // serves subsequent renders from cache until READER_CACHE_TTL / an editor edit.
 const getCachedStoryDetail = unstable_cache(
-  (slug: string) => getStoryDetail(slug),
+  async (slug: string) => (SEED_MODE ? seedStoryDetail(slug) : getStoryDetail(slug)),
   ['reader-story-detail'],
   { revalidate: READER_CACHE_TTL, tags: [CACHE_TAGS.storyDetail] },
 );
@@ -85,7 +87,7 @@ export default async function ArticlePage({ params }: PageProps) {
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, '\\u003c') }} />
-      <StoryRead story={story} />
+      <StoryRead story={story} video={await getStoryVideo(slug).catch(() => null)} />
     </>
   );
 }

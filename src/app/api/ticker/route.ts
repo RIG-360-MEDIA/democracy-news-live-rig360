@@ -8,6 +8,8 @@
 import { unstable_cache } from 'next/cache';
 import { NextResponse } from 'next/server';
 
+import { SEED_MODE, seedTicker } from '@/lib/seed';
+
 import { CACHE_TAGS, READER_CACHE_TTL } from '@/lib/cache';
 import { sqlAnalytics } from '@/lib/db';
 
@@ -76,6 +78,7 @@ const getCachedTickerRows = unstable_cache(loadTickerRows, ['reader-ticker'], {
 });
 
 export async function GET() {
+  if (SEED_MODE) return NextResponse.json(seedTicker());
   try {
     const rows = await getCachedTickerRows();
     const data: TickerItem[] = rows

@@ -22,5 +22,5 @@ export const { auth: middleware } = NextAuth(authConfigEdge);
 
 export const config = {
   // Match everything except Next.js internals and static assets.
-  matcher: ['/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:png|jpg|jpeg|svg|gif|webp|woff2?|ttf|css|js)).*)'],
+  matcher: ['/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:png|jpg|jpeg|svg|gif|webp|woff2?|ttf|css|js|mp4|webm|vtt)).*)'], // videos: the bulletin / story video files
 };

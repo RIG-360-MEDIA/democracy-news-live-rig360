@@ -5,6 +5,8 @@ import { getFrontPage } from '@/lib/worldwide/ranking';
 import { apiScope } from '@/lib/worldwide/to-view';
 import { recentVideos } from '@/lib/worldwide/recent-videos';
 import { LongReadPage } from '@/components/long-read/long-read-page';
+import { SEED_MODE, seedFrontPage } from '@/lib/seed';
+import { getVideoBulletin } from '@/lib/worldwide/video-bulletin';
 import { videos } from '@/components/long-read/videos-data';
 
 // SSR against the live _v8 keeper (read-only). force-dynamic so a build without DB
@@ -50,6 +52,9 @@ export default async function Page({
   const { scope } = await searchParams;
   const key = resolveScope(scope);
   let data;
+  if (SEED_MODE) {
+    return <LongReadPage data={seedFrontPage()} videos={recentVideos(videos, Date.now())} bulletin={await getVideoBulletin()} />;
+  }
   try {
     data = await getCachedFrontPage(key);
     await getLastGoodFrontPage(key); // keep the fallback copy warm (cache hit almost always)
@@ -58,5 +63,6 @@ export default async function Page({
     data = await getLastGoodFrontPage(key); // throws only if no copy exists → error.tsx
   }
   // Watch rail: only clips from the last 30 days, decided here on the server (E6).
-  return <LongReadPage data={data} videos={recentVideos(videos, Date.now())} />;
+  const bulletin = await getVideoBulletin().catch(() => []); // the day's anchor videos (carousel at the top)
+  return <LongReadPage data={data} videos={recentVideos(videos, Date.now())} bulletin={bulletin} />;
 }

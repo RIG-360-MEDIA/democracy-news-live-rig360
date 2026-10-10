@@ -10,6 +10,7 @@ import { ThemeToggle } from '@/components/brand/theme-toggle';
 import { TweetCard } from './tweet-card';
 
 import type { CoveragePoint, LensView, StoryAudio, StoryDetail, StoryImage, TweetEmbed } from '@/lib/worldwide/detail';
+import type { BulletinVideo } from '@/lib/worldwide/video-bulletin';
 import { BRAND } from '@/lib/brand';
 
 const INK = 'var(--rw-ink)';
@@ -161,6 +162,20 @@ const fmtTime = (s: number): string => {
 };
 
 /** Custom two-host audio player — drawn icons, seek scrubber, real play/pause/seek states. */
+/** The story's anchor video, in the hero slot of the left column (poster until played, native controls). */
+function StoryVideo({ video }: { video: BulletinVideo }) {
+  return (
+    <figure style={{ margin: '22px 0 0' }}>
+      <video src={video.url} poster={video.poster} controls playsInline preload="metadata" className="block w-full"
+        style={{ aspectRatio: '16/9', objectFit: 'cover', borderRadius: 2, background: '#000' }} />
+      <figcaption style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8, fontFamily: 'var(--font-jakarta), sans-serif', fontSize: 11.5, color: 'var(--rw-muted)' }}>
+        <span style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#fff', background: '#d6202a', padding: '2px 7px', borderRadius: 2 }}>▶ Video</span>
+        Watch the 60-second bulletin, presented by {video.anchorName}
+      </figcaption>
+    </figure>
+  );
+}
+
 function AudioPlayer({ audio }: { audio: StoryAudio }) {
   const ref = useRef<HTMLAudioElement>(null);
   const [playing, setPlaying] = useState(false);
@@ -264,7 +279,7 @@ function LensBody({ lens, onReset }: { lens: LensView; onReset: () => void }) {
   );
 }
 
-export function StoryRead({ story }: { story: StoryDetail }) {
+export function StoryRead({ story, video }: { story: StoryDetail; video?: BulletinVideo | null }) {
   const lenses = story.lenses ?? [];
   const [activeLens, setActiveLens] = useState<string | null>(null);
   const current = activeLens ? lenses.find((l) => l.key === activeLens) ?? null : null;
@@ -364,7 +379,7 @@ export function StoryRead({ story }: { story: StoryDetail }) {
             </p>
           )}
           {story.audio && <AudioPlayer audio={story.audio} />}
-          {story.image && (
+          {video ? <StoryVideo video={video} /> : story.image && (
             <figure style={{ margin: '22px 0 0' }}>
               <img src={story.image} alt={story.title} className="block w-full" style={{ aspectRatio: '16/9', objectFit: 'cover', borderRadius: 2 }}
                 onError={(e) => { (e.currentTarget.closest('figure') as HTMLElement).style.display = 'none'; }} />
