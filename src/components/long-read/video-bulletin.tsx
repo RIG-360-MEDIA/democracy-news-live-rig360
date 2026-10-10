@@ -159,21 +159,8 @@ export function VideoBulletin({ items }: { items: readonly BulletinVideo[] }) {
             </button>
           )}
 
-          <div className={`absolute left-0 right-0 bottom-0 transition-opacity duration-200 ${playing ? 'opacity-0 group-hover:opacity-100 focus-within:opacity-100' : 'opacity-100'}`}
-            style={{ padding: '26px 14px 10px', background: 'linear-gradient(to top, rgba(0,0,0,0.78), rgba(0,0,0,0))' }}>
-            <input type="range" aria-label="Seek" min={0} max={dur || 0} step={0.1} value={Math.min(t, dur || 0)}
-              onChange={(e) => { gesture(); if (video.current) video.current.currentTime = Number(e.target.value); setT(Number(e.target.value)); }}
-              className="block w-full cursor-pointer" style={{ accentColor: RED, height: 4, margin: 0 }} />
-            <div className="flex items-center gap-3" style={{ marginTop: 8 }}>
-              <button type="button" onClick={toggle} aria-label={playing ? 'Pause' : 'Play'}
-                style={{ width: 34, height: 34, borderRadius: '50%', border: 'none', background: 'transparent', color: '#fff', fontSize: playing ? 15 : 17, cursor: 'pointer', lineHeight: 1 }}>
-                {playing ? '❚❚' : '▶'}
-              </button>
-              <span style={{ fontFamily: SANS, fontSize: 12.5, color: '#fff', fontVariantNumeric: 'tabular-nums' }}>
-                {mmss(t)} / {mmss(dur || cur.durationS || 0)}
-              </span>
-            </div>
-          </div>
+          <PlayerControls playing={playing} t={t} dur={dur || cur.durationS || 0} onToggle={toggle}
+            onSeek={(x) => { gesture(); if (video.current) video.current.currentTime = x; setT(x); }} />
         </div>
 
         {/* The story this video is about — under the video */}
@@ -215,5 +202,29 @@ function BandArrow({ dir, onClick }: { dir: 'prev' | 'next'; onClick: () => void
       style={{ position: 'absolute', top: '50%', transform: 'translateY(-50%)', [dir === 'prev' ? 'left' : 'right']: 14, width: 48, height: 48, borderRadius: '50%', border: `1px solid ${LINE}`, background: 'rgba(255,255,255,0.06)', color: '#fff', fontSize: 26, cursor: 'pointer', zIndex: 2 }}>
       {dir === 'prev' ? '‹' : '›'}
     </button>
+  );
+}
+
+/** YouTube-style overlay controls (seek bar, play/pause, time): hidden while playing until hovered, always shown when
+ *  paused. Shared by the bulletin and the story-page video. The parent must be a `group relative` box. */
+export function PlayerControls({ playing, t, dur, onToggle, onSeek }: {
+  playing: boolean; t: number; dur: number; onToggle: () => void; onSeek: (seconds: number) => void;
+}) {
+  return (
+    <div className={`absolute left-0 right-0 bottom-0 transition-opacity duration-200 ${playing ? 'opacity-0 group-hover:opacity-100 focus-within:opacity-100' : 'opacity-100'}`}
+      style={{ padding: '26px 14px 10px', background: 'linear-gradient(to top, rgba(0,0,0,0.78), rgba(0,0,0,0))' }}>
+      <input type="range" aria-label="Seek" min={0} max={dur || 0} step={0.1} value={Math.min(t, dur || 0)}
+        onChange={(e) => onSeek(Number(e.target.value))}
+        className="block w-full cursor-pointer" style={{ accentColor: RED, height: 4, margin: 0 }} />
+      <div className="flex items-center gap-3" style={{ marginTop: 8 }}>
+        <button type="button" onClick={onToggle} aria-label={playing ? 'Pause' : 'Play'}
+          style={{ width: 34, height: 34, borderRadius: '50%', border: 'none', background: 'transparent', color: '#fff', fontSize: playing ? 15 : 17, cursor: 'pointer', lineHeight: 1 }}>
+          {playing ? '❚❚' : '▶'}
+        </button>
+        <span style={{ fontFamily: SANS, fontSize: 12.5, color: '#fff', fontVariantNumeric: 'tabular-nums' }}>
+          {mmss(t)} / {mmss(dur)}
+        </span>
+      </div>
+    </div>
   );
 }

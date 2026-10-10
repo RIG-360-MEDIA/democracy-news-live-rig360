@@ -11,6 +11,7 @@ import { TweetCard } from './tweet-card';
 
 import type { CoveragePoint, LensView, StoryAudio, StoryDetail, StoryImage, TweetEmbed } from '@/lib/worldwide/detail';
 import type { BulletinVideo } from '@/lib/worldwide/video-bulletin';
+import { PlayerControls } from './video-bulletin';
 import { BRAND } from '@/lib/brand';
 
 const INK = 'var(--rw-ink)';
@@ -162,12 +163,37 @@ const fmtTime = (s: number): string => {
 };
 
 /** Custom two-host audio player — drawn icons, seek scrubber, real play/pause/seek states. */
-/** The story's anchor video, in the hero slot of the left column (poster until played, native controls). */
+/** The story's anchor video, in the hero slot of the left column: poster + big play button until the reader starts it
+ *  (with sound - their click allows it), then the same hover controls as the front-page Video Bulletin. */
 function StoryVideo({ video }: { video: BulletinVideo }) {
+  const ref = useRef<HTMLVideoElement>(null);
+  const [started, setStarted] = useState(false);
+  const [playing, setPlaying] = useState(false);
+  const [t, setT] = useState(0);
+  const [dur, setDur] = useState(video.durationS ?? 0);
+  const toggle = () => {
+    const v = ref.current;
+    if (!v) return;
+    setStarted(true);
+    if (v.paused) void v.play(); else v.pause();
+  };
   return (
     <figure style={{ margin: '22px 0 0' }}>
-      <video src={video.url} poster={video.poster} controls playsInline preload="metadata" className="block w-full"
-        style={{ aspectRatio: '16/9', objectFit: 'cover', borderRadius: 2, background: '#000' }} />
+      <div className="group relative" style={{ aspectRatio: '16/9', background: '#000', borderRadius: 2, overflow: 'hidden' }}>
+        <video ref={ref} src={video.url} poster={video.poster} playsInline preload="metadata"
+          onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)} onClick={toggle}
+          onLoadedMetadata={(e) => setDur(e.currentTarget.duration || dur)} onTimeUpdate={(e) => setT(e.currentTarget.currentTime)}
+          className="block w-full h-full" style={{ objectFit: 'cover', cursor: 'pointer' }} />
+        {started ? (
+          <PlayerControls playing={playing} t={t} dur={dur} onToggle={toggle}
+            onSeek={(x) => { if (ref.current) ref.current.currentTime = x; setT(x); }} />
+        ) : (
+          <button type="button" onClick={toggle} aria-label={`Play the video: ${video.title}`}
+            style={{ position: 'absolute', inset: 0, margin: 'auto', width: 72, height: 72, borderRadius: '50%', border: 'none', background: 'rgba(214,32,42,0.92)', color: '#fff', fontSize: 26, cursor: 'pointer', boxShadow: '0 6px 24px rgba(0,0,0,0.35)' }}>
+            ▶
+          </button>
+        )}
+      </div>
       <figcaption style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8, fontFamily: 'var(--font-jakarta), sans-serif', fontSize: 11.5, color: 'var(--rw-muted)' }}>
         <span style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#fff', background: '#d6202a', padding: '2px 7px', borderRadius: 2 }}>▶ Video</span>
         Watch the 60-second bulletin, presented by {video.anchorName}
