@@ -23,7 +23,7 @@ const SANS = 'var(--font-jakarta), system-ui, sans-serif';
 const SERIF = 'var(--font-fraunces), Georgia, serif';
 const label = { fontFamily: SANS, fontSize: 11, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase' as const, whiteSpace: 'nowrap' as const };
 // Player width: capped by viewport height so the band (title + video + story name) stays on the first screen.
-const PLAYER_W = 'min(100%, calc(38vh * 16 / 9))';
+const PLAYER_W = 'calc(38vh * 16 / 9)';
 
 function mmss(s: number): string {
   const t = Math.max(0, Math.floor(s || 0));
@@ -121,12 +121,15 @@ export function VideoBulletin({ items }: { items: readonly BulletinVideo[] }) {
         const dx = x0 === null ? 0 : e.changedTouches[0].clientX - x0;
         if (Math.abs(dx) > 60) go(dx < 0 ? i + 1 : i - 1);
       }}
-      className="relative px-5 md:px-20 pt-4 pb-4" style={{ background: BG, color: '#fff' }}>
-      {/* Arrows on the band's left/right edges, vertically centred */}
+      className="px-5 md:px-10 lg:px-16 pt-5" style={{ color: '#fff' }}>
+      {/* The band is a dark card sized to the video (no empty dark margins on wide screens);
+          arrows sit on the card's left/right edges, vertically centred */}
+      <div className="relative mx-auto px-4 md:px-[76px] pt-4 pb-4"
+        style={{ background: BG, borderRadius: 6, width: `min(100%, calc(${PLAYER_W} + 152px))` }}>
       {n > 1 && <BandArrow dir="prev" onClick={() => go(i - 1)} />}
       {n > 1 && <BandArrow dir="next" onClick={() => go(i + 1)} />}
 
-      <div className="mx-auto" style={{ width: PLAYER_W }}>
+      <div className="mx-auto" style={{ width: '100%' }}>
         {/* Band title */}
         <div className="flex items-center justify-between gap-4" style={{ marginBottom: 9 }}>
           <div className="flex items-center gap-3">
@@ -200,6 +203,7 @@ export function VideoBulletin({ items }: { items: readonly BulletinVideo[] }) {
           </div>
         </div>
       </div>
+      </div>
     </section>
   );
 }
@@ -208,7 +212,7 @@ function BandArrow({ dir, onClick }: { dir: 'prev' | 'next'; onClick: () => void
   return (
     <button type="button" onClick={onClick} aria-label={dir === 'prev' ? 'Previous video' : 'Next video'}
       className="hidden md:flex items-center justify-center"
-      style={{ position: 'absolute', top: '50%', transform: 'translateY(-50%)', [dir === 'prev' ? 'left' : 'right']: 18, width: 48, height: 48, borderRadius: '50%', border: `1px solid ${LINE}`, background: 'rgba(255,255,255,0.06)', color: '#fff', fontSize: 26, cursor: 'pointer', zIndex: 2 }}>
+      style={{ position: 'absolute', top: '50%', transform: 'translateY(-50%)', [dir === 'prev' ? 'left' : 'right']: 14, width: 48, height: 48, borderRadius: '50%', border: `1px solid ${LINE}`, background: 'rgba(255,255,255,0.06)', color: '#fff', fontSize: 26, cursor: 'pointer', zIndex: 2 }}>
       {dir === 'prev' ? '‹' : '›'}
     </button>
   );
