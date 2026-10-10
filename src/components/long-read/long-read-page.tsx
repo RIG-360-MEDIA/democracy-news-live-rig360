@@ -156,9 +156,6 @@ export function LongReadPage({ data, videos, bulletin = [] }: { data: FrontPage;
     <div className="min-h-dvh" style={{ background: 'var(--rw-bg)', color: BODY, fontFamily: 'var(--font-fraunces), Georgia, serif' }}>
       <TopNav />
 
-      {/* ═══════════ VIDEO BULLETIN — today's anchor videos, first thing on the page ═══════════ */}
-      {bulletin.length > 0 && <VideoBulletin items={bulletin} />}
-
       {/* ═══════════ TOP STORIES BAND — 3 columns ═══════════ */}
       <section id="top" className="px-5 md:px-10 lg:px-16 pt-10 pb-6" style={{ scrollMarginTop: 96 }}>
         <div className="mx-auto grid gap-x-9 lg:[grid-template-columns:1fr_1.65fr_1fr]" style={{ maxWidth: 1600 }}>
@@ -166,6 +163,8 @@ export function LongReadPage({ data, videos, bulletin = [] }: { data: FrontPage;
               centre + left) so no top story is skipped — heroPool[0] (the #2 story) used to fall
               through an unused slot and vanish from the whole page. */}
           <div className="lg:pr-7" style={{ borderRight: `1px solid ${RULE}` }}>
+            {/* VIDEO BULLETIN rail — today's anchor videos, top of the left column (mirrors the Top news rail) */}
+            {bulletin.length > 0 && <><VideoBulletin items={bulletin} /><Rule /></>}
             {heroPool[2] && <LeadStory story={heroPool[2]} />}
             {heroPool[3] && <><Rule /><CompactWithImage story={heroPool[3]} /></>}
             {heroPool[4] && <><Rule /><TextOnlyStory story={heroPool[4]} /></>}
