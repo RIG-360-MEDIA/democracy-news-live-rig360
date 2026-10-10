@@ -158,13 +158,16 @@ export function LongReadPage({ data, videos, bulletin = [] }: { data: FrontPage;
 
       {/* ═══════════ TOP STORIES BAND — 3 columns ═══════════ */}
       <section id="top" className="px-5 md:px-10 lg:px-16 pt-10 pb-6" style={{ scrollMarginTop: 96 }}>
-        <div className="mx-auto grid gap-x-9 lg:[grid-template-columns:1fr_1.65fr_1fr]" style={{ maxWidth: 1600 }}>
+        {/* Top: the VIDEO BULLETIN (left edge → rail) with the Top news rail beside it on the right; the top stories
+            (left + centre columns) continue under the bulletin, the rail runs down beside them. */}
+        <div className="mx-auto grid gap-x-9 lg:[grid-template-columns:2.65fr_1fr]" style={{ maxWidth: 1600 }}>
+          <div style={{ minWidth: 0 }}>
+          {bulletin.length > 0 && <div className="mb-9"><VideoBulletin items={bulletin} /></div>}
+          <div className="grid gap-x-9 lg:[grid-template-columns:1fr_1.65fr]">
           {/* LEFT — secondary lead + stacked. Hero slots run CONTIGUOUSLY over heroPool[0..4] (across
               centre + left) so no top story is skipped — heroPool[0] (the #2 story) used to fall
               through an unused slot and vanish from the whole page. */}
           <div className="lg:pr-7" style={{ borderRight: `1px solid ${RULE}` }}>
-            {/* VIDEO BULLETIN rail — today's anchor videos, top of the left column (mirrors the Top news rail) */}
-            {bulletin.length > 0 && <><VideoBulletin items={bulletin} /><Rule /></>}
             {heroPool[2] && <LeadStory story={heroPool[2]} />}
             {heroPool[3] && <><Rule /><CompactWithImage story={heroPool[3]} /></>}
             {heroPool[4] && <><Rule /><TextOnlyStory story={heroPool[4]} /></>}
@@ -175,7 +178,9 @@ export function LongReadPage({ data, videos, bulletin = [] }: { data: FrontPage;
             {heroPool[0] && <><Rule /><CompactWithImage story={heroPool[0]} /></>}
             {heroPool[1] && <><Rule /><TextOnlyStory story={heroPool[1]} /></>}
           </div>
-          {/* RIGHT — Live news ticker */}
+          </div>
+          </div>
+          {/* RIGHT — Live news ticker (Top news rail), from the top of the page */}
           <div>
             <LiveNewsRail items={latest} />
           </div>
