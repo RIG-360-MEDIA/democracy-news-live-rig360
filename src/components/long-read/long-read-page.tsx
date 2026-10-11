@@ -127,7 +127,9 @@ export function LongReadPage({ data, videos, bulletin = [] }: { data: FrontPage;
     ...data.topStories.flatMap((u) => (isHub(u) ? u.members : [u])),
     ...data.sections.flatMap((s) => s.stories),
   ]) if (!railUniq.has(c.id)) { railUniq.add(c.id); railPool.push(c); }
-  const latest = takeN([...railPool].sort((a, b) => (a.publishedSeconds ?? a.freshnessSeconds) - (b.publishedSeconds ?? b.freshnessSeconds)), 8).map(toCardView);
+  const latest = takeN([...railPool].sort((a, b) => (a.publishedSeconds ?? a.freshnessSeconds) - (b.publishedSeconds ?? b.freshnessSeconds)), bulletin.length > 0 ? 14 : 8).map(toCardView);
+  // ponytail: with the bulletin the stories column is ~1 video taller, so the rail takes 14 and shows the whole items that
+  // fit its height (the rest are claimed but unshown); measure per viewport if exact fill ever matters.
   const mostCovered = takeN([...railPool].sort((a, b) => b.independentSources - a.independentSources), 6).map(toCardView);
 
   // 5. Democracy band, then 6. topic sections — each takes only stories not shown anywhere above.
@@ -181,8 +183,8 @@ export function LongReadPage({ data, videos, bulletin = [] }: { data: FrontPage;
           </div>
           </div>
           {/* RIGHT — Live news ticker (Top news rail), from the top of the page */}
-          <div>
-            <LiveNewsRail items={latest} />
+          <div className="relative">
+            <LiveNewsRail items={latest} fill={bulletin.length > 0} />
           </div>
         </div>
       </section>
@@ -554,11 +556,12 @@ function StorylineRow({ hub, divided }: { hub: HubView; divided: boolean }) {
 /* A calm, readable "Top news" rail: a STABLE list of the freshest stories (newest first). No
    auto-rotation — headlines stay put so they can be read comfortably; the list refreshes on page
    load / navigation. The live motion on the page is the breaking ticker up top, not this column. */
-function LiveNewsRail({ items }: { items: CardView[] }) {
+function LiveNewsRail({ items, fill = false }: { items: CardView[]; fill?: boolean }) {
   if (items.length === 0) return null;
-  const visible = items.slice(0, 8);
+  // fill: on desktop the rail is exactly as tall as the stories beside it; the list wraps into a hidden second column,
+  // so only WHOLE items show and there is no empty space under it. Phones keep the first 8.
   return (
-    <div>
+    <div className={fill ? 'lg:absolute lg:inset-0 lg:flex lg:flex-col' : undefined}>
       <div className="flex items-center justify-between gap-3" style={{ borderBottom: `2px solid ${INK}`, paddingBottom: 8 }}>
         <div className="flex items-center gap-3">
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '3px 8px', background: '#a8141a', color: '#fff', fontFamily: 'var(--font-jakarta), sans-serif', fontSize: 10, fontWeight: 800, letterSpacing: '0.22em', textTransform: 'uppercase', borderRadius: 3 }}>
@@ -569,9 +572,9 @@ function LiveNewsRail({ items }: { items: CardView[] }) {
         </div>
         <span style={{ fontFamily: 'var(--font-jakarta), sans-serif', color: MUTED, fontSize: 10.5, fontWeight: 700, letterSpacing: '0.10em', textTransform: 'uppercase' }}>Latest first</span>
       </div>
-      <ul className="mt-2">
-        {visible.map((item, i) => (
-          <li key={item.slug} style={{ borderBottom: `1px solid ${RULE}`, paddingTop: 14, paddingBottom: 14 }}>
+      <ul className={fill ? 'mt-2 lg:flex-1 lg:min-h-0 lg:flex lg:flex-col lg:flex-wrap lg:overflow-hidden' : 'mt-2'}>
+        {items.map((item, i) => (
+          <li key={item.slug} className={`lg:w-full${i >= 8 ? ' hidden lg:block' : ''}`} style={{ borderBottom: `1px solid ${RULE}`, paddingTop: 14, paddingBottom: 14 }}>
             <LiveNewsItemView item={item} isNew={i === 0} />
           </li>
         ))}
