@@ -5,7 +5,7 @@
 //   seed/front.json        — GET /api/worldwide?scope=world snapshot (the exact getFrontPage() shape)
 //   seed/ticker.json       — GET /api/ticker snapshot
 //   seed/stories/<id>.json — StoryDetail for the stories that have full text in the snapshot
-//   seed/videos.json       — anchor video bulletin (BulletinVideo[])
+//   seed/videos.json       — anchor videos for the Watch band (Video[] with storyId; YouTube ids)
 
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';

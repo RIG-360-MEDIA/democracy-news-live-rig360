@@ -6,8 +6,7 @@ import { apiScope } from '@/lib/worldwide/to-view';
 import { recentVideos } from '@/lib/worldwide/recent-videos';
 import { LongReadPage } from '@/components/long-read/long-read-page';
 import { SEED_MODE, seedFrontPage } from '@/lib/seed';
-import { getVideoBulletin } from '@/lib/worldwide/video-bulletin';
-import { videos } from '@/components/long-read/videos-data';
+import { getAnchorVideos } from '@/lib/worldwide/anchor-videos';
 
 // SSR against the live _v8 keeper (read-only). force-dynamic so a build without DB
 // connectivity doesn't try to statically render this page.
@@ -53,7 +52,7 @@ export default async function Page({
   const key = resolveScope(scope);
   let data;
   if (SEED_MODE) {
-    return <LongReadPage data={seedFrontPage()} videos={recentVideos(videos, Date.now())} bulletin={await getVideoBulletin()} />;
+    return <LongReadPage data={seedFrontPage()} videos={recentVideos(await getAnchorVideos(), Date.now())} />;
   }
   try {
     data = await getCachedFrontPage(key);
@@ -62,7 +61,7 @@ export default async function Page({
     console.error('[front-page] live read failed, serving last good edition:', err);
     data = await getLastGoodFrontPage(key); // throws only if no copy exists → error.tsx
   }
-  // Watch rail: only clips from the last 30 days, decided here on the server (E6).
-  const bulletin = await getVideoBulletin().catch(() => []); // the day's anchor videos (carousel at the top)
-  return <LongReadPage data={data} videos={recentVideos(videos, Date.now())} bulletin={bulletin} />;
+  // Watch band: Anchor Studio's daily news videos (the YouTube "Video Bulletin" playlist), last 30 days only (E6).
+  const videos = await getAnchorVideos().catch(() => []);
+  return <LongReadPage data={data} videos={recentVideos(videos, Date.now())} />;
 }

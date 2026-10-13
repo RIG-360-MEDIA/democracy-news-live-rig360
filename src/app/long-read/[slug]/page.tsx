@@ -7,7 +7,7 @@ import { CACHE_TAGS, READER_CACHE_TTL } from '@/lib/cache';
 import { getStoryDetail, UUID_RE } from '@/lib/worldwide/detail';
 import { StoryRead } from '@/components/long-read/story-read';
 import { SEED_MODE, seedStoryDetail } from '@/lib/seed';
-import { getStoryVideo } from '@/lib/worldwide/video-bulletin';
+import { getStoryVideo } from '@/lib/worldwide/anchor-videos';
 
 // ISR (E8): story pages were force-dynamic, so every view re-rendered on the server (always a CDN
 // MISS, ~1 s TTFB). Now each slug is rendered on first visit and the HTML is cached for `revalidate`

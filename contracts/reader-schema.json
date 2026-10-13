@@ -328,20 +328,6 @@
       ],
       "present_in_reference": true
     },
-    "rigwire.story_video": {
-      "columns": [
-        "story_id",
-        "video_url",
-        "poster_url",
-        "duration_s",
-        "anchor_name",
-        "title",
-        "kicker",
-        "published_at",
-        "status"
-      ],
-      "present_in_reference": false
-    },
     "rigwire.user_preferences": {
       "columns": [
         "user_id",

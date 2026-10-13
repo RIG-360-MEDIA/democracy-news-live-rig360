@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import type { Video } from './videos-data';
 
 /* ═════════════════════════════════════════════════════════════════
-   WATCH — Democracy News Live's channel, embedded, as a dark-cinema
+   WATCH — Democracy News Live's daily video bulletin (Anchor Studio, YouTube playlist), embedded, as a dark-cinema
    CONTACT SHEET: an asymmetric mosaic of red-duotone 16:9 frames (the
    feature is the big one) that lift + bloom to full colour on hover.
    Click any → Theater mode with AMBIENT glow (the backdrop blooms with
@@ -88,7 +88,7 @@ export function VideoBand({ videos }: { videos: readonly Video[] }) {
           <div className="flex items-center gap-3">
             <span style={{ width: 34, height: 34, borderRadius: '50%', background: RED, display: 'grid', placeItems: 'center', flexShrink: 0, boxShadow: '0 0 20px rgba(226,59,48,0.5)' }}><Tri w={12} /></span>
             <div>
-              <div style={{ fontFamily: UI, color: RED, fontSize: 10, fontWeight: 800, letterSpacing: '0.24em', textTransform: 'uppercase' }}>Democracy News Live · Originals</div>
+              <div style={{ fontFamily: UI, color: RED, fontSize: 10, fontWeight: 800, letterSpacing: '0.24em', textTransform: 'uppercase' }}>Democracy News Live · Daily video bulletin</div>
               <h2 style={{ fontFamily: SERIF, color: CREAM, fontSize: 'clamp(1.875rem, 2.6vw, 2.5rem)', fontWeight: 700, lineHeight: 1, letterSpacing: '-0.022em', fontVariationSettings: "'opsz' 144, 'SOFT' 0", marginTop: 2 }}>Watch</h2>
             </div>
           </div>
@@ -118,6 +118,11 @@ export function VideoBand({ videos }: { videos: readonly Video[] }) {
             <div>
               <div style={{ fontFamily: UI, color: RED, fontSize: 10, fontWeight: 800, letterSpacing: '0.28em', textTransform: 'uppercase' }}>{active.kicker}</div>
               <div style={{ fontFamily: SERIF, color: '#fff', fontSize: 'clamp(1.05rem, 1.8vw, 1.5rem)', fontWeight: 700, lineHeight: 1.1, marginTop: 4, maxWidth: '60ch' }}>{active.title}</div>
+              {active.storyId && (
+                <a href={`/long-read/${active.storyId}`} style={{ display: 'inline-block', marginTop: 6, fontFamily: UI, color: CREAM, fontSize: 11, fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', textDecoration: 'underline', textUnderlineOffset: 3 }}>
+                  Read the full story →
+                </a>
+              )}
             </div>
             <button type="button" aria-label="Close theater" onClick={() => setTheater(false)} style={{ width: 40, height: 40, borderRadius: '50%', border: '1px solid rgba(255,255,255,0.3)', display: 'grid', placeItems: 'center', flexShrink: 0, cursor: 'pointer', background: 'rgba(0,0,0,0.25)' }}>
               <svg width={16} height={16} viewBox="0 0 16 16" aria-hidden="true"><path d="M1 1l14 14M15 1L1 15" stroke="#fff" strokeWidth="1.6" /></svg>
