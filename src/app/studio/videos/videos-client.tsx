@@ -1,43 +1,135 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useState, useTransition } from 'react';
+import { useCallback, useEffect, useState, useTransition } from 'react';
 
 import type { PlaylistVideo } from '@/lib/youtube/client';
 
+// The review desk: thumbnail tiles (the site's Watch-band look); clicking one opens a THEATER over the CMS (the page stays
+// behind, blurred) with the video large, its story/description, and Approve / Reject right there, ← → through the lane.
+
 const EXPIRE_H = 36;
-const card: React.CSSProperties = { border: '1px solid #e4e0d8', borderRadius: 10, background: '#fff', overflow: 'hidden', display: 'flex', flexDirection: 'column' };
-const btn = (fg: string, border: string): React.CSSProperties => ({
-  flex: 1, fontSize: 12.5, fontWeight: 700, padding: '9px 6px', borderRadius: 8, border: `1px solid ${border}`, background: '#fff', color: fg, cursor: 'pointer',
-});
+const SERIF = 'var(--font-fraunces), Georgia, serif';
+const RED = '#a8141a';
+const thumb = (id: string) => `https://i.ytimg.com/vi/${id}/hqdefault.jpg`;
 
 function age(iso: string): { text: string; urgent: boolean } {
   const h = (Date.now() - Date.parse(iso)) / 3_600_000;
   const left = EXPIRE_H - h;
-  return { text: h < 1 ? `${Math.max(1, Math.round(h * 60))} min ago` : `${Math.floor(h)} h ago · expires in ${Math.max(0, Math.ceil(left))} h`, urgent: left < 6 };
+  return {
+    text: h < 1 ? `${Math.max(1, Math.round(h * 60))} min ago` : `${Math.floor(h)} h ago · expires in ${Math.max(0, Math.ceil(left))} h`,
+    urgent: left < 6,
+  };
 }
 
-function VideoCard({ v, children }: { v: PlaylistVideo; children?: React.ReactNode }) {
-  const [desc, setDesc] = useState(false);
+type Lane = 'pending' | 'published';
+
+function Tile({ v, onOpen, children }: { v: PlaylistVideo; onOpen: () => void; children?: React.ReactNode }) {
   return (
-    <div style={card}>
-      <div style={{ position: 'relative', aspectRatio: '16 / 9', background: '#000' }}>
-        <iframe title={v.title} src={`https://www.youtube-nocookie.com/embed/${v.videoId}?rel=0&modestbranding=1`}
-          allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowFullScreen
-          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 0 }} />
-      </div>
-      <div style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 6, flex: 1 }}>
-        <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.18em', textTransform: 'uppercase', color: '#a8141a' }}>{v.kicker}</span>
-        <b style={{ fontFamily: 'var(--font-fraunces), Georgia, serif', fontSize: 16, lineHeight: 1.2 }}>{v.title}</b>
-        <span style={{ fontSize: 12, color: '#666', display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-          {v.storyId ? <a href={`/long-read/${v.storyId}`} target="_blank" rel="noreferrer" style={{ color: '#1b4b91' }}>Story page ↗</a> : <span>No story link in the description</span>}
-          <a href={`https://www.youtube.com/watch?v=${v.videoId}`} target="_blank" rel="noreferrer" style={{ color: '#1b4b91' }}>YouTube ↗</a>
-          <button type="button" onClick={() => setDesc(!desc)} style={{ border: 0, background: 'none', padding: 0, color: '#1b4b91', cursor: 'pointer', fontSize: 12 }}>
-            {desc ? 'Hide' : 'Show'} description
-          </button>
+    <div className="vr-card">
+      <button type="button" className="vr-tile" onClick={onOpen} aria-label={`Watch: ${v.title}`}>
+        <img src={thumb(v.videoId)} alt="" />
+        <span className="vr-shade" />
+        <span className="vr-play" aria-hidden="true">
+          <svg width={18} height={21} viewBox="0 0 12 14"><path d="M0 0l12 7-12 7z" fill="#fff" /></svg>
         </span>
-        {desc && <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit', fontSize: 12, color: '#444', background: '#faf8f4', padding: 8, borderRadius: 6, margin: 0 }}>{v.description}</pre>}
+        <span className="vr-watch">Watch &amp; review</span>
+      </button>
+      <div style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 6, flex: 1 }}>
+        <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.18em', textTransform: 'uppercase', color: RED }}>{v.kicker}</span>
+        <b style={{ fontFamily: SERIF, fontSize: 16, lineHeight: 1.2 }}>{v.title}</b>
         {children}
+      </div>
+    </div>
+  );
+}
+
+function Theater({ list, index, lane, busy, onClose, onStep, onApprove, onReject }: {
+  list: PlaylistVideo[]; index: number; lane: Lane; busy: boolean;
+  onClose: () => void; onStep: (d: number) => void; onApprove: (v: PlaylistVideo) => void; onReject: (v: PlaylistVideo, reason: string) => void;
+}) {
+  const v = list[index];
+  const [rejecting, setRejecting] = useState(false);
+  const [reason, setReason] = useState('');
+  const [desc, setDesc] = useState(false);
+  useEffect(() => { setRejecting(false); setReason(''); setDesc(false); }, [v?.videoId]);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.target as HTMLElement)?.tagName === 'TEXTAREA') return;
+      if (e.key === 'Escape') onClose();
+      else if (e.key === 'ArrowRight') onStep(1);
+      else if (e.key === 'ArrowLeft') onStep(-1);
+    };
+    window.addEventListener('keydown', onKey);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { window.removeEventListener('keydown', onKey); document.body.style.overflow = prev; };
+  }, [onClose, onStep]);
+  if (!v) return null;
+  const a = age(v.addedAt);
+  const round: React.CSSProperties = { width: 44, height: 44, borderRadius: '50%', border: '1px solid rgba(255,255,255,0.3)', display: 'grid', placeItems: 'center', cursor: 'pointer', background: 'rgba(0,0,0,0.3)' };
+  const big = (bg: string, fg = '#fff'): React.CSSProperties => ({ padding: '11px 22px', borderRadius: 999, border: 0, background: bg, color: fg, fontSize: 13.5, fontWeight: 800, cursor: busy ? 'wait' : 'pointer', opacity: busy ? 0.6 : 1 });
+  return (
+    <div role="dialog" aria-modal="true" aria-label="Review video" onClick={onClose}
+      style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', flexDirection: 'column', background: 'rgba(7,6,6,0.78)', backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)' }}>
+      {/* ambient glow from the video's own colours */}
+      <div aria-hidden="true" style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none' }}>
+        <div style={{ position: 'absolute', inset: '-12%', backgroundImage: `url(${thumb(v.videoId)})`, backgroundSize: 'cover', backgroundPosition: 'center', filter: 'blur(80px) saturate(1.7) brightness(0.45)', opacity: 0.55 }} />
+      </div>
+
+      <div onClick={(e) => e.stopPropagation()} style={{ position: 'relative', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, padding: '18px 24px' }}>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.24em', textTransform: 'uppercase', color: '#ff6b6b' }}>
+            {lane === 'pending' ? 'Awaiting approval' : 'Published'} · {v.kicker} · {index + 1}/{list.length}
+          </div>
+          <div style={{ fontFamily: SERIF, color: '#fff', fontSize: 'clamp(1.1rem, 1.9vw, 1.55rem)', fontWeight: 700, lineHeight: 1.15, marginTop: 4, maxWidth: '70ch' }}>{v.title}</div>
+          <div style={{ display: 'flex', gap: 14, marginTop: 6, fontSize: 12, flexWrap: 'wrap' }}>
+            {v.storyId && <a href={`/long-read/${v.storyId}`} target="_blank" rel="noreferrer" style={{ color: '#f2ece2' }}>Story page ↗</a>}
+            <a href={`https://www.youtube.com/watch?v=${v.videoId}`} target="_blank" rel="noreferrer" style={{ color: '#f2ece2' }}>YouTube ↗</a>
+            <button type="button" onClick={() => setDesc(!desc)} style={{ border: 0, background: 'none', padding: 0, color: '#f2ece2', cursor: 'pointer', fontSize: 12, textDecoration: 'underline' }}>
+              {desc ? 'Hide' : 'Show'} description
+            </button>
+            {lane === 'pending' && <span style={{ color: a.urgent ? '#ff8a8a' : 'rgba(255,255,255,0.6)' }}>Uploaded {a.text}</span>}
+          </div>
+        </div>
+        <button type="button" aria-label="Close" onClick={onClose} style={round}>
+          <svg width={16} height={16} viewBox="0 0 16 16" aria-hidden="true"><path d="M1 1l14 14M15 1L1 15" stroke="#fff" strokeWidth="1.6" /></svg>
+        </button>
+      </div>
+
+      <div onClick={(e) => e.stopPropagation()} className="flex-1 flex items-center justify-center" style={{ position: 'relative', minHeight: 0, padding: '0 16px', gap: 14 }}>
+        <button type="button" aria-label="Previous video" onClick={() => onStep(-1)} disabled={list.length < 2} style={{ ...round, visibility: list.length < 2 ? 'hidden' : 'visible' }}>
+          <svg width={16} height={16} viewBox="0 0 16 16" aria-hidden="true"><path d="M10 2L4 8l6 6" fill="none" stroke="#fff" strokeWidth="1.8" /></svg>
+        </button>
+        <div style={{ position: 'relative', width: 'min(1200px, calc((100dvh - 250px) * 16 / 9), 86vw)', aspectRatio: '16 / 9', boxShadow: '0 30px 80px -20px rgba(0,0,0,0.85)', background: '#000', borderRadius: 4, overflow: 'hidden' }}>
+          <iframe key={v.videoId} title={v.title} src={`https://www.youtube-nocookie.com/embed/${v.videoId}?autoplay=1&rel=0&modestbranding=1`}
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowFullScreen
+            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 0 }} />
+          {desc && (
+            <pre style={{ position: 'absolute', left: 0, right: 0, bottom: 0, maxHeight: '45%', overflow: 'auto', margin: 0, padding: 14, whiteSpace: 'pre-wrap', fontFamily: 'inherit', fontSize: 12.5, color: '#f2ece2', background: 'rgba(8,6,6,0.88)' }}>{v.description}</pre>
+          )}
+        </div>
+        <button type="button" aria-label="Next video" onClick={() => onStep(1)} disabled={list.length < 2} style={{ ...round, visibility: list.length < 2 ? 'hidden' : 'visible' }}>
+          <svg width={16} height={16} viewBox="0 0 16 16" aria-hidden="true"><path d="M6 2l6 6-6 6" fill="none" stroke="#fff" strokeWidth="1.8" /></svg>
+        </button>
+      </div>
+
+      <div onClick={(e) => e.stopPropagation()} style={{ position: 'relative', padding: '16px 24px 22px', display: 'flex', justifyContent: 'center', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+        {lane === 'pending' && !rejecting && (
+          <>
+            <button type="button" disabled={busy} onClick={() => onApprove(v)} style={big('#2e7d32')}>{busy ? 'Working…' : 'Approve — publish to YouTube & the site'}</button>
+            <button type="button" disabled={busy} onClick={() => setRejecting(true)} style={big('rgba(255,255,255,0.12)', '#ffb3b3')}>Reject</button>
+          </>
+        )}
+        {lane === 'pending' && rejecting && (
+          <>
+            <input value={reason} onChange={(e) => setReason(e.target.value)} maxLength={500} autoFocus placeholder="Why reject? (kept in the audit log)"
+              style={{ width: 'min(520px, 70vw)', padding: '11px 14px', borderRadius: 999, border: '1px solid rgba(255,255,255,0.3)', background: 'rgba(0,0,0,0.35)', color: '#fff', fontSize: 13.5 }} />
+            <button type="button" disabled={busy || !reason.trim()} onClick={() => onReject(v, reason)} style={big(RED)}>{busy ? 'Deleting…' : 'Delete from YouTube'}</button>
+            <button type="button" onClick={() => setRejecting(false)} style={big('rgba(255,255,255,0.12)')}>Cancel</button>
+          </>
+        )}
+        {lane === 'published' && <span style={{ color: 'rgba(255,255,255,0.6)', fontSize: 12.5 }}>Published · ← → browse · Esc close</span>}
       </div>
     </div>
   );
@@ -46,65 +138,80 @@ function VideoCard({ v, children }: { v: PlaylistVideo; children?: React.ReactNo
 export function VideosClient({ pending, published }: { pending: PlaylistVideo[]; published: PlaylistVideo[] }) {
   const router = useRouter();
   const [, start] = useTransition();
-  const [busy, setBusy] = useState<string | null>(null);
-  const [rejecting, setRejecting] = useState<string | null>(null);
-  const [reason, setReason] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [open, setOpen] = useState<{ lane: Lane; index: number } | null>(null);
+  const list = open ? (open.lane === 'pending' ? pending : published) : [];
 
-  async function act(videoId: string, kind: 'approve' | 'reject', body?: unknown): Promise<void> {
-    setBusy(videoId);
+  const close = useCallback(() => setOpen(null), []);
+  const step = useCallback((d: number) => setOpen((o) => {
+    if (!o) return o;
+    const n = (o.lane === 'pending' ? pending : published).length;
+    return n ? { ...o, index: (o.index + d + n) % n } : o;
+  }), [pending, published]);
+
+  async function act(v: PlaylistVideo, kind: 'approve' | 'reject', body?: unknown): Promise<void> {
+    setBusy(true);
     try {
-      const r = await fetch(`/api/studio/videos/${videoId}/${kind}`, {
+      const r = await fetch(`/api/studio/videos/${v.videoId}/${kind}`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body ?? {}),
       });
       const j = await r.json().catch(() => null);
-      if (!r.ok) alert(`${kind === 'approve' ? 'Approve' : 'Reject'} failed: ${j?.error?.message ?? r.status}`);
-      else {
-        setRejecting(null);
-        setReason('');
-        start(() => router.refresh());
+      if (!r.ok) {
+        alert(`${kind === 'approve' ? 'Approve' : 'Reject'} failed: ${j?.error?.message ?? r.status}`);
+        return;
       }
+      // Next in the queue stays open (the decided video leaves the list on refresh); close when it was the last one.
+      setOpen((o) => (o && pending.length > 1 ? { lane: 'pending', index: Math.min(o.index, pending.length - 2) } : null));
+      start(() => router.refresh());
     } finally {
-      setBusy(null);
+      setBusy(false);
     }
   }
 
-  const grid: React.CSSProperties = { display: 'grid', gap: 16, gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', marginBottom: 28 };
   return (
     <div>
       <h2 style={{ fontSize: 13, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#8a6d1a', margin: '6px 0 10px' }}>Awaiting approval</h2>
       {pending.length === 0 && <p style={{ fontSize: 13, color: '#888', marginBottom: 24 }}>Nothing waiting. New videos arrive here after each evening&apos;s run.</p>}
-      <div style={grid}>
-        {pending.map((v) => {
+      <div className="vr-grid">
+        {pending.map((v, i) => {
           const a = age(v.addedAt);
           return (
-            <VideoCard key={v.videoId} v={v}>
-              <span style={{ fontSize: 11.5, color: a.urgent ? '#a8141a' : '#888' }}>Uploaded {a.text}</span>
-              {rejecting === v.videoId ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 'auto' }}>
-                  <textarea value={reason} onChange={(e) => setReason(e.target.value)} maxLength={500} rows={2} autoFocus
-                    placeholder="Why reject? (kept in the audit log)" style={{ fontSize: 12.5, padding: 8, borderRadius: 6, border: '1px solid #ddd' }} />
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <button type="button" disabled={busy === v.videoId || !reason.trim()} onClick={() => act(v.videoId, 'reject', { reason })} style={btn('#a8141a', '#f0c9c9')}>
-                      {busy === v.videoId ? 'Deleting…' : 'Delete from YouTube'}
-                    </button>
-                    <button type="button" onClick={() => { setRejecting(null); setReason(''); }} style={btn('#555', '#ddd')}>Cancel</button>
-                  </div>
-                </div>
-              ) : (
-                <div style={{ display: 'flex', gap: 8, marginTop: 'auto' }}>
-                  <button type="button" disabled={busy === v.videoId} onClick={() => act(v.videoId, 'approve')} style={btn('#2e7d32', '#cfe5d0')}>
-                    {busy === v.videoId ? 'Approving…' : 'Approve'}
-                  </button>
-                  <button type="button" disabled={busy === v.videoId} onClick={() => setRejecting(v.videoId)} style={btn('#a8141a', '#f0c9c9')}>Reject</button>
-                </div>
-              )}
-            </VideoCard>
+            <Tile key={v.videoId} v={v} onOpen={() => setOpen({ lane: 'pending', index: i })}>
+              <span style={{ fontSize: 11.5, color: a.urgent ? RED : '#888' }}>Uploaded {a.text}</span>
+              <button type="button" onClick={() => setOpen({ lane: 'pending', index: i })}
+                style={{ marginTop: 'auto', fontSize: 12.5, fontWeight: 700, padding: '9px 6px', borderRadius: 8, border: '1px solid #c9dcf5', background: '#fff', color: '#1b4b91', cursor: 'pointer' }}>
+                Watch &amp; decide
+              </button>
+            </Tile>
           );
         })}
       </div>
       <h2 style={{ fontSize: 13, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#2e7d32', margin: '6px 0 10px' }}>Published recently</h2>
       {published.length === 0 && <p style={{ fontSize: 13, color: '#888' }}>None yet.</p>}
-      <div style={grid}>{published.map((v) => <VideoCard key={v.videoId} v={v} />)}</div>
+      <div className="vr-grid">
+        {published.map((v, i) => <Tile key={v.videoId} v={v} onOpen={() => setOpen({ lane: 'published', index: i })} />)}
+      </div>
+
+      {open && list[open.index] && (
+        <Theater list={list} index={open.index} lane={open.lane} busy={busy} onClose={close} onStep={step}
+          onApprove={(v) => act(v, 'approve')} onReject={(v, reason) => act(v, 'reject', { reason })} />
+      )}
+
+      <style>{`
+        .vr-grid{display:grid;gap:16px;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));margin-bottom:28px;}
+        .vr-card{border:1px solid #e4e0d8;border-radius:10px;background:#fff;overflow:hidden;display:flex;flex-direction:column;
+          transition:transform .3s cubic-bezier(.2,.7,.2,1),box-shadow .3s ease;}
+        .vr-card:hover{transform:translateY(-4px);box-shadow:0 18px 36px -16px rgba(168,20,26,.35),0 6px 16px rgba(0,0,0,.12);}
+        .vr-tile{position:relative;display:block;width:100%;aspect-ratio:16/9;padding:0;border:0;cursor:pointer;background:#140d0e;overflow:hidden;}
+        .vr-tile img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transition:transform .5s ease;}
+        .vr-tile:hover img{transform:scale(1.05);}
+        .vr-shade{position:absolute;inset:0;background:linear-gradient(180deg,rgba(8,5,6,.05),rgba(8,5,6,.55));}
+        .vr-play{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:58px;height:58px;border-radius:50%;
+          background:${RED};display:grid;place-items:center;box-shadow:0 8px 24px rgba(0,0,0,.5);transition:transform .25s ease;}
+        .vr-play svg{margin-left:3px;}
+        .vr-tile:hover .vr-play{transform:translate(-50%,-50%) scale(1.08);}
+        .vr-watch{position:absolute;left:12px;bottom:10px;font-size:10px;font-weight:800;letter-spacing:.2em;text-transform:uppercase;color:#fff;}
+      `}</style>
     </div>
   );
 }
