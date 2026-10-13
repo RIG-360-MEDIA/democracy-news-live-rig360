@@ -23,6 +23,7 @@ function age(iso: string): { text: string; urgent: boolean } {
 }
 
 type Lane = 'pending' | 'published';
+type Edit = { title: string; description: string };
 
 function Tile({ v, onOpen, children }: { v: PlaylistVideo; onOpen: () => void; children?: React.ReactNode }) {
   return (
@@ -44,18 +45,29 @@ function Tile({ v, onOpen, children }: { v: PlaylistVideo; onOpen: () => void; c
   );
 }
 
-function Theater({ list, index, lane, busy, onClose, onStep, onApprove, onReject }: {
+function Theater({ list, index, lane, busy, onClose, onStep, onApprove, onReject, onSave }: {
   list: PlaylistVideo[]; index: number; lane: Lane; busy: boolean;
-  onClose: () => void; onStep: (d: number) => void; onApprove: (v: PlaylistVideo) => void; onReject: (v: PlaylistVideo, reason: string) => void;
+  onClose: () => void; onStep: (d: number) => void; onApprove: (v: PlaylistVideo, edit?: Edit) => void;
+  onReject: (v: PlaylistVideo, reason: string) => void; onSave: (v: PlaylistVideo, edit: Edit) => Promise<boolean>;
 }) {
   const v = list[index];
   const [rejecting, setRejecting] = useState(false);
   const [reason, setReason] = useState('');
-  const [desc, setDesc] = useState(false);
-  useEffect(() => { setRejecting(false); setReason(''); setDesc(false); }, [v?.videoId]);
+  const [title, setTitle] = useState(v?.title ?? '');
+  const [description, setDescription] = useState(v?.description ?? '');
+  const [saved, setSaved] = useState<string | null>(null);
+  useEffect(() => {
+    setRejecting(false); setReason(''); setSaved(null);
+    setTitle(v?.title ?? ''); setDescription(v?.description ?? '');
+  }, [v?.videoId, v?.title, v?.description]);
+  const dirty = !!v && (title.trim() !== v.title || description !== v.description);
+  const linked = /long-read\/[0-9a-f-]{36}/i.test(description);
+  const bytes = new TextEncoder().encode(description).length;
+  const problem = !title.trim() ? 'Title is empty' : title.length > 100 ? 'Title is over 100 characters'
+    : /[<>]/.test(title + description) ? 'YouTube does not allow < or >' : bytes > 5000 ? 'Description is over 5000 bytes' : null;
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if ((e.target as HTMLElement)?.tagName === 'TEXTAREA') return;
+      if (['TEXTAREA', 'INPUT'].includes((e.target as HTMLElement)?.tagName)) return;
       if (e.key === 'Escape') onClose();
       else if (e.key === 'ArrowRight') onStep(1);
       else if (e.key === 'ArrowLeft') onStep(-1);
@@ -86,9 +98,6 @@ function Theater({ list, index, lane, busy, onClose, onStep, onApprove, onReject
           <div style={{ display: 'flex', gap: 14, marginTop: 6, fontSize: 12, flexWrap: 'wrap' }}>
             {v.storyId && <a href={`/long-read/${v.storyId}`} target="_blank" rel="noreferrer" style={{ color: '#f2ece2' }}>Story page ↗</a>}
             <a href={`https://www.youtube.com/watch?v=${v.videoId}`} target="_blank" rel="noreferrer" style={{ color: '#f2ece2' }}>YouTube ↗</a>
-            <button type="button" onClick={() => setDesc(!desc)} style={{ border: 0, background: 'none', padding: 0, color: '#f2ece2', cursor: 'pointer', fontSize: 12, textDecoration: 'underline' }}>
-              {desc ? 'Hide' : 'Show'} description
-            </button>
             {lane === 'pending' && <span style={{ color: a.urgent ? '#ff8a8a' : 'rgba(255,255,255,0.6)' }}>Uploaded {a.text}</span>}
           </div>
         </div>
@@ -97,17 +106,33 @@ function Theater({ list, index, lane, busy, onClose, onStep, onApprove, onReject
         </button>
       </div>
 
-      <div onClick={(e) => e.stopPropagation()} className="flex-1 flex items-center justify-center" style={{ position: 'relative', minHeight: 0, padding: '0 16px', gap: 14 }}>
+      <div onClick={(e) => e.stopPropagation()} className="vr-stage">
         <button type="button" aria-label="Previous video" onClick={() => onStep(-1)} disabled={list.length < 2} style={{ ...round, visibility: list.length < 2 ? 'hidden' : 'visible' }}>
           <svg width={16} height={16} viewBox="0 0 16 16" aria-hidden="true"><path d="M10 2L4 8l6 6" fill="none" stroke="#fff" strokeWidth="1.8" /></svg>
         </button>
-        <div style={{ position: 'relative', width: 'min(1200px, calc((100dvh - 250px) * 16 / 9), 86vw)', aspectRatio: '16 / 9', boxShadow: '0 30px 80px -20px rgba(0,0,0,0.85)', background: '#000', borderRadius: 4, overflow: 'hidden' }}>
+        <div className="vr-player">
           <iframe key={v.videoId} title={v.title} src={`https://www.youtube-nocookie.com/embed/${v.videoId}?autoplay=1&rel=0&modestbranding=1`}
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowFullScreen
             style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 0 }} />
-          {desc && (
-            <pre style={{ position: 'absolute', left: 0, right: 0, bottom: 0, maxHeight: '45%', overflow: 'auto', margin: 0, padding: 14, whiteSpace: 'pre-wrap', fontFamily: 'inherit', fontSize: 12.5, color: '#f2ece2', background: 'rgba(8,6,6,0.88)' }}>{v.description}</pre>
-          )}
+        </div>
+        <div className="vr-edit">
+          <label className="vr-label">Title on YouTube & the site <span>{title.length}/100</span></label>
+          <input value={title} onChange={(e) => setTitle(e.target.value)} maxLength={100} className="vr-field" />
+          <label className="vr-label">Description <span>{bytes}/5000</span></label>
+          <textarea value={description} onChange={(e) => setDescription(e.target.value)} className="vr-field vr-desc" />
+          <p className="vr-hint">
+            Line 1 is the label on the site (e.g. &quot;Breaking news · Panama&quot;). Keep the &quot;Read the full story&quot; link —
+            {linked ? ' it is how the video finds its story page.' : <b style={{ color: '#ff8a8a' }}> it is missing: the site cannot place this video on a story page.</b>}
+          </p>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginTop: 'auto' }}>
+            <button type="button" disabled={!dirty || !!problem || busy} style={big(dirty && !problem ? '#1b4b91' : 'rgba(255,255,255,0.1)')}
+              onClick={async () => { if (await onSave(v, { title: title.trim(), description })) setSaved('Saved to YouTube'); }}>
+              Save changes
+            </button>
+            <span style={{ fontSize: 12, color: problem ? '#ff8a8a' : 'rgba(255,255,255,0.65)' }}>
+              {problem ?? (dirty ? 'Unsaved changes' + (lane === 'pending' ? ' — Approve saves them too' : '') : saved ?? '')}
+            </span>
+          </div>
         </div>
         <button type="button" aria-label="Next video" onClick={() => onStep(1)} disabled={list.length < 2} style={{ ...round, visibility: list.length < 2 ? 'hidden' : 'visible' }}>
           <svg width={16} height={16} viewBox="0 0 16 16" aria-hidden="true"><path d="M6 2l6 6-6 6" fill="none" stroke="#fff" strokeWidth="1.8" /></svg>
@@ -117,7 +142,9 @@ function Theater({ list, index, lane, busy, onClose, onStep, onApprove, onReject
       <div onClick={(e) => e.stopPropagation()} style={{ position: 'relative', padding: '16px 24px 22px', display: 'flex', justifyContent: 'center', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
         {lane === 'pending' && !rejecting && (
           <>
-            <button type="button" disabled={busy} onClick={() => onApprove(v)} style={big('#2e7d32')}>{busy ? 'Working…' : 'Approve — publish to YouTube & the site'}</button>
+            <button type="button" disabled={busy || !!problem} onClick={() => onApprove(v, dirty ? { title: title.trim(), description } : undefined)} style={big('#2e7d32')}>
+              {busy ? 'Working…' : dirty ? 'Save & approve — publish to YouTube & the site' : 'Approve — publish to YouTube & the site'}
+            </button>
             <button type="button" disabled={busy} onClick={() => setRejecting(true)} style={big('rgba(255,255,255,0.12)', '#ffb3b3')}>Reject</button>
           </>
         )}
@@ -149,7 +176,26 @@ export function VideosClient({ pending, published }: { pending: PlaylistVideo[];
     return n ? { ...o, index: (o.index + d + n) % n } : o;
   }), [pending, published]);
 
-  async function act(v: PlaylistVideo, kind: 'approve' | 'reject', body?: unknown): Promise<void> {
+  async function save(v: PlaylistVideo, edit: Edit): Promise<boolean> {
+    setBusy(true);
+    try {
+      const r = await fetch(`/api/studio/videos/${v.videoId}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(edit),
+      });
+      const j = await r.json().catch(() => null);
+      if (!r.ok) {
+        alert(`Save failed: ${j?.error?.message ?? r.status}`);
+        return false;
+      }
+      start(() => router.refresh());
+      return true;
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function act(v: PlaylistVideo, kind: 'approve' | 'reject', body?: unknown, edit?: Edit): Promise<void> {
+    if (edit && !(await save(v, edit))) return;                     // Approve publishes what the editor sees
     setBusy(true);
     try {
       const r = await fetch(`/api/studio/videos/${v.videoId}/${kind}`, {
@@ -194,7 +240,7 @@ export function VideosClient({ pending, published }: { pending: PlaylistVideo[];
 
       {open && list[open.index] && (
         <Theater list={list} index={open.index} lane={open.lane} busy={busy} onClose={close} onStep={step}
-          onApprove={(v) => act(v, 'approve')} onReject={(v, reason) => act(v, 'reject', { reason })} />
+          onApprove={(v, edit) => act(v, 'approve', undefined, edit)} onReject={(v, reason) => act(v, 'reject', { reason })} onSave={save} />
       )}
 
       <style>{`
@@ -210,6 +256,20 @@ export function VideosClient({ pending, published }: { pending: PlaylistVideo[];
           background:${RED};display:grid;place-items:center;box-shadow:0 8px 24px rgba(0,0,0,.5);transition:transform .25s ease;}
         .vr-play svg{margin-left:3px;}
         .vr-tile:hover .vr-play{transform:translate(-50%,-50%) scale(1.08);}
+        .vr-stage{position:relative;flex:1;min-height:0;display:flex;align-items:center;justify-content:center;gap:14px;padding:0 16px;}
+        .vr-player{position:relative;flex:0 1 auto;width:min(1050px,calc((100dvh - 230px) * 16 / 9),calc(100vw - 560px));aspect-ratio:16/9;
+          background:#000;border-radius:4px;overflow:hidden;box-shadow:0 30px 80px -20px rgba(0,0,0,.85);}
+        .vr-edit{width:380px;flex:0 0 380px;align-self:stretch;max-height:calc(100dvh - 210px);display:flex;flex-direction:column;gap:8px;
+          padding:16px;border-radius:10px;background:rgba(10,8,8,.6);border:1px solid rgba(255,255,255,.12);overflow:auto;}
+        .vr-label{display:flex;justify-content:space-between;font-size:10.5px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:rgba(255,255,255,.7);}
+        .vr-label span{letter-spacing:0;font-weight:600;color:rgba(255,255,255,.45);}
+        .vr-field{width:100%;padding:10px 12px;border-radius:8px;border:1px solid rgba(255,255,255,.22);background:rgba(0,0,0,.4);color:#fff;
+          font-size:13.5px;line-height:1.45;font-family:inherit;}
+        .vr-field:focus{outline:2px solid #6aa0ff;outline-offset:1px;}
+        .vr-desc{flex:1;min-height:180px;resize:vertical;}
+        .vr-hint{font-size:11.5px;line-height:1.45;color:rgba(255,255,255,.6);margin:0;}
+        @media(max-width:1100px){.vr-stage{flex-direction:column;overflow:auto;padding:0 16px 8px;}
+          .vr-player{width:min(100%,calc((100dvh - 260px) * 16 / 9));} .vr-edit{width:100%;flex:none;max-height:none;}}
         .vr-watch{position:absolute;left:12px;bottom:10px;font-size:10px;font-weight:800;letter-spacing:.2em;text-transform:uppercase;color:#fff;}
       `}</style>
     </div>

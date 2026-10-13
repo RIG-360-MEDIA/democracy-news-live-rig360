@@ -39,6 +39,7 @@ export const API_ROUTES: Record<string, Partial<Record<Method, RouteRule>>> = {
   },
   '/api/studio/generate-cluster': { POST: { role: 'editor', write: 'remote' } },
   // Anchor Studio video review: the write is on YouTube; our DB gets the audit row (after-only).
+  '/api/studio/videos/[id]': { PATCH: { role: 'editor', write: 'audited' } },
   '/api/studio/videos/[id]/approve': { POST: { role: 'editor', write: 'audited' } },
   '/api/studio/videos/[id]/reject': { POST: { role: 'editor', write: 'audited' } },
   '/api/studio/media/cluster': { GET: { role: 'editor' } },

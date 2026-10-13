@@ -138,3 +138,19 @@ export async function rejectVideo(videoId: string): Promise<{ title: string; sto
   await yt(`videos?id=${encodeURIComponent(videoId)}`, { method: 'DELETE' });
   return { title: v.snippet.title, storyId: storyIdOf(v.snippet.description ?? '') };
 }
+
+/** Edit a video's title/description on YouTube. videos.update replaces the whole snippet, so the current one is read
+ *  first and re-sent with only title/description changed (categoryId is required; tags/languages would be wiped). */
+export async function editVideo(videoId: string, title: string, description: string):
+    Promise<{ before: { title: string; description: string }; storyId?: string }> {
+  type S = { title: string; description: string; categoryId: string; tags?: string[]; defaultLanguage?: string; defaultAudioLanguage?: string };
+  const v = (await yt<{ items?: Array<{ snippet: S }> }>(`videos?part=snippet&id=${encodeURIComponent(videoId)}`)).items?.[0];
+  if (!v) throw new Error('Video not found on YouTube');
+  const s = v.snippet;
+  const snippet: S = { title, description, categoryId: s.categoryId };
+  if (s.tags) snippet.tags = s.tags;
+  if (s.defaultLanguage) snippet.defaultLanguage = s.defaultLanguage;
+  if (s.defaultAudioLanguage) snippet.defaultAudioLanguage = s.defaultAudioLanguage;
+  await yt('videos?part=snippet', { method: 'PUT', body: { id: videoId, snippet } });
+  return { before: { title: s.title, description: s.description ?? '' }, storyId: storyIdOf(description) ?? storyIdOf(s.description ?? '') };
+}

@@ -20,7 +20,9 @@ beforeEach(() => {
       return reply({ items: [{ id: 'HEjnkLvrodg', snippet: { title: 'T', description: 'Breaking news · Panama\n\nRead the full story: https://x/long-read/475794d0-1004-417f-8f52-0e26ebc7effb' },
         status: { privacyStatus: 'unlisted', uploadStatus: 'processed', embeddable: true, license: 'youtube', publicStatsViewable: true, selfDeclaredMadeForKids: false, containsSyntheticMedia: true } }] });
     }
-    if (url.includes('/videos?part=snippet&id=')) return reply({ items: [{ snippet: { title: 'T', description: '' } }] });
+    if (url.includes('/videos?part=snippet&id=')) {
+      return reply({ items: [{ snippet: { title: 'Old', description: 'old', categoryId: '25', tags: ['news'], defaultLanguage: 'en', defaultAudioLanguage: 'en' } }] });
+    }
     if (url.includes('playlistItems?part=snippet,contentDetails,status') && url.includes('PEND')) {
       return reply({ items: [{ id: 'ITEM1', snippet: { title: 'T', description: '', publishedAt: '2026-10-13T10:00:00Z' }, contentDetails: { videoId: 'HEjnkLvrodg' }, status: { privacyStatus: 'unlisted' } }] });
     }
@@ -47,6 +49,16 @@ describe('youtube client (CMS video review)', () => {
     const { rejectVideo } = await import('@/lib/youtube/client');
     await rejectVideo('HEjnkLvrodg');
     expect(calls.some((c) => c.method === 'DELETE' && c.url.endsWith('/videos?id=HEjnkLvrodg'))).toBe(true);
+  });
+
+  it('edit: re-sends category, tags and languages with the new title/description (update replaces the snippet)', async () => {
+    const { editVideo } = await import('@/lib/youtube/client');
+    const r = await editVideo('HEjnkLvrodg', 'New', 'Breaking news · Panama\nRead the full story: https://a/long-read/475794d0-1004-417f-8f52-0e26ebc7effb');
+    const put = calls.find((c) => c.method === 'PUT' && c.url.includes('/videos?part=snippet'));
+    expect(put?.body).toEqual({ id: 'HEjnkLvrodg', snippet: { title: 'New', description: expect.stringContaining('long-read/'),
+      categoryId: '25', tags: ['news'], defaultLanguage: 'en', defaultAudioLanguage: 'en' } });
+    expect(r.before).toEqual({ title: 'Old', description: 'old' });
+    expect(r.storyId).toBe('475794d0-1004-417f-8f52-0e26ebc7effb');
   });
 
   it('parses the story id and kicker from a description', async () => {
