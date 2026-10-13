@@ -27,6 +27,11 @@ const HTTP_URL = /^https?:\/\/\S+$/i;
 
 export const storyIdSchema = z.guid();
 
+/** A YouTube video id (Anchor Studio video review, /studio/videos). */
+export const videoIdSchema = z.string().regex(/^[A-Za-z0-9_-]{11}$/);
+/** Reject needs a reason (shown in the audit ledger). */
+export const videoRejectSchema = z.object({ reason: z.string().trim().min(1).max(INPUT_LIMITS.reason) });
+
 /** '' (clear) or an absolute http(s) URL. */
 const imageUrl = z
   .string()

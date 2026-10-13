@@ -1,52 +1,32 @@
 // src/lib/worldwide/anchor-videos.ts
 //
 // Anchor Studio's daily AI-anchor news videos, as they appear in the front page's Watch band and on each story's page.
-// The pipeline uploads each video to the Democracy News Live YouTube channel and adds it to the "Video Bulletin"
-// playlist; its description carries the story link (".../long-read/<story id>") and the kicker on its first line.
-// Here the site reads that playlist: the YouTube Data API with YOUTUBE_API_KEY (reliable, 1 quota unit per read), or the
-// playlist's public RSS feed when no key is set (free, but YouTube's feed server returns 404 for hours at a time).
-// Cached 10 minutes under the front-page tag; any failure means "no videos" (the band hides, story pages show the photo).
+// Only videos an editor APPROVED in the CMS (/studio/videos) are here: approval makes the video public and moves it into
+// the YouTube "Video Bulletin" playlist (YT_BULLETIN_PLAYLIST_ID), which this module reads through the CMS's YouTube
+// connection (src/lib/youtube/client.ts). Without that connection it falls back to the playlist's public RSS feed (free,
+// but YouTube's feed server returns 404 for hours at a time). Each description carries the kicker on its first line and
+// the story link. Cached 10 minutes under the front-page tag (Approve revalidates it); any failure = "no videos".
 
 import { unstable_cache } from 'next/cache';
 
-import { CACHE_TAGS } from '@/lib/cache';
 import { SEED_MODE, seedVideos } from '@/lib/seed';
+import { CACHE_TAGS } from '@/lib/cache';
+import { BULLETIN_PLAYLIST, kickerOf, listPlaylist, storyIdOf, youtubeConfigured } from '@/lib/youtube/client';
 import type { Video } from '@/components/long-read/videos-data';
 
-const PLAYLIST = process.env.YT_BULLETIN_PLAYLIST_ID ?? '';
-const KEY = process.env.YOUTUBE_API_KEY ?? '';
-const STORY_RE = /long-read\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i;
-
-/** One playlist entry -> Video. The kicker is the description's first line when it is short ("Breaking news · Panama"). */
+/** One playlist entry -> Video (the newest is the band's feature tile). */
 export function toAnchorVideo(id: string, title: string, description: string, publishedAt: string, first: boolean): Video {
-  const line = description.split('\n')[0].trim();
-  return {
-    youtubeId: id,
-    title,
-    kicker: line && line.length <= 60 && !/https?:\/\//.test(line) ? line : 'Video Bulletin',
-    kind: first ? 'feature' : 'programme',
-    publishedAt,
-    storyId: description.match(STORY_RE)?.[1]?.toLowerCase(),
-  };
+  return { youtubeId: id, title, kicker: kickerOf(description), kind: first ? 'feature' : 'programme', publishedAt, storyId: storyIdOf(description) };
 }
 
-async function fromApi(): Promise<Video[]> {
-  const url = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet,contentDetails,status&maxResults=50&playlistId=${encodeURIComponent(PLAYLIST)}&key=${encodeURIComponent(KEY)}`;
-  const res = await fetch(url, { cache: 'no-store' });
-  if (!res.ok) throw new Error(`YouTube API ${res.status}`);
-  const items = ((await res.json()).items ?? []) as Array<{
-    snippet: { title: string; description: string };
-    contentDetails: { videoId: string; videoPublishedAt?: string };
-    status?: { privacyStatus?: string };
-  }>;
-  return items
-    .filter((it) => it.contentDetails.videoPublishedAt && ['public', 'unlisted'].includes(it.status?.privacyStatus ?? 'public'))
-    .sort((a, b) => Date.parse(b.contentDetails.videoPublishedAt!) - Date.parse(a.contentDetails.videoPublishedAt!))
-    .map((it, i) => toAnchorVideo(it.contentDetails.videoId, it.snippet.title, it.snippet.description ?? '', it.contentDetails.videoPublishedAt!, i === 0));
+async function fromOAuth(): Promise<Video[]> {
+  return (await listPlaylist(BULLETIN_PLAYLIST()))
+    .filter((v) => v.privacy === 'public')
+    .map((v, i) => toAnchorVideo(v.videoId, v.title, v.description, v.addedAt, i === 0));
 }
 
 async function fromRss(): Promise<Video[]> {
-  const res = await fetch(`https://www.youtube.com/feeds/videos.xml?playlist_id=${encodeURIComponent(PLAYLIST)}`, { cache: 'no-store' });
+  const res = await fetch(`https://www.youtube.com/feeds/videos.xml?playlist_id=${encodeURIComponent(BULLETIN_PLAYLIST())}`, { cache: 'no-store' });
   if (!res.ok) throw new Error(`YouTube RSS ${res.status}`);
   const xml = await res.text();
   const tag = (s: string, t: string) => (s.match(new RegExp(`<${t}[^>]*>([\\s\\S]*?)</${t}>`)) ?? [])[1] ?? '';
@@ -58,19 +38,19 @@ async function fromRss(): Promise<Video[]> {
 }
 
 const readPlaylist = unstable_cache(
-  async (): Promise<Video[]> => (KEY ? fromApi() : fromRss()),
+  async (): Promise<Video[]> => (youtubeConfigured() ? fromOAuth() : fromRss()),
   ['reader-anchor-videos'],
   { revalidate: 600, tags: [CACHE_TAGS.frontPage] },
 );
 
-/** The bulletin playlist, newest first ([] when not configured or unreachable). */
+/** The approved videos, newest first ([] when not configured or unreachable). */
 export async function getAnchorVideos(): Promise<Video[]> {
-  if (SEED_MODE) return seedVideos<Video>();
-  if (!PLAYLIST) return [];
+  if (SEED_MODE && !youtubeConfigured()) return seedVideos<Video>();
+  if (!BULLETIN_PLAYLIST()) return [];
   return readPlaylist();
 }
 
-/** The video for one story page, if the playlist has one for it. */
+/** The video for one story page, if one was approved for it. */
 export async function getStoryVideo(storyId: string): Promise<Video | null> {
   return (await getAnchorVideos()).find((v) => v.storyId === storyId.toLowerCase()) ?? null;
 }

@@ -9,9 +9,10 @@ import { BRAND } from '@/lib/brand';
 
 export const dynamic = 'force-dynamic';
 
-// The five surfaces an editor moves between. Admin is appended only for admins.
+// The surfaces an editor moves between. Admin is appended only for admins.
 const NAV: ReadonlyArray<{ label: string; href: string }> = [
   { label: 'Newsroom', href: '/studio' },
+  { label: 'Videos', href: '/studio/videos' },
   { label: 'Create', href: '/studio/create' },
   { label: 'Front Page', href: '/curate' },
   { label: 'Audit', href: '/studio/audit' },
