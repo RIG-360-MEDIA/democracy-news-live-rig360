@@ -15,6 +15,8 @@ export const CACHE_TAGS = {
   frontPage: 'reader-front-page',
   storyDetail: 'reader-story-detail',
   ticker: 'reader-ticker',
+  // Anchor Studio's approved videos (Watch band + story pages); its own tag so a video change never purges story data.
+  anchorVideos: 'reader-anchor-videos',
 } as const;
 
 // Public names the box's publish job may ask to revalidate → internal tags.
@@ -22,6 +24,7 @@ export const REVALIDATE_TAGS: Record<string, string> = {
   frontpage: CACHE_TAGS.frontPage,
   story: CACHE_TAGS.storyDetail,
   ticker: CACHE_TAGS.ticker,
+  videos: CACHE_TAGS.anchorVideos,
 };
 
 function ttlFromEnv(): number {

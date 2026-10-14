@@ -161,7 +161,6 @@ const fmtTime = (s: number): string => {
   return `${m}:${sec < 10 ? '0' : ''}${sec}`;
 };
 
-/** Custom two-host audio player — drawn icons, seek scrubber, real play/pause/seek states. */
 /** The story's Anchor Studio video (YouTube, same embed as the Watch band) in the hero slot: the thumbnail and a play
  *  button until the reader clicks, then the YouTube player with sound (their click allows it). */
 function StoryVideo({ video }: { video: Video }) {
@@ -189,6 +188,7 @@ function StoryVideo({ video }: { video: Video }) {
   );
 }
 
+/** Custom two-host audio player — drawn icons, seek scrubber, real play/pause/seek states. */
 function AudioPlayer({ audio }: { audio: StoryAudio }) {
   const ref = useRef<HTMLAudioElement>(null);
   const [playing, setPlaying] = useState(false);
