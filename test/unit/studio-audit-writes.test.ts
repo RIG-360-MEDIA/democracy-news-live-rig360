@@ -58,6 +58,13 @@ vi.mock('@/lib/studio/current-user', () => ({
 }));
 vi.mock('@/lib/auth/password', () => ({ hashPassword: vi.fn(async () => 'argon2-hash') }));
 vi.mock('next/cache', () => ({ revalidateTag: vi.fn(), revalidatePath: vi.fn() }));
+// Anchor Studio video review: YouTube is the write target; only our audit row is asserted here.
+vi.mock('@/lib/youtube/client', () => ({
+  youtubeConfigured: () => true,
+  approveVideo: vi.fn(async () => ({ title: 'Quake shakes Panama', storyId: '3f2b8c1e-0a4d-4e7b-9c61-2d5e8f9a1b3c' })),
+  rejectVideo: vi.fn(async () => ({ title: 'Quake shakes Panama', storyId: '3f2b8c1e-0a4d-4e7b-9c61-2d5e8f9a1b3c' })),
+  editVideo: vi.fn(async () => ({ before: { title: 'Old', description: 'old' }, storyId: '3f2b8c1e-0a4d-4e7b-9c61-2d5e8f9a1b3c' })),
+}));
 vi.mock('@/lib/studio/placement', () => ({ projectPlacement: vi.fn(async () => null) }));
 vi.mock('@/lib/dispatch/client', () => ({
   DispatchError: class DispatchError extends Error {},
@@ -183,6 +190,35 @@ const OVERRIDE_KINDS: ReadonlyArray<[string, Record<string, unknown>, string]> =
 ];
 
 const SCENARIOS: Record<string, Scenario> = {
+  'PATCH /api/studio/videos/[id]': async () => {
+    const res = await call('@/app/api/studio/videos/[id]/route', 'PATCH', 'HEjnkLvrodg', { title: 'New title', description: 'New text' });
+    expect(res.status).toBe(200);
+    const a = auditStmts().find((x) => x.values[2] === 'video_edit');
+    expect(a, 'audit row for video_edit').toBeDefined();
+    expect(a!.tx).not.toBeNull();
+    expect(a!.values[3], 'after-only: never undoable').toBeNull();
+    expect((a!.values[4] as { json: Record<string, unknown> }).json).toMatchObject({ title: 'New title', previous: { title: 'Old' } });
+  },
+  'POST /api/studio/videos/[id]/approve': async () => {
+    const res = await call('@/app/api/studio/videos/[id]/approve/route', 'POST', 'HEjnkLvrodg');
+    expect(res.status).toBe(200);
+    const a = auditStmts().find((x) => x.values[2] === 'video_approve');
+    expect(a, 'audit row for video_approve').toBeDefined();
+    expect(a!.tx, 'audit must run inside sql.begin').not.toBeNull();
+    expect(a!.values[1]).toBe(ACTOR);
+    expect(a!.values[3], 'no before: never undoable').toBeNull();
+    expect((a!.values[4] as { json: Record<string, unknown> }).json).toMatchObject({ videoId: 'HEjnkLvrodg' });
+    expect(untransactedWrites()).toEqual([]);
+  },
+  'POST /api/studio/videos/[id]/reject': async () => {
+    const res = await call('@/app/api/studio/videos/[id]/reject/route', 'POST', 'HEjnkLvrodg', { reason: 'wrong photo' });
+    expect(res.status).toBe(200);
+    const a = auditStmts().find((x) => x.values[2] === 'video_reject');
+    expect(a, 'audit row for video_reject').toBeDefined();
+    expect(a!.tx).not.toBeNull();
+    expect(a!.values[3]).toBeNull();
+    expect((a!.values[4] as { json: Record<string, unknown> }).json).toMatchObject({ videoId: 'HEjnkLvrodg', reason: 'wrong photo' });
+  },
   'POST /api/studio/override': async () => {
     for (const [kind, extra, action] of OVERRIDE_KINDS) {
       rec.state.log = [];

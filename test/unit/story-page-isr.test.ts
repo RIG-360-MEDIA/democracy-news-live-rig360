@@ -9,6 +9,7 @@ vi.mock('@/lib/worldwide/detail', () => ({
   UUID_RE: /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
 }));
 vi.mock('@/components/long-read/story-read', () => ({ StoryRead: () => null }));
+vi.mock('@/lib/worldwide/anchor-videos', () => ({ getStoryVideo: async () => null })); // the YouTube playlist read is not under test here
 
 const SLUG = '3f2b8c1e-0a4d-4e7b-9c61-2d5e8f9a1b3c';
 const params = Promise.resolve({ slug: SLUG });

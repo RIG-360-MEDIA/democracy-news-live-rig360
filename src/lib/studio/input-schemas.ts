@@ -27,6 +27,18 @@ const HTTP_URL = /^https?:\/\/\S+$/i;
 
 export const storyIdSchema = z.guid();
 
+/** A YouTube video id (Anchor Studio video review, /studio/videos). */
+export const videoIdSchema = z.string().regex(/^[A-Za-z0-9_-]{11}$/);
+/** Edit a video's YouTube title / description. YouTube's own limits: title 1-100 chars, description <= 5000 bytes, and
+ *  neither may contain < or > (the API rejects them). */
+export const videoEditSchema = z.object({
+  title: z.string().trim().min(1).max(100).refine((t) => !/[<>]/.test(t), 'No < or > in the title'),
+  description: z.string().max(5000).refine((d) => !/[<>]/.test(d), 'No < or > in the description')
+    .refine((d) => new TextEncoder().encode(d).length <= 5000, 'Description is over 5000 bytes'),
+});
+/** Reject needs a reason (shown in the audit ledger). */
+export const videoRejectSchema = z.object({ reason: z.string().trim().min(1).max(INPUT_LIMITS.reason) });
+
 /** '' (clear) or an absolute http(s) URL. */
 const imageUrl = z
   .string()

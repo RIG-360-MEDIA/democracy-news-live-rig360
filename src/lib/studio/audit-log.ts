@@ -26,6 +26,10 @@ export const CONFIG_AUDIT_ACTIONS = [
   'user_reset_link',
 ] as const;
 
+/** Anchor Studio video review (/studio/videos). Story-scoped (storyId set) but NEVER undoable: the change happened on
+ *  YouTube (a rejected video is deleted), so these rows carry `after` only - no `before` to restore. */
+export const VIDEO_AUDIT_ACTIONS = ['video_approve', 'video_reject', 'video_edit'] as const;
+
 /** Admin-scope configuration actions (M2): shown only to admins in the audit listing. Story-scoped
  *  rows — overrides, manual_create, doorb_publish — stay visible to every editor. */
 export const ADMIN_SCOPE_AUDIT_ACTIONS: readonly string[] = [

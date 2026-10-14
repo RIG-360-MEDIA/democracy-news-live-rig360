@@ -21,6 +21,9 @@ export type Video = {
   /** YouTube publish time, ISO-8601 UTC (channel RSS `<published>`). The Watch rail shows only clips
    *  from the last 30 days (recentVideos) — an entry without a valid date is never rendered. */
   publishedAt: string;
+  /** The DNL story this video presents (Anchor Studio bulletin videos only): the Watch theater links to it and the
+   *  story page plays it. */
+  storyId?: string;
 };
 
 export const videos: Video[] = [

@@ -4,7 +4,7 @@ import { useCallback, useState } from 'react';
 
 import { useToast } from '@/components/studio/ui';
 import type { AuditRow, DoorBPublishRecord } from '@/lib/studio/audit';
-import { CONFIG_AUDIT_ACTIONS } from '@/lib/studio/audit-log';
+import { CONFIG_AUDIT_ACTIONS, VIDEO_AUDIT_ACTIONS } from '@/lib/studio/audit-log';
 import type { EditorialOverride } from '@/lib/studio/types';
 
 import { DoorBRecord, OverrideDiff, SnapshotDiff } from './audit-diff';
@@ -28,6 +28,7 @@ const ACTIONS = [
   'revert',
   'doorb_publish',
   ...CONFIG_AUDIT_ACTIONS,
+  ...VIDEO_AUDIT_ACTIONS,
   // one-off legacy pin clean-up by migration 008 (informational; never undoable)
   'pin_dedupe',
   'pin_normalise',

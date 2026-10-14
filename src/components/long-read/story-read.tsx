@@ -10,6 +10,7 @@ import { ThemeToggle } from '@/components/brand/theme-toggle';
 import { TweetCard } from './tweet-card';
 
 import type { CoveragePoint, LensView, StoryAudio, StoryDetail, StoryImage, TweetEmbed } from '@/lib/worldwide/detail';
+import type { Video } from './videos-data';
 import { BRAND } from '@/lib/brand';
 
 const INK = 'var(--rw-ink)';
@@ -161,6 +162,33 @@ const fmtTime = (s: number): string => {
 };
 
 /** Custom two-host audio player — drawn icons, seek scrubber, real play/pause/seek states. */
+/** The story's Anchor Studio video (YouTube, same embed as the Watch band) in the hero slot: the thumbnail and a play
+ *  button until the reader clicks, then the YouTube player with sound (their click allows it). */
+function StoryVideo({ video }: { video: Video }) {
+  const [on, setOn] = useState(false);
+  return (
+    <figure style={{ margin: '22px 0 0' }}>
+      <div className="relative" style={{ aspectRatio: '16/9', background: '#000', borderRadius: 2, overflow: 'hidden' }}>
+        {on ? (
+          <iframe title={video.title} src={`https://www.youtube-nocookie.com/embed/${video.youtubeId}?autoplay=1&rel=0&modestbranding=1`}
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowFullScreen
+            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 0 }} />
+        ) : (
+          <button type="button" onClick={() => setOn(true)} aria-label={`Play the video: ${video.title}`}
+            style={{ position: 'absolute', inset: 0, padding: 0, border: 0, cursor: 'pointer', background: '#000' }}>
+            <img src={`https://i.ytimg.com/vi/${video.youtubeId}/hqdefault.jpg`} alt="" className="block w-full h-full" style={{ objectFit: 'cover' }} />
+            <span aria-hidden="true" style={{ position: 'absolute', inset: 0, margin: 'auto', width: 72, height: 72, borderRadius: '50%', background: 'rgba(214,32,42,0.92)', color: '#fff', fontSize: 26, display: 'grid', placeItems: 'center', boxShadow: '0 6px 24px rgba(0,0,0,0.35)' }}>▶</span>
+          </button>
+        )}
+      </div>
+      <figcaption style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8, fontFamily: 'var(--font-jakarta), sans-serif', fontSize: 11.5, color: 'var(--rw-muted)' }}>
+        <span style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#fff', background: '#d6202a', padding: '2px 7px', borderRadius: 2 }}>▶ Video</span>
+        Watch the 60-second bulletin on this story
+      </figcaption>
+    </figure>
+  );
+}
+
 function AudioPlayer({ audio }: { audio: StoryAudio }) {
   const ref = useRef<HTMLAudioElement>(null);
   const [playing, setPlaying] = useState(false);
@@ -264,7 +292,7 @@ function LensBody({ lens, onReset }: { lens: LensView; onReset: () => void }) {
   );
 }
 
-export function StoryRead({ story }: { story: StoryDetail }) {
+export function StoryRead({ story, video }: { story: StoryDetail; video?: Video | null }) {
   const lenses = story.lenses ?? [];
   const [activeLens, setActiveLens] = useState<string | null>(null);
   const current = activeLens ? lenses.find((l) => l.key === activeLens) ?? null : null;
@@ -364,7 +392,7 @@ export function StoryRead({ story }: { story: StoryDetail }) {
             </p>
           )}
           {story.audio && <AudioPlayer audio={story.audio} />}
-          {story.image && (
+          {video ? <StoryVideo video={video} /> : story.image && (
             <figure style={{ margin: '22px 0 0' }}>
               <img src={story.image} alt={story.title} className="block w-full" style={{ aspectRatio: '16/9', objectFit: 'cover', borderRadius: 2 }}
                 onError={(e) => { (e.currentTarget.closest('figure') as HTMLElement).style.display = 'none'; }} />
