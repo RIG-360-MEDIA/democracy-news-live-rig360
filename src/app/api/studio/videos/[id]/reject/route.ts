@@ -35,7 +35,8 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     video = await rejectVideo(videoId);
   } catch (e) {
     console.error('[studio/videos/reject] YouTube failed', { videoId, error: e });
-    return fail('502', e instanceof Error ? e.message : 'YouTube reject failed', 502);
+    const msg = e instanceof Error ? e.message : 'YouTube reject failed';
+    return fail(/not awaiting approval/i.test(msg) ? '409' : '502', msg, /not awaiting approval/i.test(msg) ? 409 : 502);
   }
   const entry = { actor: guard.editor.id, action: 'video_reject', storyId: video.storyId ?? null, before: null,
                   after: { videoId, title: video.title, reason: body.data.reason } };

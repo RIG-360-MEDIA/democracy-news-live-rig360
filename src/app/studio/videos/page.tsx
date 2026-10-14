@@ -13,7 +13,7 @@ export default async function Videos() {
   let published: PlaylistVideo[] = [];
   let error: string | null = null;
   if (!youtubeConfigured()) {
-    error = 'YouTube is not connected yet (YT_CLIENT_ID / YT_CLIENT_SECRET / YT_REFRESH_TOKEN).';
+    error = 'YouTube is not connected yet (YT_CLIENT_ID / YT_CLIENT_SECRET / YT_REFRESH_TOKEN / YT_PENDING_PLAYLIST_ID / YT_BULLETIN_PLAYLIST_ID).';
   } else {
     try {
       [pending, published] = await Promise.all([listPlaylist(PENDING_PLAYLIST()), listPlaylist(BULLETIN_PLAYLIST())]);

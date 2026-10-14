@@ -98,7 +98,7 @@ function Theater({ list, index, lane, busy, onClose, onStep, onApprove, onReject
           <div style={{ display: 'flex', gap: 14, marginTop: 6, fontSize: 12, flexWrap: 'wrap' }}>
             {v.storyId && <a href={`/long-read/${v.storyId}`} target="_blank" rel="noreferrer" style={{ color: '#f2ece2' }}>Story page ↗</a>}
             <a href={`https://www.youtube.com/watch?v=${v.videoId}`} target="_blank" rel="noreferrer" style={{ color: '#f2ece2' }}>YouTube ↗</a>
-            {lane === 'pending' && <span style={{ color: a.urgent ? '#ff8a8a' : 'rgba(255,255,255,0.6)' }}>Uploaded {a.text}</span>}
+            {lane === 'pending' && <span suppressHydrationWarning style={{ color: a.urgent ? '#ff8a8a' : 'rgba(255,255,255,0.6)' }}>Uploaded {a.text}</span>}
           </div>
         </div>
         <button type="button" aria-label="Close" onClick={onClose} style={round}>
@@ -167,14 +167,17 @@ export function VideosClient({ pending, published }: { pending: PlaylistVideo[];
   const [, start] = useTransition();
   const [busy, setBusy] = useState(false);
   const [open, setOpen] = useState<{ lane: Lane; index: number } | null>(null);
-  const list = open ? (open.lane === 'pending' ? pending : published) : [];
+  // A decided video leaves the queue at once (not when the refresh lands): it can never be shown - or rejected - again.
+  const [gone, setGone] = useState<ReadonlySet<string>>(new Set());
+  const live = pending.filter((v) => !gone.has(v.videoId));
+  const list = open ? (open.lane === 'pending' ? live : published) : [];
 
   const close = useCallback(() => setOpen(null), []);
   const step = useCallback((d: number) => setOpen((o) => {
     if (!o) return o;
-    const n = (o.lane === 'pending' ? pending : published).length;
+    const n = (o.lane === 'pending' ? live : published).length;
     return n ? { ...o, index: (o.index + d + n) % n } : o;
-  }), [pending, published]);
+  }), [live, published]);
 
   async function save(v: PlaylistVideo, edit: Edit): Promise<boolean> {
     setBusy(true);
@@ -207,7 +210,8 @@ export function VideosClient({ pending, published }: { pending: PlaylistVideo[];
         return;
       }
       // Next in the queue stays open (the decided video leaves the list on refresh); close when it was the last one.
-      setOpen((o) => (o && pending.length > 1 ? { lane: 'pending', index: Math.min(o.index, pending.length - 2) } : null));
+      setGone((g) => new Set(g).add(v.videoId));
+      setOpen((o) => (o && live.length > 1 ? { lane: 'pending', index: Math.min(o.index, live.length - 2) } : null));
       start(() => router.refresh());
     } finally {
       setBusy(false);
@@ -217,13 +221,13 @@ export function VideosClient({ pending, published }: { pending: PlaylistVideo[];
   return (
     <div>
       <h2 style={{ fontSize: 13, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#8a6d1a', margin: '6px 0 10px' }}>Awaiting approval</h2>
-      {pending.length === 0 && <p style={{ fontSize: 13, color: '#888', marginBottom: 24 }}>Nothing waiting. New videos arrive here after each evening&apos;s run.</p>}
+      {live.length === 0 && <p style={{ fontSize: 13, color: '#888', marginBottom: 24 }}>Nothing waiting. New videos arrive here after each evening&apos;s run.</p>}
       <div className="vr-grid">
-        {pending.map((v, i) => {
+        {live.map((v, i) => {
           const a = age(v.addedAt);
           return (
             <Tile key={v.videoId} v={v} onOpen={() => setOpen({ lane: 'pending', index: i })}>
-              <span style={{ fontSize: 11.5, color: a.urgent ? RED : '#888' }}>Uploaded {a.text}</span>
+              <span suppressHydrationWarning style={{ fontSize: 11.5, color: a.urgent ? RED : '#888' }}>Uploaded {a.text}</span>
               <button type="button" onClick={() => setOpen({ lane: 'pending', index: i })}
                 style={{ marginTop: 'auto', fontSize: 12.5, fontWeight: 700, padding: '9px 6px', borderRadius: 8, border: '1px solid #c9dcf5', background: '#fff', color: '#1b4b91', cursor: 'pointer' }}>
                 Watch &amp; decide
