@@ -60,6 +60,9 @@ export async function getQueue(limit = 50): Promise<QueueItem[]> {
      AND g.body IS NOT NULL
     WHERE sc.redirected_to IS NULL
       AND sc.suppression_reason IS NULL
+      -- same rule as the reader (ranking.ts): a cluster merged into a canonical story never surfaces, so offering
+      -- Publish/Pin on it was a dead button
+      AND NOT EXISTS (SELECT 1 FROM analytics.story_dedup dd WHERE dd.story_id = sc.story_id)
       AND sc.representative_title IS NOT NULL
       AND sc.independent_source_count >= 2
       AND sc.article_count >= 3

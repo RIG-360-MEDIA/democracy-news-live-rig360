@@ -29,7 +29,7 @@ interface AuditRow {
   after: EditorialOverride | null;
 }
 
-const auditIdSchema = z.number().int().positive();
+const auditIdSchema = z.coerce.number().int().positive();      // tolerate an id that arrives as a string
 
 /** This story's audit trail, newest first. Throws if the caller is not an editor or the id is not a
  *  uuid (L3 — a malformed id never reaches the DB). */
@@ -47,7 +47,7 @@ export async function loadHistory(storyId: string): Promise<HistoryEntry[]> {
   `) as unknown as AuditRow[];
 
   return rows.map((r) => ({
-    id: r.id,
+    id: Number(r.id),                                               // bigserial: postgres.js returns int8 as a string
     action: r.action,
     editorId: r.editor_id,
     at: new Date(r.at).toISOString(),
