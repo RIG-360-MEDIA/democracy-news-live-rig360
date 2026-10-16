@@ -4,6 +4,7 @@
 // LOCKED product decision — article body only (no sources/facts/All-Sides panels).
 
 import { sqlAnalytics } from '@/lib/db';
+import { MALFORMED_BODY_PATTERN } from '@/lib/worldwide/body-guard';
 
 import { getOverrides } from '@/lib/studio/overrides';
 import { isForceSurfaced } from '@/lib/worldwide/editorial-rank';
@@ -339,6 +340,7 @@ export async function getStoryDetail(id: string): Promise<StoryDetail | null> {
       -- never render a parse-fail row (unparsed JSON blob body / '(parse-fail)' headline)
       AND g.headline NOT ILIKE '%(parse-fail)%'
       AND left(btrim(g.body), 1) <> '{'
+      AND g.body !~ ${MALFORMED_BODY_PATTERN}
       -- dedup guard: a story merged away by the cross-window re-join must not open (DB contract).
       AND sc.redirected_to IS NULL
       AND sc.suppression_reason IS NULL
