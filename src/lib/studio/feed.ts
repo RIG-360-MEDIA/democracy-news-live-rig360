@@ -1,6 +1,7 @@
 // Editorial CMS — Desk feed: generated stories with editorial overrides applied (epic 002).
 
 import { sqlAnalytics } from '@/lib/db';
+import { MALFORMED_BODY_PATTERN } from '@/lib/worldwide/body-guard';
 import { isPastBuffer } from '@/lib/publish-buffer';
 
 import { getOverrides } from './overrides';
@@ -80,6 +81,7 @@ export async function getDeskFeed(limit = 120): Promise<DeskStory[]> {
       -- hide parse-fail garbage rows (unparsed JSON body / '(parse-fail)' headline) from the Desk too
       AND g.headline NOT ILIKE '%(parse-fail)%'
       AND left(btrim(g.body), 1) <> '{'
+      AND g.body !~ ${MALFORMED_BODY_PATTERN}
     -- Desk sorts newest-generated first so editors see the freshest stories at
     -- the top (was importance_score DESC, which floated old high-scoring stories up).
     ORDER BY g.updated_at DESC
