@@ -119,6 +119,19 @@ describe('youtube client (CMS video review)', () => {
     expect(calls.filter((c) => c.url.includes('LONG')).length).toBe(3);
   });
 
+  it('a CMS read that times out is retried once; the public site\'s fast read is not', async () => {
+    const real = globalThis.fetch as unknown as (u: string, i?: RequestInit) => Promise<Response>;
+    let fails = 1;
+    vi.stubGlobal('fetch', vi.fn(async (url: string, init: RequestInit = {}) => {
+      if (url.includes('playlistItems') && fails-- > 0) throw new DOMException('The operation was aborted due to timeout', 'TimeoutError');
+      return real(url, init);
+    }));
+    const { listPlaylist } = await import('@/lib/youtube/client');
+    await expect(listPlaylist('LONG')).resolves.toHaveLength(120);   // CMS: one timeout, then the retry succeeds
+    fails = 1;
+    await expect(listPlaylist('LONG', true)).rejects.toThrow(/timeout/);   // site: fails fast (it has its own fallback)
+  });
+
   it('is not "configured" without both playlists (Approve would half-work)', async () => {
     const { youtubeConfigured } = await import('@/lib/youtube/client');
     expect(youtubeConfigured()).toBe(true);

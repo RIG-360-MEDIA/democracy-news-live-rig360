@@ -11,7 +11,8 @@
 // Env: YT_CLIENT_ID, YT_CLIENT_SECRET, YT_REFRESH_TOKEN, YT_PENDING_PLAYLIST_ID, YT_BULLETIN_PLAYLIST_ID.
 
 const API = 'https://www.googleapis.com/youtube/v3';
-const TIMEOUT_MS = 4000;
+const TIMEOUT_MS = 8000;                                           // CMS: per request, reads retried once (below)
+const FAST_MS = 4000;                                              // public site: one short try (it falls back on failure)
 const MAX_PAGES = 4;                                                // 4 x 50 = the newest 200 entries of a playlist
 const STORY_RE = /long-read\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i;
 // videos.update deletes any status property it is not sent, so approve re-sends these (read first), changing only privacy.
@@ -63,17 +64,28 @@ async function accessToken(): Promise<string> {
   return j.access_token;
 }
 
-async function yt<T = unknown>(path: string, init: { method?: string; body?: unknown } = {}): Promise<T> {
-  const res = await fetch(`${API}/${path}`, {
-    method: init.method ?? 'GET',
+async function yt<T = unknown>(path: string, init: { method?: string; body?: unknown; fast?: boolean } = {}): Promise<T> {
+  const method = init.method ?? 'GET';
+  const send = async () => fetch(`${API}/${path}`, {
+    method,
     headers: { Authorization: `Bearer ${await accessToken()}`, 'Content-Type': 'application/json' },
     body: init.body === undefined ? undefined : JSON.stringify(init.body),
     cache: 'no-store',
-    signal: AbortSignal.timeout(TIMEOUT_MS),
+    signal: AbortSignal.timeout(init.fast ? FAST_MS : TIMEOUT_MS),
   });
+  // A read that times out or gets a YouTube 5xx is retried once: one slow reply right after a write blanked the CMS
+  // Videos page with "The operation was aborted due to timeout" (2026-10-16). Writes are never retried blindly.
+  let res: Response;
+  try {
+    res = await send();
+    if (method === 'GET' && !init.fast && res.status >= 500) res = await send();
+  } catch (e) {
+    if (method !== 'GET' || init.fast) throw e;
+    res = await send();
+  }
   if (!res.ok) {
     const why = (await res.json().catch(() => null)) as { error?: { message?: string } } | null;
-    throw new Error(`YouTube ${init.method ?? 'GET'} ${path.split('?')[0]} failed (${res.status}): ${why?.error?.message ?? ''}`.trim());
+    throw new Error(`YouTube ${method} ${path.split('?')[0]} failed (${res.status}): ${why?.error?.message ?? ''}`.trim());
   }
   return (res.status === 204 ? null : await res.json()) as T;
 }
@@ -99,7 +111,7 @@ type Item = {
 
 /** The videos in a playlist, newest first, one entry per video. Pages through the playlist (new entries are appended at
  *  the end, so the first page alone would freeze on the oldest 50). */
-export async function listPlaylist(playlistId: string): Promise<PlaylistVideo[]> {
+export async function listPlaylist(playlistId: string, fast = false): Promise<PlaylistVideo[]> {
   if (!playlistId) return [];
   const items: Item[] = [];
   let page = '';
@@ -107,6 +119,7 @@ export async function listPlaylist(playlistId: string): Promise<PlaylistVideo[]>
     const j = await yt<{ items?: Item[]; nextPageToken?: string }>(
       `playlistItems?part=snippet,contentDetails,status&maxResults=50&playlistId=${encodeURIComponent(playlistId)}`
       + (page ? `&pageToken=${encodeURIComponent(page)}` : ''),
+      { fast },
     );
     items.push(...(j.items ?? []));
     if (!j.nextPageToken) break;

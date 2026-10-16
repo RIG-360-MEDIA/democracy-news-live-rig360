@@ -21,7 +21,7 @@ export function toAnchorVideo(id: string, title: string, description: string, pu
 }
 
 async function fromOAuth(): Promise<Video[]> {
-  return (await listPlaylist(BULLETIN_PLAYLIST()))
+  return (await listPlaylist(BULLETIN_PLAYLIST(), true))           // fast: a reader never waits on a slow YouTube
     .filter((v) => v.privacy === 'public')
     .map((v, i) => toAnchorVideo(v.videoId, v.title, v.description, v.addedAt, i === 0));
 }
