@@ -75,6 +75,11 @@ export async function getDeskFeed(limit = 120): Promise<DeskStory[]> {
       LIMIT 1
     ) mem ON true
     WHERE g.updated_at > now() - interval '48 hours'
+      -- same visibility rules as the reader (ranking.ts): redirected, suppressed or merged-away clusters never
+      -- surface, so listing them on the Desk offered Publish/Pin buttons that silently did nothing
+      AND sc.redirected_to IS NULL
+      AND sc.suppression_reason IS NULL
+      AND NOT EXISTS (SELECT 1 FROM analytics.story_dedup dd WHERE dd.story_id = sc.story_id)
       AND g.strategy <> 'stub'
       AND g.body IS NOT NULL
       -- hide parse-fail garbage rows (unparsed JSON body / '(parse-fail)' headline) from the Desk too
