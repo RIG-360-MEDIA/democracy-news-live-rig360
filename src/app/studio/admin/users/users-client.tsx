@@ -79,8 +79,10 @@ export function UsersClient({ users, me }: { users: UserView[]; me: string }) {
             </tr>
           </thead>
           <tbody>
+            {/* row key includes the role: React resets the form after Save, which snapped the dropdown back to the OLD
+                role (looked like a failed save); a new key re-mounts the row with the saved role */}
             {users.map((u) => (
-              <tr key={u.id} className="border-b border-studio-rule align-top">
+              <tr key={`${u.id}:${u.role}`} className="border-b border-studio-rule align-top">
                 <td className="py-2 font-mono text-ui-sm">{u.email}</td>
                 <td>{u.displayName ?? '—'}</td>
                 <td>
