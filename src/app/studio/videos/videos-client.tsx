@@ -156,7 +156,20 @@ function Theater({ list, index, lane, busy, onClose, onStep, onApprove, onReject
             <button type="button" onClick={() => setRejecting(false)} style={big('rgba(255,255,255,0.12)')}>Cancel</button>
           </>
         )}
-        {lane === 'published' && <span style={{ color: 'rgba(255,255,255,0.6)', fontSize: 12.5 }}>Published · ← → browse · Esc close</span>}
+        {lane === 'published' && !rejecting && (
+          <>
+            <span style={{ color: 'rgba(255,255,255,0.6)', fontSize: 12.5 }}>Published · ← → browse · Esc close</span>
+            <button type="button" disabled={busy} onClick={() => setRejecting(true)} style={big('rgba(255,255,255,0.12)', '#ffb3b3')}>Delete</button>
+          </>
+        )}
+        {lane === 'published' && rejecting && (
+          <>
+            <input value={reason} onChange={(e) => setReason(e.target.value)} maxLength={500} autoFocus placeholder="Why delete? (kept in the audit log)"
+              style={{ width: 'min(520px, 70vw)', padding: '11px 14px', borderRadius: 999, border: '1px solid rgba(255,255,255,0.3)', background: 'rgba(0,0,0,0.35)', color: '#fff', fontSize: 13.5 }} />
+            <button type="button" disabled={busy || !reason.trim()} onClick={() => onReject(v, reason)} style={big(RED)}>{busy ? 'Deleting…' : 'Delete from YouTube & the site'}</button>
+            <button type="button" onClick={() => setRejecting(false)} style={big('rgba(255,255,255,0.12)')}>Cancel</button>
+          </>
+        )}
       </div>
     </div>
   );
@@ -170,14 +183,15 @@ export function VideosClient({ pending, published }: { pending: PlaylistVideo[];
   // A decided video leaves the queue at once (not when the refresh lands): it can never be shown - or rejected - again.
   const [gone, setGone] = useState<ReadonlySet<string>>(new Set());
   const live = pending.filter((v) => !gone.has(v.videoId));
-  const list = open ? (open.lane === 'pending' ? live : published) : [];
+  const pub = published.filter((v) => !gone.has(v.videoId));
+  const list = open ? (open.lane === 'pending' ? live : pub) : [];
 
   const close = useCallback(() => setOpen(null), []);
   const step = useCallback((d: number) => setOpen((o) => {
     if (!o) return o;
-    const n = (o.lane === 'pending' ? live : published).length;
+    const n = (o.lane === 'pending' ? live : pub).length;
     return n ? { ...o, index: (o.index + d + n) % n } : o;
-  }), [live, published]);
+  }), [live, pub]);
 
   async function save(v: PlaylistVideo, edit: Edit): Promise<boolean> {
     setBusy(true);
@@ -206,12 +220,15 @@ export function VideosClient({ pending, published }: { pending: PlaylistVideo[];
       });
       const j = await r.json().catch(() => null);
       if (!r.ok) {
-        alert(`${kind === 'approve' ? 'Approve' : 'Reject'} failed: ${j?.error?.message ?? r.status}`);
+        alert(`${kind === 'approve' ? 'Approve' : 'Delete'} failed: ${j?.error?.message ?? r.status}`);
         return;
       }
-      // Next in the queue stays open (the decided video leaves the list on refresh); close when it was the last one.
+      // Next in the lane stays open (the decided video leaves the list on refresh); close when it was the last one.
       setGone((g) => new Set(g).add(v.videoId));
-      setOpen((o) => (o && live.length > 1 ? { lane: 'pending', index: Math.min(o.index, live.length - 2) } : null));
+      setOpen((o) => {
+        const n = o ? (o.lane === 'pending' ? live : pub).length : 0;
+        return o && n > 1 ? { lane: o.lane, index: Math.min(o.index, n - 2) } : null;
+      });
       start(() => router.refresh());
     } finally {
       setBusy(false);
@@ -237,9 +254,9 @@ export function VideosClient({ pending, published }: { pending: PlaylistVideo[];
         })}
       </div>
       <h2 style={{ fontSize: 13, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#2e7d32', margin: '6px 0 10px' }}>Published recently</h2>
-      {published.length === 0 && <p style={{ fontSize: 13, color: '#888' }}>None yet.</p>}
+      {pub.length === 0 && <p style={{ fontSize: 13, color: '#888' }}>None yet.</p>}
       <div className="vr-grid">
-        {published.map((v, i) => <Tile key={v.videoId} v={v} onOpen={() => setOpen({ lane: 'published', index: i })} />)}
+        {pub.map((v, i) => <Tile key={v.videoId} v={v} onOpen={() => setOpen({ lane: 'published', index: i })} />)}
       </div>
 
       {open && list[open.index] && (

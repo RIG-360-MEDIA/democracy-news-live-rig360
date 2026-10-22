@@ -1,12 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // The CMS's YouTube calls for the video review: approve must re-send every status field (videos.update deletes omitted
-// ones), keep the AI-disclosure flag, join the Bulletin BEFORE going public and be safe to retry; reject must only ever
-// delete a video that is awaiting approval; playlist reads must page past 50 entries.
+// ones), keep the AI-disclosure flag, join the Bulletin BEFORE going public and be safe to retry; reject/delete only ever
+// touches a video awaiting approval or in the Bulletin (and deletes from YouTube only our own AI-anchor uploads); playlist reads must page past 50 entries.
 const calls: Array<{ method: string; url: string; body?: Record<string, unknown> }> = [];
 let privacy = 'unlisted';
 let inPending = true;
 let inBulletin = false;
+let desc = 'old';
 
 function reply(body: unknown, status = 200) {
   return new Response(status === 204 ? null : JSON.stringify(body), { status });
@@ -22,6 +23,7 @@ beforeEach(() => {
   privacy = 'unlisted';
   inPending = true;
   inBulletin = false;
+  desc = 'old';
   vi.resetModules();
   Object.assign(process.env, { YT_CLIENT_ID: 'id', YT_CLIENT_SECRET: 's', YT_REFRESH_TOKEN: 'r', YT_PENDING_PLAYLIST_ID: 'PEND', YT_BULLETIN_PLAYLIST_ID: 'BULL' });
   vi.stubGlobal('fetch', vi.fn(async (url: string, init: RequestInit = {}) => {
@@ -34,7 +36,7 @@ beforeEach(() => {
         status: { privacyStatus: privacy, uploadStatus: 'processed', embeddable: true, license: 'youtube', publicStatsViewable: true, selfDeclaredMadeForKids: false, containsSyntheticMedia: true } }] });
     }
     if (url.includes('/videos?part=snippet&id=')) {
-      return reply({ items: [{ snippet: { title: 'Old', description: 'old', categoryId: '25', tags: ['news'], defaultLanguage: 'en', defaultAudioLanguage: 'en' } }] });
+      return reply({ items: [{ snippet: { title: 'Old', description: desc, categoryId: '25', tags: ['news'], defaultLanguage: 'en', defaultAudioLanguage: 'en' } }] });
     }
     if (url.includes('playlistItems?part=id') && url.includes('PEND')) return reply({ items: inPending ? [{ id: 'ITEM1' }] : [] });
     if (url.includes('playlistItems?part=id') && url.includes('BULL')) return reply({ items: inBulletin ? [{ id: 'B1' }] : [] });
@@ -93,11 +95,34 @@ describe('youtube client (CMS video review)', () => {
     expect(item).toBeLessThan(video);
   });
 
-  it('reject NEVER deletes a video that is not awaiting approval (a published bulletin, any channel video)', async () => {
+  it('delete NEVER touches a video in neither playlist (any other channel video)', async () => {
     inPending = false;
     const { rejectVideo } = await import('@/lib/youtube/client');
     await expect(rejectVideo('HEjnkLvrodg')).rejects.toThrow(/not awaiting approval/);
     expect(calls.some((c) => c.method === 'DELETE')).toBe(false);
+  });
+
+  it('delete a PUBLISHED Anchor Studio video: out of the Bulletin first, then deleted from YouTube', async () => {
+    inPending = false;
+    inBulletin = true;
+    desc = 'Breaking news · Panama\n\nPresented by Maren Ashcroft, an AI-generated news anchor.';
+    const { rejectVideo } = await import('@/lib/youtube/client');
+    const r = await rejectVideo('HEjnkLvrodg');
+    const item = calls.findIndex((c) => c.method === 'DELETE' && c.url.includes('playlistItems?id=B1'));
+    const video = calls.findIndex((c) => c.method === 'DELETE' && c.url.endsWith('/videos?id=HEjnkLvrodg'));
+    expect(item).toBeGreaterThan(-1);
+    expect(item).toBeLessThan(video);
+    expect(r).toMatchObject({ published: true, deleted: true });
+  });
+
+  it('delete a published NON-anchor channel video: only leaves the Bulletin (the site), stays on the channel', async () => {
+    inPending = false;
+    inBulletin = true;
+    const { rejectVideo } = await import('@/lib/youtube/client');
+    const r = await rejectVideo('HEjnkLvrodg');
+    expect(calls.some((c) => c.method === 'DELETE' && c.url.includes('playlistItems?id=B1'))).toBe(true);
+    expect(calls.some((c) => c.method === 'DELETE' && c.url.includes('/videos?id='))).toBe(false);
+    expect(r).toMatchObject({ published: true, deleted: false });
   });
 
   it('edit: re-sends category, tags and languages with the new title/description (update replaces the snippet)', async () => {
