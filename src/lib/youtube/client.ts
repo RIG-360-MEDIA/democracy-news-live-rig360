@@ -174,17 +174,23 @@ export async function approveVideo(videoId: string): Promise<{ title: string; st
   return { title: v.snippet.title, storyId: storyIdOf(v.snippet.description ?? '') };
 }
 
-/** Reject: delete the video from YouTube - ONLY a video that is awaiting approval (never a published bulletin or any
- *  other video on the channel). Out of the queue first: YouTube leaves a "Deleted video" placeholder otherwise. */
-export async function rejectVideo(videoId: string): Promise<{ title: string; storyId?: string }> {
+/** Reject / Delete. A video awaiting approval is taken out of the queue and deleted from YouTube. A PUBLISHED one is
+ *  taken out of "Video Bulletin" (= off the site) and deleted from YouTube too - but only if it is an Anchor Studio upload
+ *  (its description names the AI anchor); any other channel video in the bulletin stays on the channel. Videos in neither
+ *  playlist are never touched. Out of the playlists first: YouTube leaves a "Deleted video" placeholder otherwise. */
+export async function rejectVideo(videoId: string):
+    Promise<{ title: string; storyId?: string; published: boolean; deleted: boolean }> {
   type V = { snippet: { title: string; description: string } };
   const v = (await yt<{ items?: V[] }>(`videos?part=snippet&id=${encodeURIComponent(videoId)}`)).items?.[0];
   if (!v) throw new Error('Video not found on YouTube');
-  const pending = await itemsOf(PENDING_PLAYLIST(), videoId);
-  if (!pending.length) throw new Error('This video is not awaiting approval - only videos in the review queue can be rejected');
-  for (const id of pending) await yt(`playlistItems?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
-  await yt(`videos?id=${encodeURIComponent(videoId)}`, { method: 'DELETE' });
-  return { title: v.snippet.title, storyId: storyIdOf(v.snippet.description ?? '') };
+  const [pending, bulletin] = await Promise.all([itemsOf(PENDING_PLAYLIST(), videoId), itemsOf(BULLETIN_PLAYLIST(), videoId)]);
+  if (!pending.length && !bulletin.length) {
+    throw new Error('This video is not awaiting approval or in the Video Bulletin - only those can be deleted here');
+  }
+  for (const id of [...pending, ...bulletin]) await yt(`playlistItems?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+  const deleted = pending.length > 0 || /AI-generated news anchor/i.test(v.snippet.description ?? '');
+  if (deleted) await yt(`videos?id=${encodeURIComponent(videoId)}`, { method: 'DELETE' });
+  return { title: v.snippet.title, storyId: storyIdOf(v.snippet.description ?? ''), published: bulletin.length > 0, deleted };
 }
 
 /** Edit a video's title/description on YouTube. videos.update replaces the whole snippet, so the current one is read
