@@ -36,7 +36,7 @@ export const API_ROUTES: Record<string, Partial<Record<Method, RouteRule>>> = {
   // F9 — edit / unpublish is newsroom work; delete (soft) is admin-only.
   '/api/studio/manual/[id]': {
     PATCH: { role: 'editor', write: 'audited' },
-    DELETE: { role: 'admin', write: 'audited' },
+    DELETE: { role: 'editor', write: 'audited' },   // editors: drafts only (the route refuses a published story)
   },
   '/api/studio/generate-cluster': { POST: { role: 'editor', write: 'remote' } },
   // Anchor Studio video review: the write is on YouTube; our DB gets the audit row (after-only).

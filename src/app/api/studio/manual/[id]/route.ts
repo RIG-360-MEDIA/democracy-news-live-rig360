@@ -7,6 +7,7 @@ import { revalidateTag } from 'next/cache';
 import { NextResponse } from 'next/server';
 
 import { CACHE_TAGS } from '@/lib/cache';
+import { sql } from '@/lib/db';
 import { revalidateStoryPage } from '@/lib/revalidate-story';
 import { setAuthors } from '@/lib/studio/authors';
 import { guardApi } from '@/lib/studio/guard';
@@ -74,12 +75,17 @@ export async function PATCH(req: Request, ctx: Ctx) {
 }
 
 export async function DELETE(_req: Request, ctx: Ctx) {
-  // Deleting is irreversible from the UI (the row is kept for the record) — admin only.
-  const guard = await guardApi('admin');
+  // Deleting is irreversible from the UI (the row is kept for the record): a published story - admin only;
+  // a DRAFT (never on the site) - any editor, from the Drafts list.
+  const guard = await guardApi('editor');
   if (!guard.ok) return guard.response;
 
   const id = storyIdSchema.safeParse((await ctx.params).id);
   if (!id.success) return fail('400', 'Invalid story id', 400);
+  if (!guard.editor.isAdmin) {
+    const rows = (await sql`SELECT status FROM rigwire.manual_stories WHERE id = ${id.data}`) as unknown as Array<{ status: string }>;
+    if (rows[0]?.status !== 'DRAFT') return fail('403', 'Only an admin can delete a published story', 403);
+  }
 
   return apply(id.data, {}, 'DELETED', guard.editor.id);
 }

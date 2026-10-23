@@ -10,6 +10,7 @@ import { promptLeakLevel } from '@/lib/studio/prompt-leak';
 import { countryName } from '@/lib/worldwide/country';
 
 import CreateClient from './create-client';
+import ManualDraftsList from './manual-drafts-list';
 import ManualStoryControls from './manual-story-controls';
 
 import type { JobStatus } from '@/lib/dispatch/types';
@@ -60,7 +61,6 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ d
             by {s.editorId} · {new Date(s.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
           </div>
           <ManualStoryControls
-            key={`${s.id}-${openDraft === s.id}`}
             id={s.id}
             headline={s.headline}
             dek={s.dek}
@@ -73,7 +73,6 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ d
             status={s.status}
             canDelete={editor.isAdmin}
             promptFlag={worstLeak(s.headline, s.dek)}
-            autoOpen={openDraft === s.id}
           />
         </div>
       }
@@ -93,9 +92,12 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ d
       <CreateClient initialJobs={jobs} doorBEnabled={doorBEnabled} />
 
       <h2 style={h2}>Drafts {drafts.length > 0 && <span style={{ fontSize: 13, color: '#8a6d1a' }}>({drafts.length})</span>}</h2>
-      {drafts.length > 0
-        ? <CmsCardGrid>{drafts.map(card)}</CmsCardGrid>
-        : <p style={{ color: '#999', fontSize: 13 }}>No drafts. Use "Save draft" to keep a story here until it is ready.</p>}
+      <ManualDraftsList
+        openId={openDraft}
+        drafts={drafts.map((d) => ({ id: d.id, headline: d.headline, dek: d.dek ?? '', authors: authorsOf.get(d.id) ?? '', body: d.body,
+                                     topic: d.topic, country: d.country ?? '', imageUrl: d.imageUrl ?? '', importance: d.importance,
+                                     updatedAt: d.updatedAt }))}
+      />
 
       <h2 style={h2}>Recently created</h2>
       <CmsCardGrid>{recent.map(card)}</CmsCardGrid>

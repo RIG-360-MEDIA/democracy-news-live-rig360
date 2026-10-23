@@ -44,6 +44,7 @@ interface ManualStoryRow {
   importance: string | number;
   editor_id: string;
   created_at: string | Date;
+  updated_at: string | Date | null;
 }
 
 function toManualStory(r: ManualStoryRow): ManualStory {
@@ -59,6 +60,7 @@ function toManualStory(r: ManualStoryRow): ManualStory {
     importance: Number(r.importance),
     editorId: r.editor_id,
     createdAt: new Date(r.created_at).toISOString(),
+    updatedAt: new Date(r.updated_at ?? r.created_at).toISOString(),
   };
 }
 
@@ -112,7 +114,7 @@ export async function createManualStory(
 export async function listManualStories(limit = 30): Promise<ManualStory[]> {
   const rows = (await sql`
     SELECT id, headline, dek, body, topic, country, image_url, status,
-           importance, editor_id, created_at
+           importance, editor_id, created_at, updated_at
     FROM rigwire.manual_stories
     WHERE status <> 'DELETED' -- soft-deleted rows are kept for the record, not listed (F9)
     ORDER BY created_at DESC
