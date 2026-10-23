@@ -72,6 +72,7 @@ export interface ManualStory {
   importance: number;
   editorId: string;
   createdAt: string;
+  updatedAt: string;
 }
 
 export interface RankingWeights {
