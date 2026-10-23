@@ -44,6 +44,7 @@ interface ManualStoryRow {
   importance: string | number;
   editor_id: string;
   created_at: string | Date;
+  updated_at: string | Date | null;
 }
 
 function toManualStory(r: ManualStoryRow): ManualStory {
@@ -59,19 +60,20 @@ function toManualStory(r: ManualStoryRow): ManualStory {
     importance: Number(r.importance),
     editorId: r.editor_id,
     createdAt: new Date(r.created_at).toISOString(),
+    updatedAt: new Date(r.updated_at ?? r.created_at).toISOString(),
   };
 }
 
 /** The audit `after` for a manual story (L2): every field except the body, which is recorded as its
  *  length + sha256 — enough to prove what was published without copying the full text into the
  *  append-only ledger (the story row itself holds the body). */
-function auditSnapshot(fields: ManualStoryInput): Record<string, unknown> {
+function auditSnapshot(fields: ManualStoryInput, status: string): Record<string, unknown> {
   const { body, ...rest } = fields;
   return {
     ...rest,
     bodyLength: body.length,
     bodySha256: createHash('sha256').update(body, 'utf8').digest('hex'),
-    status: 'PUBLISHABLE',
+    status,
   };
 }
 
@@ -80,6 +82,7 @@ function auditSnapshot(fields: ManualStoryInput): Record<string, unknown> {
 export async function createManualStory(
   fields: ManualStoryInput,
   editorId: string,
+  status: 'PUBLISHABLE' | 'DRAFT' = 'PUBLISHABLE',   // a DRAFT is saved for later and never surfaces
   authors = '',                                      // byline (rigwire.story_authors); '' = house byline
 ): Promise<string> {
   return sql.begin(async (tx) => {
@@ -91,7 +94,7 @@ export async function createManualStory(
               -- Set explicitly, not left to the column default: manualStoryCards (manual-feed.ts)
               -- only surfaces rows matching status LIKE 'PUBLISHABLE%', so a changed default would
               -- silently make every new manual story invisible.
-              'PUBLISHABLE')
+              ${status})
       RETURNING id
     `) as unknown as Array<{ id: string }>;
     const id = rows[0].id;
@@ -100,7 +103,7 @@ export async function createManualStory(
       action: 'manual_create',
       storyId: id,
       before: null,
-      after: auditSnapshot(fields),
+      after: auditSnapshot(fields, status),
     });
     if (cleanAuthors(authors)) await setAuthorsTx(tx, id, authors, editorId);
     return id;
@@ -111,7 +114,7 @@ export async function createManualStory(
 export async function listManualStories(limit = 30): Promise<ManualStory[]> {
   const rows = (await sql`
     SELECT id, headline, dek, body, topic, country, image_url, status,
-           importance, editor_id, created_at
+           importance, editor_id, created_at, updated_at
     FROM rigwire.manual_stories
     WHERE status <> 'DELETED' -- soft-deleted rows are kept for the record, not listed (F9)
     ORDER BY created_at DESC

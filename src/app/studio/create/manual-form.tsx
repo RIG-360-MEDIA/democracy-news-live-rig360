@@ -1,14 +1,16 @@
 'use client';
 
-// Manual authoring form (Door A) — an editor hand-writes a story that bypasses
-// the generator. Extracted near-verbatim from the original create-client so its
-// behaviour and POST /api/studio/create contract are unchanged; the Create
-// screen now hosts it behind the Manual|From-a-topic toggle.
+// Manual authoring form (Door A) — an editor hand-writes a story that bypasses the generator.
+//   Save draft  → kept for later (status DRAFT, never on the site) in the Drafts section, where it opens in
+//                 the full-screen editor (Save draft / Publish); the form clears for the next story.
+//   Publish     → live now.
+// Unsaved typing is mirrored to this browser's localStorage, so leaving the page does not lose it.
 
 import { useRouter } from 'next/navigation';
-import { useState, useTransition } from 'react';
+import { useEffect, useRef, useState, useTransition } from 'react';
 
 import { MANUAL_TOPICS } from '@/lib/studio/topics';
+
 
 interface FormState {
   headline: string;
@@ -32,19 +34,96 @@ const EMPTY: FormState = {
   importance: '40',
 };
 
+const BACKUP_KEY = 'dnl-create-unsaved';
+
+function readBackup(): FormState | null {
+  try {
+    const raw = window.localStorage.getItem(BACKUP_KEY);
+    return raw ? (JSON.parse(raw) as FormState) : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeBackup(v: FormState | null): void {
+  try {
+    if (v) window.localStorage.setItem(BACKUP_KEY, JSON.stringify(v));
+    else window.localStorage.removeItem(BACKUP_KEY);
+  } catch {
+    /* private window / storage blocked: the form still works, just without the backup */
+  }
+}
+
 export default function ManualForm() {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [form, setForm] = useState<FormState>(EMPTY);
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState<null | 'publish' | 'draft'>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [note, setNote] = useState<string | null>(null);
+  const restored = useRef(false);
+
+  // Bring back unsaved typing from a previous visit.
+  useEffect(() => {
+    if (restored.current) return;
+    restored.current = true;
+    const b = readBackup();
+    if (!b || JSON.stringify({ ...EMPTY, ...b }) === JSON.stringify(EMPTY)) return;
+    setForm({ ...EMPTY, ...b });
+    setNote('Restored text you had not saved yet.');
+  }, []);
 
   function set<K extends keyof FormState>(key: K, value: string) {
-    setForm((f) => ({ ...f, [key]: value }));
+    setForm((f) => {
+      const next = { ...f, [key]: value };
+      writeBackup(next);
+      return next;
+    });
   }
 
-  async function submit() {
+  function payload() {
+    return {
+      headline: form.headline,
+      dek: form.dek,
+      authors: form.authors,
+      topic: form.topic,
+      country: form.country,
+      image_url: form.image_url,
+      importance: Number(form.importance),
+    };
+  }
+
+  async function call(url: string, method: 'POST' | 'PATCH', body: Record<string, unknown>) {
+    const r = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const j = await r.json().catch(() => null);
+    if (!r.ok || j?.ok === false) throw new Error(j?.error?.message ?? String(r.status));
+    return j?.data as { id?: string } | undefined;
+  }
+
+  async function saveDraft() {
     setErr(null);
+    setNote(null);
+    if (!form.headline.trim()) {
+      setErr('Give the draft a headline first.');
+      return;
+    }
+    setBusy('draft');
+    try {
+      await call('/api/studio/create', 'POST', { ...payload(), body: form.body, draft: true });
+      writeBackup(null);
+      setForm(EMPTY);                                   // the form is for a NEW story; the draft is kept in Drafts
+      setNote('Saved to Drafts below - it is not on the site. Open it there to keep writing or to publish.');
+      start(() => router.refresh());
+    } catch (e) {
+      setErr('Save failed: ' + (e instanceof Error ? e.message : 'error'));
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function publish() {
+    setErr(null);
+    setNote(null);
     if (!form.headline.trim()) {
       setErr('Headline is required.');
       return;
@@ -53,31 +132,17 @@ export default function ManualForm() {
       setErr('Body is required.');
       return;
     }
-    setBusy(true);
+    setBusy('publish');
     try {
-      const r = await fetch('/api/studio/create', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          headline: form.headline,
-          dek: form.dek,
-          authors: form.authors,
-          body: form.body,
-          topic: form.topic,
-          country: form.country,
-          image_url: form.image_url,
-          importance: Number(form.importance),
-        }),
-      });
-      if (!r.ok) {
-        const j = await r.json().catch(() => null);
-        setErr('Create failed: ' + (j?.error?.message ?? r.status));
-      } else {
-        setForm(EMPTY);
-        start(() => router.refresh());
-      }
+      await call('/api/studio/create', 'POST', { ...payload(), body: form.body });
+      writeBackup(null);
+      setForm(EMPTY);
+      setNote('Published - it is live on the site now.');
+      start(() => router.refresh());
+    } catch (e) {
+      setErr('Publish failed: ' + (e instanceof Error ? e.message : 'error'));
     } finally {
-      setBusy(false);
+      setBusy(null);
     }
   }
 
@@ -101,8 +166,27 @@ export default function ManualForm() {
     fontFamily: 'inherit',
   };
 
+  const secondary: React.CSSProperties = {
+    fontSize: 12.5,
+    fontWeight: 700,
+    padding: '9px 14px',
+    borderRadius: 7,
+    border: '1px solid #c9dcf5',
+    background: '#fff',
+    color: '#1b4b91',
+    cursor: busy ? 'default' : 'pointer',
+    whiteSpace: 'nowrap',
+  };
+
+  const locked = busy !== null || pending;
+
   return (
     <div style={{ border: '1px solid #eee', borderRadius: 8, background: '#fff', padding: 18 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
+        <span style={{ fontSize: 12, fontWeight: 800, color: '#888' }}>NEW STORY</span>
+        <span style={{ flex: 1 }} />
+      </div>
+
       <div style={{ marginBottom: 14 }}>
         <label style={label}>Headline</label>
         <input style={field} value={form.headline} onChange={(e) => set('headline', e.target.value)} placeholder="The story headline" />
@@ -120,12 +204,12 @@ export default function ManualForm() {
       </div>
 
       <div style={{ marginBottom: 14 }}>
-        <label style={label}>Body (markdown)</label>
+        <label style={label}>Body</label>
         <textarea
           style={{ ...field, minHeight: 200, resize: 'vertical', lineHeight: 1.5 }}
           value={form.body}
           onChange={(e) => set('body', e.target.value)}
-          placeholder="Write the story in markdown…"
+          placeholder={'Leave an empty line between paragraphs. A section heading goes on its own line: ## What happens next'}
         />
       </div>
 
@@ -151,34 +235,46 @@ export default function ManualForm() {
           />
         </div>
         <div>
-          <label style={label}>Importance</label>
-          <input style={field} type="number" value={form.importance} onChange={(e) => set('importance', e.target.value)} />
+          <label style={label}>Importance (0-100)</label>
+          <input style={field} type="number" min={0} max={100} value={form.importance} onChange={(e) => set('importance', e.target.value)} />
         </div>
       </div>
 
       <div style={{ marginBottom: 16 }}>
-        <label style={label}>Image URL</label>
-        <input style={field} value={form.image_url} onChange={(e) => set('image_url', e.target.value)} placeholder="https://…" />
+        <label style={label}>Image</label>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <input style={field} value={form.image_url} onChange={(e) => set('image_url', e.target.value)} placeholder="https://…" />
+        </div>
+        {form.image_url && /^https?:\/\//.test(form.image_url) && (
+          // eslint-disable-next-line @next/next/no-img-element -- editor preview of an arbitrary URL
+          <img src={form.image_url} alt="" style={{ marginTop: 8, width: 240, aspectRatio: '16/9', objectFit: 'cover', borderRadius: 6, border: '1px solid #eee' }} />
+        )}
       </div>
 
       {err && <p style={{ color: '#a8141a', fontSize: 12.5, marginBottom: 12 }}>{err}</p>}
+      {note && !err && <p style={{ color: '#2e7d32', fontSize: 12.5, marginBottom: 12 }}>{note}</p>}
 
-      <button
-        onClick={submit}
-        disabled={busy || pending}
-        style={{
-          fontSize: 13,
-          fontWeight: 700,
-          padding: '10px 20px',
-          borderRadius: 7,
-          border: '1px solid #a8141a',
-          background: busy || pending ? '#c66' : '#a8141a',
-          color: '#fff',
-          cursor: busy || pending ? 'default' : 'pointer',
-        }}
-      >
-        {busy ? 'Publishing…' : 'Publish story'}
-      </button>
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+        <button
+          onClick={publish}
+          disabled={locked}
+          style={{
+            fontSize: 13,
+            fontWeight: 700,
+            padding: '10px 20px',
+            borderRadius: 7,
+            border: '1px solid #a8141a',
+            background: locked ? '#c66' : '#a8141a',
+            color: '#fff',
+            cursor: locked ? 'default' : 'pointer',
+          }}
+        >
+          {busy === 'publish' ? 'Publishing…' : 'Publish story'}
+        </button>
+        <button type="button" onClick={saveDraft} disabled={locked} style={{ ...secondary, fontSize: 13, padding: '10px 18px' }}>
+          {busy === 'draft' ? 'Saving…' : 'Save draft'}
+        </button>
+      </div>
     </div>
   );
 }

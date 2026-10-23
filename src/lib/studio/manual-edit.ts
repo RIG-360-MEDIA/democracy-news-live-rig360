@@ -14,7 +14,7 @@ import { sql } from '@/lib/db';
 import { writeAudit, type Snapshot } from './audit-log';
 import type { ManualTopic } from './topics';
 
-export const MANUAL_STATUSES = ['PUBLISHABLE', 'UNPUBLISHED', 'DELETED'] as const;
+export const MANUAL_STATUSES = ['PUBLISHABLE', 'UNPUBLISHED', 'DELETED', 'DRAFT'] as const;
 export type ManualStatus = (typeof MANUAL_STATUSES)[number];
 
 /** Editable fields; each is optional — absent means "leave as is". */
@@ -82,8 +82,10 @@ function merge(r: Row, patch: ManualStoryPatch, status: string): Row {
 /** The audit action for a real change (no-ops never reach here): a pure status flip is named for the flip; anything else is an edit. */
 function actionFor(before: Row, patch: ManualStoryPatch, status: string): string {
   const edited = Object.values(patch).some((v) => v !== undefined);
+  if (before.status === 'DRAFT' && status === 'PUBLISHABLE') return 'manual_publish';   // first publish of a draft
   if (edited || status === before.status) return 'manual_edit';
   if (status === 'DELETED') return 'manual_delete';
+  if (before.status === 'DRAFT') return 'manual_publish';
   return status === 'UNPUBLISHED' ? 'manual_unpublish' : 'manual_republish';
 }
 
@@ -107,6 +109,8 @@ export async function changeManualStory(
     if (before.status === 'DELETED') throw new ManualStoryError('This story was deleted and can no longer be changed', 409);
     const nextStatus = status ?? before.status;
     const after = merge(before, patch, nextStatus);
+    const firstPublish = before.status === 'DRAFT' && nextStatus === 'PUBLISHABLE';
+    if (firstPublish && !after.body.trim()) throw new ManualStoryError('Write the story body before publishing', 409);
     // Nothing actually changes (same status, same field values) → no write, no audit row.
     if (JSON.stringify(snapshot(after)) === JSON.stringify(snapshot(before))) {
       return { id, status: before.status, action: 'noop' };
@@ -115,7 +119,10 @@ export async function changeManualStory(
       UPDATE rigwire.manual_stories
       SET headline = ${after.headline}, dek = ${after.dek}, body = ${after.body}, topic = ${after.topic},
           country = ${after.country}, image_url = ${after.image_url}, importance = ${Number(after.importance)},
-          status = ${after.status}, updated_at = now()
+          status = ${after.status}, updated_at = now(),
+          -- a draft goes live NOW: the feed's freshness is created_at, so a draft written days ago must not
+          -- surface as days-old news (ponytail: reuses created_at; add published_at if the draft date matters)
+          created_at = CASE WHEN ${firstPublish} THEN now() ELSE created_at END
       WHERE id = ${id}`;
     const action = actionFor(before, patch, nextStatus);
     await writeAudit(tx, { actor: editorId, action, storyId: id, before: snapshot(before), after: snapshot(after) });
