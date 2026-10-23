@@ -13,6 +13,7 @@ interface ManualStoryControlsProps {
   id: string;
   headline: string;
   dek: string | null;
+  authors: string;
   body: string;
   status: string;
   canDelete: boolean;
@@ -64,6 +65,7 @@ export default function ManualStoryControls({
   id,
   headline,
   dek,
+  authors,
   body,
   status,
   canDelete,
@@ -73,7 +75,7 @@ export default function ManualStoryControls({
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [draft, setDraft] = useState({ headline, dek: dek ?? '', body });
+  const [draft, setDraft] = useState({ headline, dek: dek ?? '', authors, body });
   const live = status.startsWith('PUBLISHABLE');
   const isDraft = status === 'DRAFT';
 
@@ -130,9 +132,10 @@ export default function ManualStoryControls({
         <div style={{ marginTop: 6 }}>
           <input aria-label="Headline" style={field} value={draft.headline} onChange={(e) => setDraft({ ...draft, headline: e.target.value })} />
           <input aria-label="Strap" style={field} value={draft.dek} placeholder="Strap (optional)" onChange={(e) => setDraft({ ...draft, dek: e.target.value })} />
+          <input aria-label="Authors" style={field} value={draft.authors} placeholder="Authors (empty = Democracy News Live Desk)" onChange={(e) => setDraft({ ...draft, authors: e.target.value })} />
           <textarea aria-label="Body" style={{ ...field, minHeight: 120 }} value={draft.body} onChange={(e) => setDraft({ ...draft, body: e.target.value })} />
           <div style={{ display: 'flex', gap: 6 }}>
-            <button type="button" style={btn} disabled={busy} onClick={() => void run('PATCH', { headline: draft.headline, dek: draft.dek, body: draft.body })}>
+            <button type="button" style={btn} disabled={busy} onClick={() => void run('PATCH', { headline: draft.headline, dek: draft.dek, body: draft.body, ...(draft.authors !== authors ? { authors: draft.authors } : {}) })}>
               {busy ? 'Saving…' : 'Save'}
             </button>
             <button type="button" style={btn} disabled={busy} onClick={() => setEditing(false)}>

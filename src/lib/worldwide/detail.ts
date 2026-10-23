@@ -135,6 +135,7 @@ export interface StoryAudio {
 
 export interface StoryDetail {
   id: string;
+  authors?: string | null; // editor-set byline (rigwire.story_authors); null = the house byline
   kicker: string; // "topic · country"
   title: string; // generated headline
   deck: string | null;

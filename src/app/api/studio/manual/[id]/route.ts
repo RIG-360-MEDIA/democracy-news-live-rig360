@@ -8,6 +8,7 @@ import { NextResponse } from 'next/server';
 
 import { CACHE_TAGS } from '@/lib/cache';
 import { revalidateStoryPage } from '@/lib/revalidate-story';
+import { setAuthors } from '@/lib/studio/authors';
 import { guardApi } from '@/lib/studio/guard';
 import { changeManualStory, ManualStoryError, type ManualStatus, type ManualStoryPatch } from '@/lib/studio/manual-edit';
 import { manualPatchSchema, storyIdSchema } from '@/lib/studio/input-schemas';
@@ -51,11 +52,24 @@ export async function PATCH(req: Request, ctx: Ctx) {
   const parsed = manualPatchSchema.safeParse(raw);
   if (!parsed.success) return fail('400', parsed.error.issues[0]?.message ?? 'Invalid input', 400);
 
-  const { status, image_url, ...fields } = parsed.data;
+  const { status, image_url, authors, ...fields } = parsed.data;
   const patch: ManualStoryPatch = {
     ...fields,
     ...(image_url !== undefined ? { imageUrl: image_url } : {}),
   };
+  if (authors !== undefined) {                     // the byline lives in rigwire.story_authors (audited there)
+    try {
+      await setAuthors(id.data, authors, guard.editor.id);
+    } catch (e) {
+      console.error('[studio/manual] authors failed', { id: id.data, error: e });
+      return fail('500', 'Saving the authors failed', 500);
+    }
+    if (status === undefined && Object.values(patch).every((v) => v === undefined)) {
+      revalidateStoryPage(id.data);
+      revalidateTag(CACHE_TAGS.frontPage);
+      return NextResponse.json({ ok: true, data: { id: id.data }, error: null });
+    }
+  }
   return apply(id.data, patch, status, guard.editor.id);
 }
 

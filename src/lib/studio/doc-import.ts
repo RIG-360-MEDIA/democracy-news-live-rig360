@@ -3,20 +3,23 @@
 // A .docx (mammoth), .pdf (unpdf, with font sizes and line positions) or .txt/.md is turned into BLOCKS
 // (title / subtitle / heading / paragraph), then assembleFields() sorts them into the form:
 //   headline = the document title (Word "Title" style, the biggest PDF text, or the first short line)
+//   authors  = a "By A and B" line near the top (never used as the strap)
 //   strap    = a Word "Subtitle" / all-italic line, else the first SHORT paragraph right after the
 //              headline (<= 45 words, not a "CITY:" dateline)
 //   body     = every other paragraph, separated by blank lines; real headings (Word Heading 1-6, bigger
-//              PDF text, a bold-only line, or a short capitalised line without a full stop) become "## "
+//              PDF text, a bold-only line in a document that is NOT bold throughout, or a short capitalised
+//              line without a full stop) become "## "; list items are never headings
 //   image    = the first picture inside a .docx (stored as an uploaded image by the API route)
 // Topic, country and importance stay with the editor. Pure except the two parsers.
 
-export type Block = { kind: 'title' | 'subtitle' | 'heading' | 'para'; text: string };
+export type Block = { kind: 'title' | 'subtitle' | 'heading' | 'para' | 'item'; text: string };
 
 export interface ImportedFields {
   headline: string;
   dek: string;
   body: string;
   headings: number;
+  authors: string;
 }
 
 const words = (s: string): number => s.split(/\s+/).filter(Boolean).length;
@@ -28,9 +31,16 @@ export function looksLikeHeading(t: string): boolean {
 }
 
 const DATELINE = /^[A-Z][A-Z .'-]{2,30}:/;   // "NEW DELHI:" opens the body, it is never the strap
+const BYLINE = /^by\s+(?=\p{Lu})/iu;           // "By Pranav Puri and Yash Aggarwal"
 
 export function assembleFields(blocks: ReadonlyArray<Block>): ImportedFields {
   const bs = blocks.map((b) => ({ ...b, text: clean(b.text) })).filter((b) => b.text);
+  let authors = '';
+  const byAt = bs.findIndex((b, k) => k < 5 && b.kind !== 'title' && BYLINE.test(b.text) && words(b.text) <= 14);
+  if (byAt >= 0) {
+    authors = bs[byAt].text.replace(BYLINE, '').trim();
+    bs.splice(byAt, 1);
+  }
   let i = 0;
   let headline = '';
   const titleAt = bs.findIndex((b) => b.kind === 'title');
@@ -59,14 +69,14 @@ export function assembleFields(blocks: ReadonlyArray<Block>): ImportedFields {
   const out: string[] = [];
   for (const b of bs.slice(i)) {
     const t = b.text.replace(/^#+\s*/, '');
-    if (b.kind === 'heading' || b.kind === 'title' || (b.kind === 'para' && looksLikeHeading(t) && out.length > 0)) {
+    if (b.kind === 'heading' || b.kind === 'title' || (b.kind === 'para' && looksLikeHeading(t) && out.length > 0)) {   // items: never
       out.push(`## ${t}`);
       headings += 1;
     } else {
       out.push(b.text);
     }
   }
-  return { headline, dek, body: out.join('\n\n'), headings };
+  return { headline, dek, body: out.join('\n\n'), headings, authors };
 }
 
 /** .txt / .md: paragraphs are separated by blank lines, or by single line breaks when there are none. */
@@ -94,17 +104,21 @@ export async function docxToBlocks(buf: Buffer): Promise<{ blocks: Block[]; imag
       return { src: '' };
     }),
   });
+  const raw = [...html.matchAll(/<(h[1-6]|p|li)([^>]*)>([\s\S]*?)<\/\1>/g)]
+    .map(([, tag, attrs, inner]) => ({ tag, attrs, text: decode(inner), allBold: /^\s*<strong>[\s\S]*<\/strong>\s*$/.test(inner),
+                                       allItalic: /^\s*<em>[\s\S]*<\/em>\s*$/.test(inner) }))
+    .filter((r) => r.text.trim());
+  // Bold marks a heading only when it stands out: a document typed in bold throughout (2026-10-23, the
+  // mica article) would otherwise turn every short sentence into a heading.
+  const paras = raw.filter((r) => r.tag === 'p');
+  const boldStandsOut = paras.filter((r) => r.allBold).length < paras.length / 2;
   const blocks: Block[] = [];
-  for (const m of html.matchAll(/<(h[1-6]|p|li)([^>]*)>([\s\S]*?)<\/\1>/g)) {
-    const [, tag, attrs, inner] = m;
-    const text = decode(inner);
-    if (!text.trim()) continue;
-    const allBold = /^\s*<strong>[\s\S]*<\/strong>\s*$/.test(inner);
-    const allItalic = /^\s*<em>[\s\S]*<\/em>\s*$/.test(inner);
+  for (const { tag, attrs, text, allBold, allItalic } of raw) {
     if (/class="title"/.test(attrs)) blocks.push({ kind: 'title', text });
     else if (/class="subtitle"/.test(attrs)) blocks.push({ kind: 'subtitle', text });
+    else if (tag === 'li') blocks.push({ kind: 'item', text });
     else if (tag === 'h1' && !blocks.some((b) => b.kind === 'title')) blocks.push({ kind: 'title', text });
-    else if (tag.startsWith('h') || (allBold && words(text) <= 14)) blocks.push({ kind: 'heading', text });
+    else if (tag.startsWith('h') || (boldStandsOut && allBold && words(text) <= 14)) blocks.push({ kind: 'heading', text });
     else if (allItalic && blocks.length <= 2 && words(text) <= 45) blocks.push({ kind: 'subtitle', text });
     else blocks.push({ kind: 'para', text });
   }

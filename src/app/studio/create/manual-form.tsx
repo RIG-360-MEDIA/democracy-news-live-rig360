@@ -16,6 +16,7 @@ import { MANUAL_TOPICS } from '@/lib/studio/topics';
 interface FormState {
   headline: string;
   dek: string;
+  authors: string;
   body: string;
   topic: string;
   country: string;
@@ -30,6 +31,7 @@ export interface DraftInit extends FormState {
 const EMPTY: FormState = {
   headline: '',
   dek: '',
+  authors: '',
   body: '',
   topic: 'OTHER',
   country: '',
@@ -106,6 +108,7 @@ export default function ManualForm({ initial }: { initial?: DraftInit | null }) 
     return {
       headline: form.headline,
       dek: form.dek,
+      authors: form.authors,
       topic: form.topic,
       country: form.country,
       image_url: form.image_url,
@@ -211,12 +214,13 @@ export default function ManualForm({ initial }: { initial?: DraftInit | null }) 
       const r = await fetch('/api/studio/import', { method: 'POST', body: fd });
       const j = await r.json().catch(() => null);
       if (!r.ok || !j?.ok) throw new Error(j?.error?.message ?? String(r.status));
-      const d = j.data as { headline: string; dek: string; body: string; country: string; imagePath: string | null; headings: number };
+      const d = j.data as { headline: string; dek: string; authors: string; body: string; country: string; imagePath: string | null; headings: number };
       setForm((f) => {
         const next = {
           ...f,
           headline: d.headline || f.headline,
           dek: d.dek || f.dek,
+          authors: d.authors || f.authors,
           body: d.body || f.body,
           country: d.country || f.country,
           image_url: d.imagePath ? `${window.location.origin}${d.imagePath}` : f.image_url,
@@ -224,7 +228,7 @@ export default function ManualForm({ initial }: { initial?: DraftInit | null }) 
         writeBackup({ ...next, ...(draftId ? { draftId } : {}) });
         return next;
       });
-      setNote(`Imported "${file.name}": headline, strap, body (${d.headings} section headings)${d.imagePath ? ' and its first picture' : ''}. Check every field, then set the topic and importance.`);
+      setNote(`Imported "${file.name}": headline, ${d.authors ? 'authors, ' : ''}strap, body (${d.headings} section headings)${d.imagePath ? ' and its first picture' : ''}. Check every field, then set the topic and importance.`);
     } catch (e) {
       setErr('Import failed: ' + (e instanceof Error ? e.message : 'error'));
     } finally {
@@ -304,6 +308,12 @@ export default function ManualForm({ initial }: { initial?: DraftInit | null }) 
       <div style={{ marginBottom: 14 }}>
         <label style={label}>Strap</label>
         <input style={field} value={form.dek} onChange={(e) => set('dek', e.target.value)} placeholder="Optional one-line summary under the headline" />
+      </div>
+
+      <div style={{ marginBottom: 14 }}>
+        <label style={label}>Authors</label>
+        <input style={field} value={form.authors} onChange={(e) => set('authors', e.target.value)}
+          placeholder="e.g. Pranav Puri and Yash Aggarwal (empty = Democracy News Live Desk)" />
       </div>
 
       <div style={{ marginBottom: 14 }}>

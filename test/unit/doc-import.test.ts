@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { assembleFields, looksLikeHeading, textToBlocks, type Block } from '@/lib/studio/doc-import';
+import { cleanAuthors } from '@/lib/studio/authors-text';
 import { sniffImageType } from '@/lib/studio/image-type';
 
 // Create page "Import document": headline / strap / body with section headings land in the right fields.
@@ -18,7 +19,25 @@ describe('doc import: sorting a document into the Create form', () => {
       dek: 'India is sitting on a mineral the world needs.',
       body: 'NEW DELHI: Raoul Prem Menon calls mica "electric gold."\n\n## Leaving the country, off the books\n\nThe scale is striking.',
       headings: 1,
+      authors: '',
     });
+  });
+
+  it('a "By ..." line is the authors (never the strap); list items and full sentences are never headings', () => {
+    const f = assembleFields([
+      { kind: 'para', text: "India's Mica: The Bargaining Chip" },
+      { kind: 'para', text: 'By Pranav Puri and Yash Aggarwal' },
+      { kind: 'para', text: 'India is sitting on a mineral the world needs. Almost none of it is on the books' },
+      { kind: 'para', text: 'NEW DELHI: Raoul Prem Menon calls mica "electric gold."' },
+      { kind: 'para', text: 'Leaving the country, off the books' },
+      { kind: 'para', text: 'The scale of what is slipping past the state is striking.' },
+      { kind: 'para', text: 'His demands are sweeping:' },
+      { kind: 'item', text: 'open more legal mines;' },
+      { kind: 'item', text: 'Brand Indian mica' },
+    ]);
+    expect(f.authors).toBe('Pranav Puri and Yash Aggarwal');
+    expect(f.dek).toBe('India is sitting on a mineral the world needs. Almost none of it is on the books');
+    expect(f.body.split('\n\n').filter((x) => x.startsWith('## '))).toEqual(['## Leaving the country, off the books']);
   });
 
   it('plain text: first short line = headline, short next paragraph = strap, a "CITY:" dateline is never the strap', () => {
@@ -45,5 +64,11 @@ describe('doc import: sorting a document into the Create form', () => {
     expect(sniffImageType(new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))).toBe('image/png');
     expect(sniffImageType(new TextEncoder().encode('RIFF\0\0\0\0WEBPVP8 '))).toBe('image/webp');
     expect(sniffImageType(new TextEncoder().encode('<svg onload=alert(1)>'))).toBeNull();
+  });
+
+  it('authors: a typed "By ..." is stored without "By"; empty means the house byline', () => {
+    expect(cleanAuthors('By  Pranav Puri and Yash Aggarwal ')).toBe('Pranav Puri and Yash Aggarwal');
+    expect(cleanAuthors('  ')).toBe('');
+    expect(cleanAuthors(null)).toBe('');
   });
 });

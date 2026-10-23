@@ -25,6 +25,7 @@ export interface RouteRule {
 
 export const API_ROUTES: Record<string, Partial<Record<Method, RouteRule>>> = {
   '/api/studio/audit': { GET: { role: 'editor' }, POST: { role: 'editor', write: 'audited' } },
+  '/api/studio/authors': { POST: { role: 'editor', write: 'audited' } },
   '/api/studio/create': { POST: { role: 'editor', write: 'audited' } },
   '/api/studio/draft': { GET: { role: 'editor' }, POST: { role: 'editor', write: 'remote' } },
   '/api/studio/draft/[id]': { GET: { role: 'editor' }, PATCH: { role: 'editor', write: 'remote' } },

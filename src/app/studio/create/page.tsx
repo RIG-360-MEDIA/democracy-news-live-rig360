@@ -3,6 +3,7 @@
 
 import { CmsCard, CmsCardGrid } from '@/components/studio/cms-card';
 import { isDispatchLive, listJobs } from '@/lib/dispatch/client';
+import { getAuthorsMap } from '@/lib/studio/authors';
 import { listManualStories } from '@/lib/studio/manual';
 import { guardPage } from '@/lib/studio/guard';
 import { promptLeakLevel } from '@/lib/studio/prompt-leak';
@@ -26,10 +27,11 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ d
   const editor = await guardPage('editor');
 
   const recent = await listManualStories(30);
+  const authorsOf = await getAuthorsMap(recent.map((s) => s.id));   // bylines (empty map before migration 011)
   // ?draft=<id>: reopen a saved draft in the form (only a DRAFT - a live story is edited from its card).
   const { draft: draftParam } = await searchParams;
   const d = recent.find((s) => s.id === draftParam && s.status === 'DRAFT');
-  const draft = d ? { id: d.id, headline: d.headline, dek: d.dek ?? '', body: d.body, topic: d.topic, country: d.country ?? '',
+  const draft = d ? { id: d.id, headline: d.headline, dek: d.dek ?? '', authors: authorsOf.get(d.id) ?? '', body: d.body, topic: d.topic, country: d.country ?? '',
                       image_url: d.imageUrl ?? '', importance: String(d.importance) } : null;
 
   // Door B (AI topic drafts) is shown only when a real box is configured — or in dev, where mock mode
@@ -83,6 +85,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ d
                   id={s.id}
                   headline={s.headline}
                   dek={s.dek}
+                  authors={authorsOf.get(s.id) ?? ''}
                   body={s.body}
                   status={s.status}
                   canDelete={editor.isAdmin}

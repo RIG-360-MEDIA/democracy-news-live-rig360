@@ -6,6 +6,9 @@ import { createHash } from 'node:crypto';
 
 import { sql } from '@/lib/db';
 
+import { setAuthorsTx } from './authors';
+import { cleanAuthors } from './authors-text';
+
 import { writeAudit } from './audit-log';
 
 import { MANUAL_TOPICS } from './topics';
@@ -78,6 +81,7 @@ export async function createManualStory(
   fields: ManualStoryInput,
   editorId: string,
   status: 'PUBLISHABLE' | 'DRAFT' = 'PUBLISHABLE',   // a DRAFT is saved for later and never surfaces
+  authors = '',                                      // byline (rigwire.story_authors); '' = house byline
 ): Promise<string> {
   return sql.begin(async (tx) => {
     const rows = (await tx`
@@ -99,6 +103,7 @@ export async function createManualStory(
       before: null,
       after: auditSnapshot(fields, status),
     });
+    if (cleanAuthors(authors)) await setAuthorsTx(tx, id, authors, editorId);
     return id;
   }) as Promise<string>;
 }

@@ -16,6 +16,7 @@ import { getWeights } from '@/lib/studio/weights';
 
 import { forcedStoryIds, rankWithOverrides } from './editorial-rank';
 import { groupIntoHubs } from './eventhub';
+import { getAuthorsMap } from '@/lib/studio/authors';
 import { slotByRank } from '@/lib/studio/pins';
 import { placeManualCards } from './manual-importance';
 import { scoreStory, type ScoringKnobs } from './scoring';
@@ -365,6 +366,8 @@ export async function getFrontPage(scope: string): Promise<FrontPage> {
 
   // ── Editorial overrides win on read (epic 002) — see ./editorial-rank.ts. ──
   let pool = rankWithOverrides(basePool, overrides, weights, now);
+  const authors = await getAuthorsMap(pool.map((c) => c.id));       // editor-set bylines (CMS)
+  if (authors.size) pool = pool.map((c) => (authors.has(c.id) ? { ...c, authors: authors.get(c.id) } : c));
 
   // Collapse re-clustered duplicates of one event (same entity, near-identical headline) so a story never
   // appears many times across the page as if it were separate coverage. Applied to the whole pool.
