@@ -135,7 +135,7 @@ export default function ManualEditModal({ id, initial, live, onClose, onSaved }:
           <div>
             <label style={label}>Authors</label>
             <input style={{ ...field, marginBottom: 14 }} value={f.authors} onChange={(e) => set('authors', e.target.value)}
-              placeholder="Empty = Democracy News Live Desk" />
+              placeholder="Democracy News Live Desk" />
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 14 }}>
               <div>
                 <label style={label}>Topic</label>
