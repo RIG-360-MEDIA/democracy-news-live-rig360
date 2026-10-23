@@ -1,8 +1,9 @@
 'use client';
 
 // Manual authoring form (Door A) — an editor hand-writes a story that bypasses the generator.
-//   Save draft  → kept for later (status DRAFT, never on the site); reopened from "Recently created".
-//   Publish     → live now (a draft is published in place, POST /api/studio/create otherwise).
+//   Save draft  → kept for later (status DRAFT, never on the site) in the Drafts section, where it opens in
+//                 the full-screen editor (Save draft / Publish); the form clears for the next story.
+//   Publish     → live now.
 //   Upload image / Import document → the image is stored by the site (/api/media/<id>) and its URL filled
 //   in; a .docx / .pdf / .txt / .md is read on the server and its headline, strap, body (with section
 //   headings) and first picture land in the right fields for the editor to check.
@@ -26,10 +27,6 @@ interface FormState {
   importance: string;
 }
 
-export interface DraftInit extends FormState {
-  id: string;
-}
-
 const EMPTY: FormState = {
   headline: '',
   dek: '',
@@ -43,16 +40,16 @@ const EMPTY: FormState = {
 
 const BACKUP_KEY = 'dnl-create-unsaved';
 
-function readBackup(): (FormState & { draftId?: string }) | null {
+function readBackup(): FormState | null {
   try {
     const raw = window.localStorage.getItem(BACKUP_KEY);
-    return raw ? (JSON.parse(raw) as FormState & { draftId?: string }) : null;
+    return raw ? (JSON.parse(raw) as FormState) : null;
   } catch {
     return null;
   }
 }
 
-function writeBackup(v: (FormState & { draftId?: string }) | null): void {
+function writeBackup(v: FormState | null): void {
   try {
     if (v) window.localStorage.setItem(BACKUP_KEY, JSON.stringify(v));
     else window.localStorage.removeItem(BACKUP_KEY);
@@ -61,11 +58,10 @@ function writeBackup(v: (FormState & { draftId?: string }) | null): void {
   }
 }
 
-export default function ManualForm({ initial }: { initial?: DraftInit | null }) {
+export default function ManualForm() {
   const router = useRouter();
   const [pending, start] = useTransition();
-  const [draftId, setDraftId] = useState<string | null>(initial?.id ?? null);
-  const [form, setForm] = useState<FormState>(() => (initial ? { ...EMPTY, ...initial } : EMPTY));
+  const [form, setForm] = useState<FormState>(EMPTY);
   const [busy, setBusy] = useState<null | 'publish' | 'draft' | 'image' | 'import'>(null);
   const [err, setErr] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
@@ -73,22 +69,20 @@ export default function ManualForm({ initial }: { initial?: DraftInit | null }) 
   const docInput = useRef<HTMLInputElement>(null);
   const restored = useRef(false);
 
-  // Bring back unsaved typing from a previous visit (only for the same draft, or a new story).
+  // Bring back unsaved typing from a previous visit.
   useEffect(() => {
     if (restored.current) return;
     restored.current = true;
     const b = readBackup();
-    if (!b || (b.draftId ?? null) !== (initial?.id ?? null)) return;
-    const { draftId: _ignored, ...fields } = b;
-    if (JSON.stringify(fields) === JSON.stringify(initial ? { ...EMPTY, ...initial, id: undefined } : EMPTY)) return;
-    setForm({ ...EMPTY, ...fields });
+    if (!b || JSON.stringify({ ...EMPTY, ...b }) === JSON.stringify(EMPTY)) return;
+    setForm({ ...EMPTY, ...b });
     setNote('Restored text you had not saved yet.');
-  }, [initial]);
+  }, []);
 
   function set<K extends keyof FormState>(key: K, value: string) {
     setForm((f) => {
       const next = { ...f, [key]: value };
-      writeBackup({ ...next, ...(draftId ? { draftId } : {}) });
+      writeBackup(next);
       return next;
     });
   }
@@ -121,17 +115,10 @@ export default function ManualForm({ initial }: { initial?: DraftInit | null }) 
     }
     setBusy('draft');
     try {
-      if (draftId) {
-        await call(`/api/studio/manual/${draftId}`, 'PATCH', { ...payload(), ...(form.body.trim() ? { body: form.body } : {}) });
-      } else {
-        const data = await call('/api/studio/create', 'POST', { ...payload(), body: form.body, draft: true });
-        if (data?.id) {
-          setDraftId(data.id);
-          router.replace(`/studio/create?draft=${data.id}`, { scroll: false });
-        }
-      }
+      await call('/api/studio/create', 'POST', { ...payload(), body: form.body, draft: true });
       writeBackup(null);
-      setNote(`Draft saved ${new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}. It is not on the site.`);
+      setForm(EMPTY);                                   // the form is for a NEW story; the draft is kept in Drafts
+      setNote('Saved to Drafts below - it is not on the site. Open it there to keep writing or to publish.');
       start(() => router.refresh());
     } catch (e) {
       setErr('Save failed: ' + (e instanceof Error ? e.message : 'error'));
@@ -153,13 +140,10 @@ export default function ManualForm({ initial }: { initial?: DraftInit | null }) 
     }
     setBusy('publish');
     try {
-      if (draftId) await call(`/api/studio/manual/${draftId}`, 'PATCH', { ...payload(), body: form.body, status: 'PUBLISHABLE' });
-      else await call('/api/studio/create', 'POST', { ...payload(), body: form.body });
+      await call('/api/studio/create', 'POST', { ...payload(), body: form.body });
       writeBackup(null);
       setForm(EMPTY);
-      setDraftId(null);
       setNote('Published - it is live on the site now.');
-      if (draftId) router.replace('/studio/create', { scroll: false });
       start(() => router.refresh());
     } catch (e) {
       setErr('Publish failed: ' + (e instanceof Error ? e.message : 'error'));
@@ -205,7 +189,7 @@ export default function ManualForm({ initial }: { initial?: DraftInit | null }) 
           country: d.country || f.country,
           image_url: d.imagePath ? `${window.location.origin}${d.imagePath}` : f.image_url,
         };
-        writeBackup({ ...next, ...(draftId ? { draftId } : {}) });
+        writeBackup(next);
         return next;
       });
       setNote(`Imported "${file.name}": headline, ${d.authors ? 'authors, ' : ''}strap, body (${d.headings} section headings)${d.imagePath ? ' and its first picture' : ''}. Check every field, then set the topic and importance.`);
@@ -215,15 +199,6 @@ export default function ManualForm({ initial }: { initial?: DraftInit | null }) 
       setBusy(null);
       if (docInput.current) docInput.current.value = '';
     }
-  }
-
-  function startNew() {
-    writeBackup(null);
-    setForm(EMPTY);
-    setDraftId(null);
-    setErr(null);
-    setNote(null);
-    router.replace('/studio/create', { scroll: false });
   }
 
   const label: React.CSSProperties = {
@@ -263,9 +238,7 @@ export default function ManualForm({ initial }: { initial?: DraftInit | null }) 
   return (
     <div style={{ border: '1px solid #eee', borderRadius: 8, background: '#fff', padding: 18 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
-        <span style={{ fontSize: 12, fontWeight: 800, color: draftId ? '#8a6d1a' : '#888' }}>
-          {draftId ? 'EDITING A DRAFT (not on the site)' : 'NEW STORY'}
-        </span>
+        <span style={{ fontSize: 12, fontWeight: 800, color: '#888' }}>NEW STORY</span>
         <span style={{ flex: 1 }} />
         <input ref={docInput} type="file" hidden
           accept=".docx,.pdf,.txt,.md,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/pdf,text/plain,text/markdown"
@@ -273,11 +246,6 @@ export default function ManualForm({ initial }: { initial?: DraftInit | null }) 
         <button type="button" style={secondary} disabled={locked} onClick={() => docInput.current?.click()}>
           {busy === 'import' ? 'Reading…' : 'Import document (.docx, .pdf)'}
         </button>
-        {draftId && (
-          <button type="button" style={secondary} disabled={locked} onClick={startNew}>
-            New story
-          </button>
-        )}
       </div>
 
       <div style={{ marginBottom: 14 }}>
@@ -367,7 +335,7 @@ export default function ManualForm({ initial }: { initial?: DraftInit | null }) 
             cursor: locked ? 'default' : 'pointer',
           }}
         >
-          {busy === 'publish' ? 'Publishing…' : draftId ? 'Publish draft' : 'Publish story'}
+          {busy === 'publish' ? 'Publishing…' : 'Publish story'}
         </button>
         <button type="button" onClick={saveDraft} disabled={locked} style={{ ...secondary, fontSize: 13, padding: '10px 18px' }}>
           {busy === 'draft' ? 'Saving…' : 'Save draft'}

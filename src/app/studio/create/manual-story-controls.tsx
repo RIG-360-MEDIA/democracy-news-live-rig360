@@ -25,6 +25,8 @@ interface ManualStoryControlsProps {
   canDelete: boolean;
   /** Headline/dek reads like an internal prompt: 'leak' is hidden from readers, 'suspect' is not. */
   promptFlag: PromptLeakLevel;
+  /** Open the editor straight away (a draft card clicked: /studio/create?draft=<id>). */
+  autoOpen?: boolean;
 }
 
 const PROMPT_FLAG_TEXT: Record<Exclude<PromptLeakLevel, 'none'>, string> = {
@@ -70,9 +72,10 @@ export default function ManualStoryControls({
   status,
   canDelete,
   promptFlag,
+  autoOpen = false,
 }: ManualStoryControlsProps) {
   const router = useRouter();
-  const [editing, setEditing] = useState(false);
+  const [editing, setEditing] = useState(autoOpen);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const live = status.startsWith('PUBLISHABLE');
@@ -118,27 +121,32 @@ export default function ManualStoryControls({
           {PROMPT_FLAG_TEXT[promptFlag]}
         </p>
       )}
-      {isDraft ? (
+      {editing ? (
+        <ManualEditModal
+          id={id}
+          live={live}
+          draft={isDraft}
+          initial={{ headline, dek: dek ?? '', authors, body, topic, country: country ?? '', image_url: imageUrl ?? '',
+                     importance: String(importance) }}
+          onClose={() => {
+            setEditing(false);
+            if (autoOpen) router.replace('/studio/create', { scroll: false });   // drop ?draft= from the address
+          }}
+          onSaved={() => {
+            setEditing(false);
+            if (autoOpen) router.replace('/studio/create', { scroll: false });
+            router.refresh();                                  // a published draft moves to Recently created
+          }}
+        />
+      ) : isDraft ? (
         <div style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
-          <a href={`/studio/create?draft=${id}`} style={{ ...btn, textDecoration: 'none' }}>Continue editing</a>
+          <button type="button" style={btn} disabled={busy} onClick={() => setEditing(true)}>Continue editing</button>
           {canDelete && (
             <button type="button" style={{ ...btn, color: '#a8141a', borderColor: '#f0c4c2' }} disabled={busy} onClick={remove}>
               Delete
             </button>
           )}
         </div>
-      ) : editing ? (
-        <ManualEditModal
-          id={id}
-          live={live}
-          initial={{ headline, dek: dek ?? '', authors, body, topic, country: country ?? '', image_url: imageUrl ?? '',
-                     importance: String(importance) }}
-          onClose={() => setEditing(false)}
-          onSaved={() => {
-            setEditing(false);
-            router.refresh();
-          }}
-        />
       ) : (
         <div style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
           <button type="button" style={btn} disabled={busy} onClick={() => setEditing(true)}>

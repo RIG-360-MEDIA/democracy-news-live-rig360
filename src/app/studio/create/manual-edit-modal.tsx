@@ -24,15 +24,17 @@ export interface ManualEditFields {
 
 const RED = '#a8141a';
 
-export default function ManualEditModal({ id, initial, live, onClose, onSaved }: {
+export default function ManualEditModal({ id, initial, live, draft = false, onClose, onSaved }: {
   id: string;
   initial: ManualEditFields;
   live: boolean;
+  /** A saved draft: Save draft keeps it off the site, Publish puts it live (and it leaves Drafts). */
+  draft?: boolean;
   onClose: () => void;
   onSaved: () => void;
 }) {
   const [f, setF] = useState<ManualEditFields>(initial);
-  const [busy, setBusy] = useState<null | 'save' | 'image'>(null);
+  const [busy, setBusy] = useState<null | 'save' | 'publish' | 'image'>(null);
   const [err, setErr] = useState<string | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const dirty = (Object.keys(initial) as Array<keyof ManualEditFields>).some((k) => f[k] !== initial[k]);
@@ -57,21 +59,22 @@ export default function ManualEditModal({ id, initial, live, onClose, onSaved }:
 
   const set = (k: keyof ManualEditFields, v: string) => setF((x) => ({ ...x, [k]: v }));
 
-  async function save() {
+  async function save(publish = false) {
     setErr(null);
-    if (!f.headline.trim() || !f.body.trim()) {
-      setErr('Headline and body are required.');
+    if (!f.headline.trim() || (!f.body.trim() && (publish || !draft))) {
+      setErr(publish || !draft ? 'Headline and body are required.' : 'A draft needs a headline.');
       return;
     }
     const changed: Record<string, unknown> = {};
     for (const k of Object.keys(initial) as Array<keyof ManualEditFields>) {
-      if (f[k] !== initial[k]) changed[k] = k === 'importance' ? Number(f[k]) : f[k];
+      if (f[k] !== initial[k] && !(k === 'body' && !f.body.trim())) changed[k] = k === 'importance' ? Number(f[k]) : f[k];
     }
+    if (publish) changed.status = 'PUBLISHABLE';                  // a draft goes live now and leaves Drafts
     if (Object.keys(changed).length === 0) {
       onClose();
       return;
     }
-    setBusy('save');
+    setBusy(publish ? 'publish' : 'save');
     try {
       const r = await fetch(`/api/studio/manual/${id}`, {
         method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(changed),
@@ -111,7 +114,7 @@ export default function ManualEditModal({ id, initial, live, onClose, onSaved }:
         style={{ margin: '28px auto 0', width: 'min(1240px, 94vw)', flex: 1, minHeight: 0, background: '#faf8f4', borderRadius: 14, display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 30px 80px -20px rgba(0,0,0,0.6)' }}>
         <header style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 22px', borderBottom: '1px solid #eee' }}>
           <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: '.08em', color: live ? '#2e7d32' : '#8a6d1a' }}>
-            {live ? 'LIVE ON THE SITE - saving updates it at once' : 'NOT ON THE SITE'}
+            {draft ? 'DRAFT - NOT ON THE SITE' : live ? 'LIVE ON THE SITE - saving updates it at once' : 'NOT ON THE SITE'}
           </span>
           <span style={{ flex: 1 }} />
           {dirty && <span style={{ fontSize: 12, color: '#8a6d1a' }}>Unsaved changes</span>}
@@ -171,9 +174,20 @@ export default function ManualEditModal({ id, initial, live, onClose, onSaved }:
           {err && <span role="alert" style={{ color: RED, fontSize: 12.5 }}>{err}</span>}
           <span style={{ flex: 1 }} />
           <button type="button" onClick={close} style={pill('#ece9e2', '#333')}>Cancel</button>
-          <button type="button" disabled={busy !== null} onClick={() => void save()} style={pill(RED)}>
-            {busy === 'save' ? 'Saving…' : live ? 'Save - update on the site' : 'Save changes'}
-          </button>
+          {draft ? (
+            <>
+              <button type="button" disabled={busy !== null} onClick={() => void save()} style={{ ...pill('#fff', '#1b4b91'), border: '1px solid #c9dcf5' }}>
+                {busy === 'save' ? 'Saving…' : 'Save draft'}
+              </button>
+              <button type="button" disabled={busy !== null} onClick={() => void save(true)} style={pill(RED)}>
+                {busy === 'publish' ? 'Publishing…' : 'Publish - put it live'}
+              </button>
+            </>
+          ) : (
+            <button type="button" disabled={busy !== null} onClick={() => void save()} style={pill(RED)}>
+              {busy === 'save' ? 'Saving…' : live ? 'Save - update on the site' : 'Save changes'}
+            </button>
+          )}
         </footer>
       </div>
     </div>

@@ -10,7 +10,7 @@ import { SegmentedToggle, ToastProvider } from '@/components/studio/ui';
 
 import BriefForm from './brief-form';
 import DraftsList from './drafts-list';
-import ManualForm, { type DraftInit } from './manual-form';
+import ManualForm from './manual-form';
 import { useDraftPolling } from './use-draft-polling';
 
 import type { SegmentedOption } from '@/components/studio/ui';
@@ -27,18 +27,16 @@ interface CreateClientProps {
   initialJobs: ReadonlyArray<JobStatus>;
   /** When false (prod without a configured box), Door B is hidden — manual authoring only. */
   doorBEnabled: boolean;
-  /** A saved draft opened from "Recently created" (?draft=<id>). */
-  draft?: DraftInit | null;
 }
 
-function CreateShell({ initialJobs, doorBEnabled, draft }: CreateClientProps) {
+function CreateShell({ initialJobs, doorBEnabled }: CreateClientProps) {
   const [tab, setTab] = useState<Tab>('manual');
   const { jobs, addJob } = useDraftPolling(initialJobs);
 
   // Door B off: no From-a-topic toggle, no brief form, no drafts tray — just manual authoring, so
   // editors can't gather or publish mock fixture drafts before the generation box is configured.
   if (!doorBEnabled) {
-    return <ManualForm key={draft?.id ?? 'new'} initial={draft} />;
+    return <ManualForm />;
   }
 
   return (
@@ -51,17 +49,17 @@ function CreateShell({ initialJobs, doorBEnabled, draft }: CreateClientProps) {
         className="mb-5"
       />
 
-      {tab === 'manual' ? <ManualForm key={draft?.id ?? 'new'} initial={draft} /> : <BriefForm onCreated={addJob} />}
+      {tab === 'manual' ? <ManualForm /> : <BriefForm onCreated={addJob} />}
 
       <DraftsList jobs={jobs} />
     </div>
   );
 }
 
-export default function CreateClient({ initialJobs, doorBEnabled, draft }: CreateClientProps) {
+export default function CreateClient({ initialJobs, doorBEnabled }: CreateClientProps) {
   return (
     <ToastProvider>
-      <CreateShell initialJobs={initialJobs} doorBEnabled={doorBEnabled} draft={draft} />
+      <CreateShell initialJobs={initialJobs} doorBEnabled={doorBEnabled} />
     </ToastProvider>
   );
 }
