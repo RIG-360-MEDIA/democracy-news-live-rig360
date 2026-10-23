@@ -13,6 +13,8 @@ import { useEffect, useRef, useState, useTransition } from 'react';
 
 import { MANUAL_TOPICS } from '@/lib/studio/topics';
 
+import { uploadImage as upload } from './upload-image';
+
 interface FormState {
   headline: string;
   dek: string;
@@ -40,7 +42,6 @@ const EMPTY: FormState = {
 };
 
 const BACKUP_KEY = 'dnl-create-unsaved';
-const MAX_IMAGE_SIDE = 2000;                      // longest side after the in-browser resize
 
 function readBackup(): (FormState & { draftId?: string }) | null {
   try {
@@ -58,18 +59,6 @@ function writeBackup(v: (FormState & { draftId?: string }) | null): void {
   } catch {
     /* private window / storage blocked: the form still works, just without the backup */
   }
-}
-
-/** Shrink a photo in the browser before upload (JPEG, longest side MAX_IMAGE_SIDE); GIFs are sent as they are. */
-async function shrink(file: File): Promise<Blob> {
-  if (file.type === 'image/gif') return file;
-  const bmp = await createImageBitmap(file);
-  const scale = Math.min(1, MAX_IMAGE_SIDE / Math.max(bmp.width, bmp.height));
-  const canvas = document.createElement('canvas');
-  canvas.width = Math.round(bmp.width * scale);
-  canvas.height = Math.round(bmp.height * scale);
-  canvas.getContext('2d')?.drawImage(bmp, 0, 0, canvas.width, canvas.height);
-  return new Promise((resolve) => canvas.toBlob((b) => resolve(b ?? file), 'image/jpeg', 0.88));
 }
 
 export default function ManualForm({ initial }: { initial?: DraftInit | null }) {
@@ -177,15 +166,6 @@ export default function ManualForm({ initial }: { initial?: DraftInit | null }) 
     } finally {
       setBusy(null);
     }
-  }
-
-  async function upload(file: File): Promise<string> {
-    const fd = new FormData();
-    fd.append('file', await shrink(file), file.name.replace(/\.[^.]+$/, '') + (file.type === 'image/gif' ? '.gif' : '.jpg'));
-    const r = await fetch('/api/studio/media/upload', { method: 'POST', body: fd });
-    const j = await r.json().catch(() => null);
-    if (!r.ok || !j?.ok) throw new Error(j?.error?.message ?? String(r.status));
-    return `${window.location.origin}${j.data.path as string}`;
   }
 
   async function onImage(file: File | undefined) {

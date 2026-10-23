@@ -87,6 +87,10 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ d
                   dek={s.dek}
                   authors={authorsOf.get(s.id) ?? ''}
                   body={s.body}
+                  topic={s.topic}
+                  country={s.country}
+                  imageUrl={s.imageUrl}
+                  importance={s.importance}
                   status={s.status}
                   canDelete={editor.isAdmin}
                   promptFlag={worstLeak(s.headline, s.dek)}
