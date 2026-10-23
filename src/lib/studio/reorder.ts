@@ -2,8 +2,8 @@
 //
 // The /curate overlay used to commit a reorder as N sequential single pins: a failure half-way left
 // the page in a mixed old/new order, and every pin lived forever. Now the whole new order is written
-// in a single sql.begin: current pins not in the new order are unpinned, the order is pinned 1..n with
-// a fresh expiry, and every row change is audited on the same transaction. Any failure (including the
+// in a single sql.begin: current pins not in the new order are unpinned, the dragged stories (and those
+// already pinned) are pinned at their new slot with a fresh expiry (planReorder), and every row change is audited on the same transaction. Any failure (including the
 // audit insert, or migration 008's one-pin-per-rank constraint at commit) rolls all of it back.
 //
 // Two guards against a STALE client (a tab loaded before someone else changed the page):
@@ -55,6 +55,7 @@ export async function reorderTopStories(
   order: ReadonlyArray<string>,
   editorId: string,
   expectedPinToken?: string,
+  moved?: ReadonlyArray<string>,
 ): Promise<ReorderResult> {
   const invalid = validateOrder(order);
   if (invalid) throw new RangeError(invalid);
@@ -71,7 +72,7 @@ export async function reorderTopStories(
     if (expectedPinToken !== undefined && expectedPinToken !== pinSetToken(pinned)) {
       throw new ReorderConflictError('The top stories changed since the page loaded — reload and try again.');
     }
-    const plan = planReorder(order, pinned.map((r) => r.story_id));
+    const plan = planReorder(order, pinned.map((r) => r.story_id), moved);
     for (const storyId of plan.unpin) {
       // eslint-disable-next-line no-await-in-loop -- sequential on one transaction by design.
       await writeOverride(tx, storyId, { action: 'live', pinnedRank: null }, editorId, 'unpin', { displace: false });

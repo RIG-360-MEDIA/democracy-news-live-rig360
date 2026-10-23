@@ -28,6 +28,7 @@ export interface CardView {
   independentSources: number;
   freshnessSeconds: number; // age of the story for editorial lead rules (e.g. freshness cap)
   pinned: boolean;          // editor-pinned top headline — exempt from the auto lead rules
+  pinnedRank: number | null; // its exact Top Stories slot while pinned (1 = lead)
 }
 
 /** A B+ hub as the umbrella component expects it. */
@@ -87,6 +88,7 @@ export function toCardView(card: StoryCard): CardView {
     independentSources: card.independentSources,
     freshnessSeconds: card.freshnessSeconds,
     pinned: card.pinned ?? false,
+    pinnedRank: card.pinnedRank ?? null,
   };
 }
 

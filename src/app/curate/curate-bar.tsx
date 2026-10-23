@@ -36,7 +36,7 @@ export function CurateBar({ editor, view, onViewChange, onOpenSections }: Curate
 
       {view === 'editor' && (
         <span style={{ opacity: 0.72 }}>
-          Drag stories to reorder · drop onto <b style={{ color: '#fff' }}>Lead #1</b> · click a headline or thumbnail to edit
+          Drag a story to move it (only stories you drag are pinned, for 12 h) · drop onto <b style={{ color: '#fff' }}>Lead #1</b> · or hover a headline in the page preview below for ★
         </span>
       )}
 
