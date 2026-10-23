@@ -116,7 +116,7 @@ export default function ManualForm() {
       <div style={{ marginBottom: 14 }}>
         <label style={label}>Authors</label>
         <input style={field} value={form.authors} onChange={(e) => set('authors', e.target.value)}
-          placeholder="e.g. Pranav Puri and Yash Aggarwal (empty = Democracy News Live Desk)" />
+          placeholder="Democracy News Live Desk" />
       </div>
 
       <div style={{ marginBottom: 14 }}>
