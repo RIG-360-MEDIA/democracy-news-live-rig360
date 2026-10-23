@@ -3,6 +3,7 @@
 
 import { CmsCard, CmsCardGrid } from '@/components/studio/cms-card';
 import { isDispatchLive, listJobs } from '@/lib/dispatch/client';
+import { getAuthorsMap } from '@/lib/studio/authors';
 import { listManualStories } from '@/lib/studio/manual';
 import { guardPage } from '@/lib/studio/guard';
 import { promptLeakLevel } from '@/lib/studio/prompt-leak';
@@ -26,6 +27,7 @@ export default async function Page() {
   const editor = await guardPage('editor');
 
   const recent = await listManualStories(30);
+  const authorsOf = await getAuthorsMap(recent.map((s) => s.id));   // bylines (empty map before migration 011)
 
   // Door B (AI topic drafts) is shown only when a real box is configured — or in dev, where mock mode
   // is fine for testing. In production without BOX_STUDIO_URL the dispatch client is in mock mode, so
@@ -78,7 +80,12 @@ export default async function Page() {
                   id={s.id}
                   headline={s.headline}
                   dek={s.dek}
+                  authors={authorsOf.get(s.id) ?? ''}
                   body={s.body}
+                  topic={s.topic}
+                  country={s.country}
+                  imageUrl={s.imageUrl}
+                  importance={s.importance}
                   status={s.status}
                   canDelete={editor.isAdmin}
                   promptFlag={worstLeak(s.headline, s.dek)}

@@ -5,7 +5,9 @@
 import Link from 'next/link';
 
 import { ToastProvider } from '@/components/studio/ui';
+import AuthorsBox from '@/components/studio/editor/authors-box';
 import EditorShell from '@/components/studio/editor/editor-shell';
+import { getAuthors } from '@/lib/studio/authors';
 import { getStoryForEdit } from '@/lib/studio/story';
 import { guardPage } from '@/lib/studio/guard';
 import { isPinActive } from '@/lib/studio/pins';
@@ -36,6 +38,7 @@ export default async function StoryEditorPage({ params }: { params: Promise<{ id
   if (!story) return <NotFound note="Story not found." />;
 
   const sources = await loadClusterSources(id);
+  const authors = (await getAuthors(id)) ?? '';
 
   const { generated, override } = story;
   const badges: string[] = [];
@@ -88,6 +91,8 @@ export default async function StoryEditorPage({ params }: { params: Promise<{ id
           <span>· {story.storyId}</span>
         </div>
       </header>
+
+      <AuthorsBox storyId={id} initial={authors} />
 
       <ToastProvider>
         <EditorShell

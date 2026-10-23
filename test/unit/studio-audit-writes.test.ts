@@ -239,6 +239,13 @@ const SCENARIOS: Record<string, Scenario> = {
     expect(res.status).toBe(200);
     expectAuditedWrite(/^INSERT INTO rigwire\.editorial_overrides/, 'undo');
   },
+  'POST /api/studio/authors': async () => {
+    const res = await post('@/app/api/studio/authors/route', { storyId: STORY_ID, authors: 'By Pranav Puri and Yash Aggarwal' });
+    expect(res.status).toBe(200);
+    const a = expectAuditedWrite(/^INSERT INTO rigwire\.story_authors/, 'authors_edit');
+    expect(a.storyId).toBe(STORY_ID);
+    expect((a.after as { json: Record<string, unknown> }).json.authors).toBe('Pranav Puri and Yash Aggarwal');
+  },
   'POST /api/studio/create': async () => {
     const res = await post('@/app/api/studio/create/route', { headline: 'Hand-written', body: 'Body text' });
     expect(res.status).toBe(200);

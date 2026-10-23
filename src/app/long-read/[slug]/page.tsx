@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 
 import { BRAND } from '@/lib/brand';
 import { CACHE_TAGS, READER_CACHE_TTL } from '@/lib/cache';
+import { getAuthors } from '@/lib/studio/authors';
 import { getStoryDetail, UUID_RE } from '@/lib/worldwide/detail';
 import { StoryRead } from '@/components/long-read/story-read';
 import { getStoryVideo } from '@/lib/worldwide/anchor-videos';
@@ -26,7 +27,10 @@ export function generateStaticParams(): { slug: string }[] {
 // (generateMetadata + the page body); caching collapses that to one query and
 // serves subsequent renders from cache until READER_CACHE_TTL / an editor edit.
 const getCachedStoryDetail = unstable_cache(
-  (slug: string) => getStoryDetail(slug),
+  async (slug: string) => {
+    const story = await getStoryDetail(slug);
+    return story && { ...story, authors: await getAuthors(slug) };   // editor-set byline (CMS)
+  },
   ['reader-story-detail'],
   { revalidate: READER_CACHE_TTL, tags: [CACHE_TAGS.storyDetail] },
 );
@@ -80,7 +84,9 @@ export default async function ArticlePage({ params }: PageProps) {
     description: story.deck ?? undefined,
     image: story.image ? [story.image] : undefined,
     mainEntityOfPage: `${BRAND.siteUrl}/long-read/${slug}`,
-    author: { '@type': 'Organization', name: BRAND.byline },
+    author: story.authors
+      ? story.authors.split(/\s*(?:,|\band\b|&)\s*/).filter(Boolean).map((name) => ({ '@type': 'Person', name }))
+      : { '@type': 'Organization', name: BRAND.byline },
     publisher: { '@type': 'Organization', name: BRAND.name, logo: { '@type': 'ImageObject', url: `${BRAND.siteUrl}/logo.png` } },
   };
   return (

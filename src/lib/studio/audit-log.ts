@@ -20,6 +20,7 @@ export const CONFIG_AUDIT_ACTIONS = [
   'manual_edit',
   'manual_unpublish',
   'manual_republish',
+  'authors_edit',
   'manual_delete',
   'user_create',
   'user_role',

@@ -13,6 +13,7 @@ import { MANUAL_TOPICS } from '@/lib/studio/topics';
 interface FormState {
   headline: string;
   dek: string;
+  authors: string;
   body: string;
   topic: string;
   country: string;
@@ -23,6 +24,7 @@ interface FormState {
 const EMPTY: FormState = {
   headline: '',
   dek: '',
+  authors: '',
   body: '',
   topic: 'OTHER',
   country: '',
@@ -59,6 +61,7 @@ export default function ManualForm() {
         body: JSON.stringify({
           headline: form.headline,
           dek: form.dek,
+          authors: form.authors,
           body: form.body,
           topic: form.topic,
           country: form.country,
@@ -106,8 +109,14 @@ export default function ManualForm() {
       </div>
 
       <div style={{ marginBottom: 14 }}>
-        <label style={label}>Dek</label>
-        <input style={field} value={form.dek} onChange={(e) => set('dek', e.target.value)} placeholder="Optional standfirst / subheading" />
+        <label style={label}>Strap</label>
+        <input style={field} value={form.dek} onChange={(e) => set('dek', e.target.value)} placeholder="Optional one-line summary under the headline" />
+      </div>
+
+      <div style={{ marginBottom: 14 }}>
+        <label style={label}>Authors</label>
+        <input style={field} value={form.authors} onChange={(e) => set('authors', e.target.value)}
+          placeholder="e.g. Pranav Puri and Yash Aggarwal (empty = Democracy News Live Desk)" />
       </div>
 
       <div style={{ marginBottom: 14 }}>

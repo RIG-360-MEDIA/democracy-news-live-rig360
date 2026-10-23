@@ -26,6 +26,7 @@ export interface StoryCard {
   dominantEntity: string | null; // top entity — the B+ hub grouping key
   pinned?: boolean; // editor pinned this as the top headline (CMS override) — exempt from auto lead rules
   pinnedRank?: number | null; // its slot in Top Stories (1 = lead) while pinned
+  authors?: string | null; // editor-set byline (rigwire.story_authors); null = the house byline
 }
 
 /** A B+ event-hub: a mega-event's angle-stories under one umbrella (display-only). */

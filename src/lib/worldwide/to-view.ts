@@ -72,7 +72,7 @@ export function toCardView(card: StoryCard): CardView {
     kicker: kickerFor(card),
     title: card.title,
     deck: cleanDeck(card.deck),
-    author: BRAND.byline,
+    author: card.authors || BRAND.byline,
     authorPhoto: '',
     readTime: estReadTime(card),
     image: card.image ?? pickFallback(card.id),
