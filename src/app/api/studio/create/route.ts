@@ -32,10 +32,10 @@ export async function POST(req: Request) {
     const field = String(parsed.error.issues[0]?.path[0] ?? 'input');
     return fail('400', `Invalid ${field}`, 400);
   }
-  const { headline, body, dek, country, image_url: imageUrl, topic, importance } = parsed.data;
+  const { headline, body, dek, country, image_url: imageUrl, topic, importance, authors } = parsed.data;
 
   try {
-    const id = await createManualStory({ headline, dek, body, topic, country, imageUrl, importance }, editor);
+    const id = await createManualStory({ headline, dek, body, topic, country, imageUrl, importance }, editor, authors);
     // A new manual story can surface on the front page — bust the reader cache now.
     revalidateTag(CACHE_TAGS.frontPage);
     revalidateStoryPage(id);

@@ -1,6 +1,6 @@
 'use client';
 
-// Per-card controls for a manual story in "Recently created" (F9): Edit (inline), Unpublish /
+// Per-card controls for a manual story in "Recently created" (F9): Edit (full-screen editor), Unpublish /
 // Republish (editor), Delete (admin only — a soft delete; the row is kept, the story disappears).
 // Every button calls /api/studio/manual/[id], which audits the change in the same transaction.
 
@@ -9,11 +9,18 @@ import { useState } from 'react';
 
 import type { PromptLeakLevel } from '@/lib/studio/prompt-leak';
 
+import ManualEditModal from './manual-edit-modal';
+
 interface ManualStoryControlsProps {
   id: string;
   headline: string;
   dek: string | null;
+  authors: string;
   body: string;
+  topic: string;
+  country: string | null;
+  imageUrl: string | null;
+  importance: number;
   status: string;
   canDelete: boolean;
   /** Headline/dek reads like an internal prompt: 'leak' is hidden from readers, 'suspect' is not. */
@@ -35,16 +42,6 @@ const btn: React.CSSProperties = {
   color: '#333',
   cursor: 'pointer',
 };
-const field: React.CSSProperties = {
-  width: '100%',
-  fontSize: 12.5,
-  padding: '5px 7px',
-  border: '1px solid #ddd',
-  borderRadius: 5,
-  marginBottom: 6,
-  fontFamily: 'inherit',
-};
-
 async function send(id: string, method: 'PATCH' | 'DELETE', body?: Record<string, unknown>): Promise<string | null> {
   try {
     const res = await fetch(`/api/studio/manual/${id}`, {
@@ -64,7 +61,12 @@ export default function ManualStoryControls({
   id,
   headline,
   dek,
+  authors,
   body,
+  topic,
+  country,
+  imageUrl,
+  importance,
   status,
   canDelete,
   promptFlag,
@@ -73,7 +75,6 @@ export default function ManualStoryControls({
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [draft, setDraft] = useState({ headline, dek: dek ?? '', body });
   const live = status.startsWith('PUBLISHABLE');
 
   async function run(method: 'PATCH' | 'DELETE', payload?: Record<string, unknown>) {
@@ -117,19 +118,17 @@ export default function ManualStoryControls({
         </p>
       )}
       {editing ? (
-        <div style={{ marginTop: 6 }}>
-          <input aria-label="Headline" style={field} value={draft.headline} onChange={(e) => setDraft({ ...draft, headline: e.target.value })} />
-          <input aria-label="Dek" style={field} value={draft.dek} placeholder="Dek (optional)" onChange={(e) => setDraft({ ...draft, dek: e.target.value })} />
-          <textarea aria-label="Body" style={{ ...field, minHeight: 120 }} value={draft.body} onChange={(e) => setDraft({ ...draft, body: e.target.value })} />
-          <div style={{ display: 'flex', gap: 6 }}>
-            <button type="button" style={btn} disabled={busy} onClick={() => void run('PATCH', { headline: draft.headline, dek: draft.dek, body: draft.body })}>
-              {busy ? 'Saving…' : 'Save'}
-            </button>
-            <button type="button" style={btn} disabled={busy} onClick={() => setEditing(false)}>
-              Cancel
-            </button>
-          </div>
-        </div>
+        <ManualEditModal
+          id={id}
+          live={live}
+          initial={{ headline, dek: dek ?? '', authors, body, topic, country: country ?? '', image_url: imageUrl ?? '',
+                     importance: String(importance) }}
+          onClose={() => setEditing(false)}
+          onSaved={() => {
+            setEditing(false);
+            router.refresh();
+          }}
+        />
       ) : (
         <div style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
           <button type="button" style={btn} disabled={busy} onClick={() => setEditing(true)}>

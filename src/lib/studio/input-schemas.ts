@@ -88,6 +88,7 @@ export const createSchema = z.object({
   headline: requiredText(INPUT_LIMITS.headline),
   body: requiredText(INPUT_LIMITS.body),
   dek: optionalText(INPUT_LIMITS.dek),
+  authors: z.string().max(220).nullish().transform((v) => v ?? ''),   // byline; '' = house byline
   country: optionalText(INPUT_LIMITS.country),
   image_url: imageUrl.nullish().transform((v) => (v ? v : null)),
   // Unknown topics fall back to OTHER (historic behaviour; the form only offers valid ones).
@@ -114,6 +115,7 @@ export const manualPatchSchema = z
     headline: requiredText(INPUT_LIMITS.headline).optional(),
     body: requiredText(INPUT_LIMITS.body).optional(),
     dek: optionalText(INPUT_LIMITS.dek).optional(),
+    authors: z.string().max(220).optional(),
     country: optionalText(INPUT_LIMITS.country).optional(),
     image_url: imageUrl
       .nullable()
