@@ -15,6 +15,8 @@ import { storyImg, useImageFallbackRepair } from '@/lib/worldwide/story-img';
 import { AroundTheWorld } from './around-the-world';
 import { isWorldScope } from './worldwide-scope-data';
 import { useEditMode } from './edit-mode';
+import { slotByRank } from '@/lib/studio/pins';
+
 import { StoryPuck } from './story-puck';
 import { VideoBand } from './video-band';
 import type { Video } from './videos-data';
@@ -67,8 +69,8 @@ export function LongReadPage({ data, videos }: { data: FrontPage; videos: readon
 
   let pool = cardPool(data.topStories);
 
-  // Editor pins are a deliberate top-headline choice (CMS "★ Top headline"). They lead in
-  // pin order and are EXEMPT from the automated lead rules below — those rules still apply
+  // Editor pins are a deliberate placement (CMS "★ Top headline" or a drag in Curate). Each keeps
+  // its pinned slot and is EXEMPT from the automated lead rules below — those rules still apply
   // unchanged to the machine's own picks (the non-pinned remainder).
   const pinnedLead = pool.filter((c) => c.pinned);
   let auto = pool.filter((c) => !c.pinned);
@@ -91,8 +93,8 @@ export function LongReadPage({ data, videos }: { data: FrontPage; videos: readon
   const stale = heroHead.filter((c) => c.freshnessSeconds > FRESH_S);
   auto = [...fresh, ...stale, ...auto.slice(HERO_SLOTS)];
 
-  // Pins lead; automation fills the rest.
-  pool = [...pinnedLead, ...auto];
+  // Each pin holds its exact slot (1 = lead); automation fills every other slot.
+  pool = slotByRank(pinnedLead, auto);
 
   const heroPool = pool.slice(1); // lead renders pool[0]; the rest fill the grid
 

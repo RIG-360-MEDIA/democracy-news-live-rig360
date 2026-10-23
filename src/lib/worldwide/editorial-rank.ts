@@ -2,7 +2,7 @@
 // Empty overrides + neutral weights ⇒ the pool order is pure automation.
 //
 //   killed → hide everywhere · edited_* → replace headline/deck/image · importance_delta → re-rank ·
-//   active pin → +10000 boost (leads Top Stories; expired pins don't, F10) ·
+//   active pin → +10000 boost (kept in Top Stories; ranking.ts slots it at its pinned rank) ·
 //   topic/country weights → multiplier on importance.
 //
 // Pure: returns new cards sorted by importance (desc); inputs are never mutated.
@@ -55,6 +55,7 @@ export function rankWithOverrides(
         deck: o?.editedDek ?? c.deck,
         importance,
         pinned,
+        pinnedRank: pinned ? o?.pinnedRank ?? 1 : null,
       };
     })
     .sort((a, b) => b.importance - a.importance);

@@ -106,7 +106,7 @@ const db = vi.hoisted(() => {
 vi.mock('@/lib/db', () => ({ sql: db.sql, sqlAnalytics: db.sql }));
 
 import { applyOverride, killStory, pinStory } from '@/lib/studio/overrides';
-import { isPinActive, MAX_REORDER, PIN_TTL_HOURS, planReorder, validateOrder } from '@/lib/studio/pins';
+import { isPinActive, MAX_REORDER, PIN_TTL_HOURS, planReorder, slotByRank, validateOrder } from '@/lib/studio/pins';
 import { pinSetToken, ReorderConflictError, reorderTopStories } from '@/lib/studio/reorder';
 
 const ids = {
@@ -147,6 +147,21 @@ describe('planReorder / validateOrder', () => {
     expect(plan.pin).toEqual([{ storyId: ids.A, rank: 1 }, { storyId: ids.X, rank: 2 }]);
     expect(plan.pin.filter((p) => p.rank === 1)).toHaveLength(1);
     expect(plan.unpin).toEqual([ids.Y]);
+  });
+
+  it('pins ONLY the dragged stories (plus ones already pinned), each at its new slot - not the whole list', () => {
+    // list A,B,X,Z: the editor dragged A to the top; X was already pinned; B and Z just shifted.
+    const plan = planReorder([ids.A, ids.B, ids.X, ids.Z], [ids.X], [ids.A]);
+    expect(plan.pin).toEqual([{ storyId: ids.A, rank: 1 }, { storyId: ids.X, rank: 3 }]);
+    expect(plan.unpin).toEqual([]);
+    expect(plan.pin.some((p) => p.storyId === ids.B || p.storyId === ids.Z)).toBe(false);
+  });
+
+  it('slotByRank: a pin holds its exact slot, the machine order fills the rest', () => {
+    const auto: Array<{ id: string; pinnedRank: number | null }> = ['a1', 'a2', 'a3', 'a4'].map((id) => ({ id, pinnedRank: null }));
+    const pinned = [{ id: 'P3', pinnedRank: 3 }, { id: 'P1', pinnedRank: 1 }, { id: 'P9', pinnedRank: 9 }];
+    expect(slotByRank(pinned, auto).map((c) => c.id)).toEqual(['P1', 'a1', 'P3', 'a2', 'a3', 'a4', 'P9']);
+    expect(slotByRank([], auto).map((c) => c.id)).toEqual(['a1', 'a2', 'a3', 'a4']);
   });
 
   it('rejects empty, duplicate and oversize orders', () => {
