@@ -5,7 +5,7 @@ import { NextResponse } from 'next/server';
 
 import { CACHE_TAGS } from '@/lib/cache';
 import { guardApi } from '@/lib/studio/guard';
-import { createSchema } from '@/lib/studio/input-schemas';
+import { createDraftSchema, createSchema } from '@/lib/studio/input-schemas';
 import { createManualStory } from '@/lib/studio/manual';
 
 export const runtime = 'nodejs';
@@ -27,7 +27,9 @@ export async function POST(req: Request) {
   }
 
   // L1: required headline/body, length caps on every field, http(s)-only image_url, bounded importance.
-  const parsed = createSchema.safeParse(raw);
+  // A draft (draft: true) needs only a headline: it is saved for later and never reaches the site.
+  const draft = (raw as { draft?: unknown } | null)?.draft === true;
+  const parsed = (draft ? createDraftSchema : createSchema).safeParse(raw);
   if (!parsed.success) {
     const field = String(parsed.error.issues[0]?.path[0] ?? 'input');
     return fail('400', `Invalid ${field}`, 400);
@@ -35,10 +37,12 @@ export async function POST(req: Request) {
   const { headline, body, dek, country, image_url: imageUrl, topic, importance } = parsed.data;
 
   try {
-    const id = await createManualStory({ headline, dek, body, topic, country, imageUrl, importance }, editor);
-    // A new manual story can surface on the front page — bust the reader cache now.
-    revalidateTag(CACHE_TAGS.frontPage);
-    revalidateStoryPage(id);
+    const id = await createManualStory({ headline, dek, body, topic, country, imageUrl, importance }, editor,
+                                       draft ? 'DRAFT' : 'PUBLISHABLE');
+    if (!draft) {                                     // a new live manual story can surface on the front page now
+      revalidateTag(CACHE_TAGS.frontPage);
+      revalidateStoryPage(id);
+    }
     return NextResponse.json({ ok: true, data: { id }, error: null });
   } catch (e: unknown) {
     console.error('[studio/create] failed', { editor, error: e });

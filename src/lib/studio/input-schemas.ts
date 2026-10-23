@@ -107,6 +107,12 @@ export const createSchema = z.object({
 });
 export type CreateInput = z.infer<typeof createSchema>;
 
+/** POST /api/studio/create with draft: true - saved for later, never on the site. Only a headline is needed. */
+export const createDraftSchema = createSchema.extend({
+  body: z.string().trim().max(INPUT_LIMITS.body).nullish().transform((v) => v ?? ''),
+  draft: z.literal(true),
+});
+
 /** PATCH /api/studio/manual/[id] (F9): any subset of the editable fields and/or a publish-state flip.
  *  Deleting is NOT possible here — it is the admin-only DELETE. Unknown keys are rejected. */
 export const manualPatchSchema = z
@@ -121,7 +127,7 @@ export const manualPatchSchema = z
       .optional(),
     topic: z.enum(MANUAL_TOPICS).optional(),
     importance: z.number().min(0).max(INPUT_LIMITS.maxImportance).optional(),
-    status: z.enum(['PUBLISHABLE', 'UNPUBLISHED']).optional(),
+    status: z.enum(['PUBLISHABLE', 'UNPUBLISHED']).optional(),   // a DRAFT is published with PUBLISHABLE
   })
   .strict()
   .refine((v) => Object.values(v).some((f) => f !== undefined), { message: 'Nothing to change' });

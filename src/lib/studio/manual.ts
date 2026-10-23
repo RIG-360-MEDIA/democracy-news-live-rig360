@@ -62,13 +62,13 @@ function toManualStory(r: ManualStoryRow): ManualStory {
 /** The audit `after` for a manual story (L2): every field except the body, which is recorded as its
  *  length + sha256 — enough to prove what was published without copying the full text into the
  *  append-only ledger (the story row itself holds the body). */
-function auditSnapshot(fields: ManualStoryInput): Record<string, unknown> {
+function auditSnapshot(fields: ManualStoryInput, status: string): Record<string, unknown> {
   const { body, ...rest } = fields;
   return {
     ...rest,
     bodyLength: body.length,
     bodySha256: createHash('sha256').update(body, 'utf8').digest('hex'),
-    status: 'PUBLISHABLE',
+    status,
   };
 }
 
@@ -77,6 +77,7 @@ function auditSnapshot(fields: ManualStoryInput): Record<string, unknown> {
 export async function createManualStory(
   fields: ManualStoryInput,
   editorId: string,
+  status: 'PUBLISHABLE' | 'DRAFT' = 'PUBLISHABLE',   // a DRAFT is saved for later and never surfaces
 ): Promise<string> {
   return sql.begin(async (tx) => {
     const rows = (await tx`
@@ -87,7 +88,7 @@ export async function createManualStory(
               -- Set explicitly, not left to the column default: manualStoryCards (manual-feed.ts)
               -- only surfaces rows matching status LIKE 'PUBLISHABLE%', so a changed default would
               -- silently make every new manual story invisible.
-              'PUBLISHABLE')
+              ${status})
       RETURNING id
     `) as unknown as Array<{ id: string }>;
     const id = rows[0].id;
@@ -96,7 +97,7 @@ export async function createManualStory(
       action: 'manual_create',
       storyId: id,
       before: null,
-      after: auditSnapshot(fields),
+      after: auditSnapshot(fields, status),
     });
     return id;
   }) as Promise<string>;

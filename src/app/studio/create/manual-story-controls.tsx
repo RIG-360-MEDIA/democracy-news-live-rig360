@@ -75,6 +75,7 @@ export default function ManualStoryControls({
   const [error, setError] = useState<string | null>(null);
   const [draft, setDraft] = useState({ headline, dek: dek ?? '', body });
   const live = status.startsWith('PUBLISHABLE');
+  const isDraft = status === 'DRAFT';
 
   async function run(method: 'PATCH' | 'DELETE', payload?: Record<string, unknown>) {
     setBusy(true);
@@ -98,7 +99,7 @@ export default function ManualStoryControls({
     <div style={{ marginTop: 6 }}>
       {!live && (
         <span style={{ fontSize: 9, fontWeight: 800, color: '#8a6d1a', background: '#fff4d6', padding: '2px 6px', borderRadius: 4 }}>
-          UNPUBLISHED
+          {isDraft ? 'DRAFT - NOT ON THE SITE' : 'UNPUBLISHED'}
         </span>
       )}
       {promptFlag !== 'none' && (
@@ -116,10 +117,19 @@ export default function ManualStoryControls({
           {PROMPT_FLAG_TEXT[promptFlag]}
         </p>
       )}
-      {editing ? (
+      {isDraft ? (
+        <div style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
+          <a href={`/studio/create?draft=${id}`} style={{ ...btn, textDecoration: 'none' }}>Continue editing</a>
+          {canDelete && (
+            <button type="button" style={{ ...btn, color: '#a8141a', borderColor: '#f0c4c2' }} disabled={busy} onClick={remove}>
+              Delete
+            </button>
+          )}
+        </div>
+      ) : editing ? (
         <div style={{ marginTop: 6 }}>
           <input aria-label="Headline" style={field} value={draft.headline} onChange={(e) => setDraft({ ...draft, headline: e.target.value })} />
-          <input aria-label="Dek" style={field} value={draft.dek} placeholder="Dek (optional)" onChange={(e) => setDraft({ ...draft, dek: e.target.value })} />
+          <input aria-label="Strap" style={field} value={draft.dek} placeholder="Strap (optional)" onChange={(e) => setDraft({ ...draft, dek: e.target.value })} />
           <textarea aria-label="Body" style={{ ...field, minHeight: 120 }} value={draft.body} onChange={(e) => setDraft({ ...draft, body: e.target.value })} />
           <div style={{ display: 'flex', gap: 6 }}>
             <button type="button" style={btn} disabled={busy} onClick={() => void run('PATCH', { headline: draft.headline, dek: draft.dek, body: draft.body })}>

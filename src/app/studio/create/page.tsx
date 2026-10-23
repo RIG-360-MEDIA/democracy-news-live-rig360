@@ -22,10 +22,15 @@ function worstLeak(headline: string, dek: string | null) {
   return levels.includes('suspect') ? ('suspect' as const) : ('none' as const);
 }
 
-export default async function Page() {
+export default async function Page({ searchParams }: { searchParams: Promise<{ draft?: string }> }) {
   const editor = await guardPage('editor');
 
   const recent = await listManualStories(30);
+  // ?draft=<id>: reopen a saved draft in the form (only a DRAFT - a live story is edited from its card).
+  const { draft: draftParam } = await searchParams;
+  const d = recent.find((s) => s.id === draftParam && s.status === 'DRAFT');
+  const draft = d ? { id: d.id, headline: d.headline, dek: d.dek ?? '', body: d.body, topic: d.topic, country: d.country ?? '',
+                      image_url: d.imageUrl ?? '', importance: String(d.importance) } : null;
 
   // Door B (AI topic drafts) is shown only when a real box is configured — or in dev, where mock mode
   // is fine for testing. In production without BOX_STUDIO_URL the dispatch client is in mock mode, so
@@ -54,7 +59,7 @@ export default async function Page() {
           : 'Author a story by hand. (AI topic drafts are unavailable until the generation service is configured.)'}
       </p>
 
-      <CreateClient initialJobs={jobs} doorBEnabled={doorBEnabled} />
+      <CreateClient initialJobs={jobs} doorBEnabled={doorBEnabled} draft={draft} />
 
       <h2 style={{ fontFamily: 'var(--font-fraunces), Georgia, serif', fontSize: 18, fontWeight: 600, margin: '30px 0 10px' }}>
         Recently created
@@ -63,11 +68,11 @@ export default async function Page() {
         {recent.map((s) => (
           <CmsCard
             key={s.id}
-            href={`/long-read/${s.id}`}
+            href={s.status === 'DRAFT' ? `/studio/create?draft=${s.id}` : `/long-read/${s.id}`}
             image={s.imageUrl}
             kicker={`${s.topic} · ${countryName(s.country) || s.country || 'XX'} · imp ${s.importance}`}
             headline={s.headline}
-            badge={{ label: 'MANUAL', bg: '#e6f0ff', fg: '#1b4b91' }}
+            badge={s.status === 'DRAFT' ? { label: 'DRAFT', bg: '#fff4d6', fg: '#8a6d1a' } : { label: 'MANUAL', bg: '#e6f0ff', fg: '#1b4b91' }}
             dim={!s.status.startsWith('PUBLISHABLE')}
             footer={
               <div>

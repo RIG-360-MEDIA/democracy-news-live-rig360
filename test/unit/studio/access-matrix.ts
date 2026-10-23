@@ -42,8 +42,10 @@ export const API_ROUTES: Record<string, Partial<Record<Method, RouteRule>>> = {
   '/api/studio/videos/[id]': { PATCH: { role: 'editor', write: 'audited' } },
   '/api/studio/videos/[id]/approve': { POST: { role: 'editor', write: 'audited' } },
   '/api/studio/videos/[id]/reject': { POST: { role: 'editor', write: 'audited' } },
+  '/api/studio/import': { POST: { role: 'editor' } },              // reads a document; stores at most its first picture
   '/api/studio/media/cluster': { GET: { role: 'editor' } },
   '/api/studio/media/search': { GET: { role: 'editor' } },
+  '/api/studio/media/upload': { POST: { role: 'editor' } },        // an image file; not a story change (no audit row)
   '/api/studio/override': { POST: { role: 'editor', write: 'audited' } },
   '/api/studio/reorder': { POST: { role: 'editor', write: 'audited' } },
   '/api/studio/weights': { GET: { role: 'admin' }, POST: { role: 'admin', write: 'audited' } },
