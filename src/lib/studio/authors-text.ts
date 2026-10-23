@@ -1,4 +1,4 @@
-// A story's authors as typed by an editor: "By Pranav Puri and Yash Aggarwal" -> "Pranav Puri and Yash Aggarwal".
+// A story's authors as typed by an editor: "By A. Writer and B. Writer" -> "A. Writer and B. Writer".
 // '' means "no authors set" (the reader shows the house byline). DB-free, so it is unit-testable.
 export const AUTHORS_MAX = 200;
 

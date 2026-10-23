@@ -28,7 +28,7 @@ export default function AuthorsBox({ storyId, initial }: { storyId: string; init
     <div className="mb-5 flex flex-wrap items-center gap-2">
       <label htmlFor="story-authors" className="font-mono text-ui-sm uppercase tracking-wider text-studio-muted">Authors</label>
       <input id="story-authors" value={value} onChange={(e) => setValue(e.target.value)}
-        placeholder="e.g. Pranav Puri and Yash Aggarwal (empty = Democracy News Live Desk)"
+        placeholder="Democracy News Live Desk"
         className="min-w-[320px] flex-1 border border-studio-rule bg-studio-paper px-2 py-1 font-sans text-ui-md text-studio-ink outline-none" />
       <button type="button" onClick={() => void save()} disabled={state === 'saving' || value.trim() === saved}
         className="border border-studio-rule px-3 py-1 font-sans text-ui-sm font-semibold text-studio-ink disabled:opacity-50">
