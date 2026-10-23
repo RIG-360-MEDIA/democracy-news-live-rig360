@@ -32,7 +32,7 @@ export interface CurateActions {
   pin: (storyId: string, rank: number) => Promise<ActionResult>;
   /** Replace the whole Top Stories pin set with this order (rank = index + 1), atomically.
    *  `pinToken` is the pin set this client last saw; the server answers 409 if it has changed. */
-  reorder: (order: ReadonlyArray<string>, pinToken: string) => Promise<ActionResult & { pinToken?: string }>;
+  reorder: (order: ReadonlyArray<string>, pinToken: string, moved: ReadonlyArray<string>) => Promise<ActionResult & { pinToken?: string }>;
   /** Replace a card's headline (locks the story against the pipeline). */
   editHeadline: (storyId: string, headline: string) => Promise<ActionResult>;
   /** Replace a card's thumbnail/hero image URL ('' clears back to the machine's). */
@@ -44,8 +44,8 @@ export function useCurateActions(): CurateActions {
     (storyId: string, rank: number) => postJson('/api/studio/override', { kind: 'pin', storyId, rank }),
     [],
   );
-  const reorder = useCallback(async (order: ReadonlyArray<string>, pinToken: string) => {
-    const res = await postJson('/api/studio/reorder', { order: [...order], expectedPinToken: pinToken });
+  const reorder = useCallback(async (order: ReadonlyArray<string>, pinToken: string, moved: ReadonlyArray<string>) => {
+    const res = await postJson('/api/studio/reorder', { order: [...order], expectedPinToken: pinToken, moved: [...moved] });
     const next = (res.data as { pinToken?: unknown } | undefined)?.pinToken;
     return { ok: res.ok, error: res.error, pinToken: typeof next === 'string' ? next : undefined };
   }, []);

@@ -16,6 +16,7 @@ import { getWeights } from '@/lib/studio/weights';
 
 import { forcedStoryIds, rankWithOverrides } from './editorial-rank';
 import { groupIntoHubs } from './eventhub';
+import { slotByRank } from '@/lib/studio/pins';
 import { placeManualCards } from './manual-importance';
 import { scoreStory, type ScoringKnobs } from './scoring';
 import { applySectionLayout, SECTION_TOPICS, sectionOf } from './sections';
@@ -371,22 +372,23 @@ export async function getFrontPage(scope: string): Promise<FrontPage> {
 
   // Top Stories — group angle-stories into B+ hubs, then diversity-cap (≤2 per real topic; OTHER uncapped).
   // Editor pins stay STANDALONE: never absorbed into a hub (where a fresher hub-mate would replace the
-  // pinned story as the displayed card) and exempt from the diversity cap. They lead via +pinBoost.
+  // pinned story as the displayed card) and exempt from the diversity cap. Each sits at its EXACT pinned
+  // slot (slotByRank); the machine order fills every other slot, so pinning #1 freezes only #1.
   const pinnedUnits = pool.filter((c) => c.pinned);
   const rest = pinnedUnits.length ? pool.filter((c) => !c.pinned) : pool;
-  const units = [...pinnedUnits, ...groupIntoHubs(rest)].sort((a, b) => b.importance - a.importance);
+  const units = groupIntoHubs(rest).sort((a, b) => b.importance - a.importance);
   const perTopic = new Map<string, number>();
-  const topStories: Array<StoryCard | EventHub> = [];
+  const autoTop: Array<StoryCard | EventHub> = [];
   for (const u of units) {
-    const isPinned = !('kind' in u) && u.pinned === true;
-    if (!isPinned && u.topic !== 'OTHER') {
+    if (u.topic !== 'OTHER') {
       const n = perTopic.get(u.topic) ?? 0;
       if (n >= 2) continue;
       perTopic.set(u.topic, n + 1);
     }
-    topStories.push(u);
-    if (topStories.length >= TOP_STORIES_MAX) break;
+    autoTop.push(u);
+    if (autoTop.length >= TOP_STORIES_MAX) break;
   }
+  const topStories = slotByRank<StoryCard | EventHub>(pinnedUnits, autoTop).slice(0, Math.max(TOP_STORIES_MAX, pinnedUnits.length));
 
   // Ids already surfaced in Top Stories (incl. hub members) — dedupe BOTH the topic sections and
   // Around the World against these, so no story ever appears twice on one screen.

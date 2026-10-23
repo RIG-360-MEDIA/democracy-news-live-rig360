@@ -1,7 +1,8 @@
 'use client';
 
 // Editor-only overlay: a drag-to-reorder list of the current front-page top stories.
-// On drop, the new order is committed in ONE call to /api/studio/reorder, which replaces the
+// On drop, the new order is committed in ONE call to /api/studio/reorder; only the dragged cards get pinned (at
+// their new slot) - the rest stay machine-ranked. The call replaces the
 // whole pin set in a single transaction (rank 1..n, each pin with an expiry — F10). A failure
 // writes nothing: we toast and revert the list to the last committed order. After a clean
 // commit we router.refresh() so getFrontPage re-applies the pins at read.
@@ -39,6 +40,7 @@ export default function ReorderOverlay({ items, pinToken }: ReorderOverlayProps)
   const dirtyRef = useRef(false);
   const busyRef = useRef(false);
   const pinTokenRef = useRef(pinToken);
+  const draggedRef = useRef<Set<string>>(new Set());          // only these get pinned (planReorder)
   // A router.refresh() after another curate action re-renders with a fresh token — adopt it.
   useEffect(() => {
     pinTokenRef.current = pinToken;
@@ -58,9 +60,9 @@ export default function ReorderOverlay({ items, pinToken }: ReorderOverlayProps)
 
     busyRef.current = true;
     // Only cards whose rank changed show a saving tick; the write itself is all-or-nothing.
-    const moved = current.filter((item, i) => previous[i]?.id !== item.id).map((item) => item.id);
+    const moved = current.filter((item) => draggedRef.current.has(item.id)).map((item) => item.id);
     setPinState((prev) => ({ ...prev, ...Object.fromEntries(moved.map((id) => [id, 'saving' as SaveState])) }));
-    const res = await actions.reorder(current.map((item) => item.id), pinTokenRef.current);
+    const res = await actions.reorder(current.map((item) => item.id), pinTokenRef.current, [...draggedRef.current]);
     const outcome: SaveState = res.ok ? 'saved' : 'error';
     setPinState((prev) => ({ ...prev, ...Object.fromEntries(moved.map((id) => [id, outcome])) }));
     if (!res.ok) {
@@ -71,6 +73,7 @@ export default function ReorderOverlay({ items, pinToken }: ReorderOverlayProps)
       return;
     }
     if (res.pinToken) pinTokenRef.current = res.pinToken;
+    draggedRef.current = new Set();
     committedRef.current = current;
     busyRef.current = false;
     router.refresh();
@@ -95,7 +98,7 @@ export default function ReorderOverlay({ items, pinToken }: ReorderOverlayProps)
       </h2>
       <Reorder.Group axis="y" values={order} onReorder={handleReorder} onPointerUp={handlePointerUp} className="flex flex-col gap-2">
         {order.map((item, i) => (
-          <Reorder.Item key={item.id} value={item}>
+          <Reorder.Item key={item.id} value={item} onDragStart={() => draggedRef.current.add(item.id)}>
             <CurateRow item={item} rank={i + 1} pinState={pinState[item.id] ?? 'idle'} actions={actions} />
           </Reorder.Item>
         ))}

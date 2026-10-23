@@ -20,6 +20,8 @@ const bodySchema = z.object({
     .refine((ids) => new Set(ids).size === ids.length, 'order lists a story more than once'),
   /** pinSetToken of the pin set the client loaded; a mismatch means the page is stale → 409. */
   expectedPinToken: z.string().max(64).optional(),
+  /** The stories the editor actually dragged: only these (and already-pinned ones) get pinned. */
+  moved: z.array(storyIdSchema).max(MAX_REORDER).optional(),
 });
 
 function fail(code: string, message: string, status: number) {
@@ -41,7 +43,7 @@ export async function POST(req: Request) {
 
   const editor = guard.editor.id;
   try {
-    const data = await reorderTopStories(parsed.data.order, editor, parsed.data.expectedPinToken);
+    const data = await reorderTopStories(parsed.data.order, editor, parsed.data.expectedPinToken, parsed.data.moved);
     revalidateTag(CACHE_TAGS.frontPage);
     revalidateTag(CACHE_TAGS.storyDetail);
     return NextResponse.json({ ok: true, data, error: null });

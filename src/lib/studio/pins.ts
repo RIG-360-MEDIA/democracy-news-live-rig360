@@ -42,14 +42,32 @@ export function validateOrder(order: ReadonlyArray<string>): string | null {
 }
 
 /**
- * A reorder REPLACES the whole pin set: every currently pinned story not in the new order is
- * unpinned, and the new order is pinned 1..n. So ranks are unique, there is exactly one rank-1 lead,
- * and no pin from an older arrangement lingers.
+ * A reorder pins ONLY the stories the editor dragged (`moved`) plus those already pinned, each at its
+ * slot in the new order (rank = position + 1, so ranks stay unique). Every other story in the list is
+ * left to the machine ranking - it is NOT frozen (2026-10-23: a reorder used to pin all 12 for 12 h,
+ * so no fresh story could reach Top Stories). A pinned story no longer in the order is unpinned.
+ * `moved` omitted (an older client) = the whole order, the old behaviour.
  */
-export function planReorder(order: ReadonlyArray<string>, currentlyPinned: ReadonlyArray<string>): ReorderPlan {
+export function planReorder(
+  order: ReadonlyArray<string>,
+  currentlyPinned: ReadonlyArray<string>,
+  moved: ReadonlyArray<string> = order,
+): ReorderPlan {
   const next = new Set(order);
+  const keep = new Set([...moved, ...currentlyPinned]);
   return {
     unpin: currentlyPinned.filter((id) => !next.has(id)),
-    pin: order.map((storyId, i) => ({ storyId, rank: i + 1 })),
+    pin: order.flatMap((storyId, i) => (keep.has(storyId) ? [{ storyId, rank: i + 1 }] : [])),
   };
+}
+
+/**
+ * Put pinned stories at their exact slot (rank 1 = first) and fill every other slot with `auto` in its
+ * own order. A rank past the end lands at the end. Pure; used by the ranking and the reader page.
+ */
+export function slotByRank<T extends object>(pinned: ReadonlyArray<T>, auto: ReadonlyArray<T>): T[] {
+  const rank = (c: T): number => (c as { pinnedRank?: number | null }).pinnedRank ?? 1;   // hubs are never pinned
+  const out = [...auto];
+  for (const p of [...pinned].sort((a, b) => rank(a) - rank(b))) out.splice(Math.min(Math.max(rank(p) - 1, 0), out.length), 0, p);
+  return out;
 }
