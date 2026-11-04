@@ -13,7 +13,7 @@ permissions:
   contents: read
 jobs:
   ci:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, rig-ci]   # free runner on <GPU_HOST> (GitHub-hosted minutes unavailable: org billing)
     timeout-minutes: 20
     env:
       NEXT_TELEMETRY_DISABLED: '1'
