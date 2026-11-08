@@ -42,7 +42,7 @@ const bricolage = Bricolage_Grotesque({
 
 export const metadata: Metadata = {
   // Absolute base so relative OG image paths resolve for social scrapers (WhatsApp/X/FB/iMessage).
-  metadataBase: new URL('https://global.democracynewslive.com'),
+  metadataBase: new URL('https://democracynewslive.com'),
   title:       BRAND.key === 'dnl' ? BRAND.name : `${BRAND.name} — ${BRAND.tagline}`,
   description: BRAND.description,
   keywords:    ['news', 'curation', 'global news', 'newsletter', 'independent journalism', 'wire service'],

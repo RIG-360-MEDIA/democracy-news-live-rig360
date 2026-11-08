@@ -28,7 +28,7 @@ describe('robots.txt', () => {
     const rule = Array.isArray(robots.rules) ? robots.rules[0] : robots.rules;
     expect(rule.allow).toBe('/');
     expect(rule.disallow).toEqual(expect.arrayContaining(['/studio', '/curate', '/api/', '/signin']));
-    expect(robots.sitemap).toBe('https://global.democracynewslive.com/sitemap.xml');
+    expect(robots.sitemap).toBe('https://democracynewslive.com/sitemap.xml');
   });
 });
 

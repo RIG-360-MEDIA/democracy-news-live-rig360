@@ -1,5 +1,5 @@
 // Site brand (DNL program P06 D-4). One codebase, two brands: the DNL deployment
-// (DEPLOY_TARGET=dnl → global.democracynewslive.com) must never show the six-mode "Rig Wire" brand.
+// (DEPLOY_TARGET=dnl → democracynewslive.com) must never show the six-mode "Rig Wire" brand.
 // NEXT_PUBLIC_BRAND is inlined at build time by next.config.mjs (from DEPLOY_TARGET) so client
 // components get the same answer as the server.
 
@@ -19,7 +19,7 @@ const DNL: Brand = {
   description:
     'The whole world, gathered into one read — every region’s biggest story today, grounded in the reporting of hundreds of newsrooms.',
   byline: 'Democracy News Live Desk',
-  siteUrl: 'https://global.democracynewslive.com',
+  siteUrl: 'https://democracynewslive.com',
 };
 
 const RIG_WIRE: Brand = {
@@ -29,7 +29,7 @@ const RIG_WIRE: Brand = {
   description:
     'Rig Wire synthesises 247 newsrooms into six reading formats — from a sixty-second pulse to a fourteen-minute report. Same world. Pick your length.',
   byline: 'Rig Wire',
-  siteUrl: 'https://global.democracynewslive.com',
+  siteUrl: 'https://democracynewslive.com',
 };
 
 /** A deck/strapline that is just a brand name is generator boilerplate, not content (P06 D-4). */

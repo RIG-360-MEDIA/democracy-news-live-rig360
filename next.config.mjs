@@ -61,7 +61,17 @@ const nextConfig = {
     ];
   },
   async redirects() {
-    return [{ source: '/favicon.ico', destination: '/icon.png', permanent: true }];
+    return [
+      { source: '/favicon.ico', destination: '/icon.png', permanent: true },
+      // Readers see democracynewslive.com only. /api/* stays on global so the box's
+      // POST to global.democracynewslive.com/api/revalidate keeps working unchanged.
+      {
+        source: '/:path((?!api/).*)',
+        has: [{ type: 'host', value: 'global.democracynewslive.com' }],
+        destination: 'https://democracynewslive.com/:path',
+        permanent: true,
+      },
+    ];
   },
 };
 
