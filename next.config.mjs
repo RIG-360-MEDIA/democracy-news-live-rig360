@@ -1,3 +1,7 @@
+// Fonts come from fonts/google (Google's own CSS + files, vendored) instead of a live fetch at build time:
+// on 10 Nov 2026 Vercel's build machines got answers next/font couldn't parse and every deploy failed.
+process.env.NEXT_FONT_GOOGLE_MOCKED_RESPONSES ??= new URL('./fonts/google/mock.cjs', import.meta.url).pathname;
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
