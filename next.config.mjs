@@ -64,6 +64,13 @@ const nextConfig = {
       },
     ];
   },
+  // DNL home: `/` serves /long-read in place (address bar stays "/"). A routing rewrite, not
+  // middleware, so the cached front page is served without running any function.
+  async rewrites() {
+    return process.env.DEPLOY_TARGET === 'dnl'
+      ? { beforeFiles: [{ source: '/', destination: '/long-read' }] }
+      : [];
+  },
   async redirects() {
     return [
       { source: '/favicon.ico', destination: '/icon.png', permanent: true },

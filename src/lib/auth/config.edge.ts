@@ -141,15 +141,7 @@ export const authConfigEdge: NextAuthConfig = {
       // (0) DNL deploy: expose only the Democracy News Live surfaces; send everything else
       // (the Rig Wire six-mode landing / mode pages) to the DNL home. Runs before all else.
       if (process.env.DEPLOY_TARGET === 'dnl' && !isDnlPath(pathname)) {
-        // The DNL home content lives at /long-read. At the site ROOT, SERVE it in
-        // place (rewrite) so the address bar stays "global.democracynewslive.com/"
-        // with no /long-read suffix. Any other stray (non-DNL) path still
-        // redirects to the home.
-        if (pathname === '/') {
-          const url = new URL(request.nextUrl.href);
-          url.pathname = '/long-read';
-          return NextResponse.rewrite(url);
-        }
+        // `/` is served as /long-read by a next.config rewrite (middleware no longer runs there).
         return hostSafeRedirect('/long-read', request);
       }
 

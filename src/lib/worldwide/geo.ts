@@ -1,5 +1,5 @@
 // Approximate country centroids as [lng, lat], for placing Around-the-World map pins.
-// Projection that matches worldmap-data.ts: x = (lng+180)*1000/360, y = (90-lat)*500/180.
+// Projection that matches public/worldmap-land.svg: x = (lng+180)*1000/360, y = (90-lat)*500/180.
 const CENTROIDS: Record<string, [number, number]> = {
   AE: [54, 24], AF: [66, 33], AL: [20, 41], AM: [45, 40], AR: [-64, -34], AT: [14, 47.5],
   AU: [134, -25], AZ: [48, 40], BA: [18, 44], BD: [90, 24], BE: [4.5, 50.5], BG: [25, 43],

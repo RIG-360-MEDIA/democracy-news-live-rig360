@@ -2,18 +2,21 @@ import { unstable_cache } from 'next/cache';
 
 import { CACHE_TAGS, READER_CACHE_TTL } from '@/lib/cache';
 import { getFrontPage } from '@/lib/worldwide/ranking';
-import { apiScope } from '@/lib/worldwide/to-view';
 import { recentVideos } from '@/lib/worldwide/recent-videos';
 import { LongReadPage } from '@/components/long-read/long-read-page';
 import { getAnchorVideos } from '@/lib/worldwide/anchor-videos';
 
-// SSR against the live _v8 keeper (read-only). force-dynamic so a build without DB
-// connectivity doesn't try to statically render this page.
-export const dynamic = 'force-dynamic';
+// ISR: the front page is rendered once and served from Vercel's CDN until the box's hourly
+// /api/revalidate (or an editor write) purges CACHE_TAGS.frontPage, which is attached to this page
+// through the unstable_cache reads below. It was force-dynamic, so every visit (readers, crawlers,
+// every old-site URL redirected here) re-rendered on the server: 15 Nov 2026 the Hobby team was
+// paused for Fast Origin Transfer (12.75/10 GB) + Active CPU. scripts/check-cache.mjs (postbuild)
+// fails the build if this page stops being ISR. The build renders it once, so the build needs the DB.
+// Must be a literal (Next reads it statically); keep in step with READER_CACHE_TTL's 1800 s default.
+export const revalidate = 1800;
 
-// Cache the Neon read in the Data Cache (keyed by scope) so this force-dynamic
-// page doesn't re-query on every visitor — Neon free tier meters compute-hours.
-// Refreshes at most every READER_CACHE_TTL; editor writes bust it via revalidateTag.
+// Neon read in the Data Cache; refreshes at most every READER_CACHE_TTL; editor writes and the
+// box's publish bust it via revalidateTag.
 const getCachedFrontPage = unstable_cache(
   (scope: string) => getFrontPage(scope),
   ['reader-front-page'],
@@ -35,20 +38,10 @@ export const metadata = {
   description: 'The whole world, gathered into one read — every region’s biggest story today.',
 };
 
-function resolveScope(raw: string | undefined): string {
-  const key = (raw ?? 'world').toLowerCase();
-  if (key === 'world') return 'world';
-  if (/^[a-z]{2}$/.test(key)) return apiScope(key);
-  return 'world';
-}
-
-export default async function Page({
-  searchParams,
-}: {
-  searchParams: Promise<{ scope?: string }>;
-}) {
-  const { scope } = await searchParams;
-  const key = resolveScope(scope);
+// The world edition only: reading ?scope= would make the page dynamic again, and no reader UI
+// links to a scoped edition (ScopeFilter is not rendered). /api/worldwide?scope= still serves them.
+export default async function Page() {
+  const key = 'world';
   let data;
   try {
     data = await getCachedFrontPage(key);

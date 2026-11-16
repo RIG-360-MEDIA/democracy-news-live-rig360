@@ -7,7 +7,8 @@ import { BRAND } from '@/lib/brand';
 import { CACHE_TAGS, READER_CACHE_TTL } from '@/lib/cache';
 import { sqlAnalytics } from '@/lib/db';
 
-export const dynamic = 'force-dynamic';
+// ISR (was force-dynamic: rebuilt on every crawler fetch). Hourly, and purged with the front page.
+export const revalidate = 3600;
 
 const getStoryUrls = unstable_cache(
   async () => {

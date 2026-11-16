@@ -7,7 +7,6 @@ import type { CardView } from '@/lib/worldwide/to-view';
 import { storyImg } from '@/lib/worldwide/story-img';
 import { countryName } from '@/lib/worldwide/country';
 import { pinPercent } from '@/lib/worldwide/geo';
-import { LAND_PATH } from '@/lib/worldwide/worldmap-data';
 
 /* ═════════════════════════════════════════════════════════════════
    AROUND THE WORLD — a live world map. One lead story per country plots as a
@@ -71,16 +70,8 @@ export function AroundTheWorld({ stories }: { stories: CardView[] }) {
             {/* ── DESKTOP: map + country rail ── */}
             <div className="hidden md:grid mt-4" style={{ gridTemplateColumns: 'minmax(0,1fr) 224px', gap: 28, alignItems: 'start' }}>
               <div className="relative" style={{ width: '100%', aspectRatio: '2 / 1' }} onMouseLeave={() => setActiveSlug(null)}>
-                <svg viewBox="0 0 1000 500" width="100%" height="100%" style={{ display: 'block' }} aria-hidden>
-                  <defs>
-                    <clipPath id="atw-land"><path d={LAND_PATH} /></clipPath>
-                    <pattern id="atw-dots" width="7" height="7" patternUnits="userSpaceOnUse">
-                      <circle cx="1.5" cy="1.5" r="1.15" fill="#544838" />
-                    </pattern>
-                  </defs>
-                  <path d={LAND_PATH} fill="#1C1611" />
-                  <rect x="0" y="0" width="1000" height="500" fill="url(#atw-dots)" clipPath="url(#atw-land)" />
-                </svg>
+                {/* world land + dot texture: public/worldmap-land.svg (scripts/gen-worldmap.mjs) */}
+                <img src="/worldmap-land.svg" alt="" width={1000} height={500} style={{ display: 'block', width: '100%', height: '100%' }} />
 
                 {/* pins */}
                 {placed.map(({ s, p }) => {
