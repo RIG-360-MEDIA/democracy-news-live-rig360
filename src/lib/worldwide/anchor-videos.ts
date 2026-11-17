@@ -11,7 +11,7 @@
 
 import { unstable_cache } from 'next/cache';
 
-import { CACHE_TAGS, READER_CACHE_TTL } from '@/lib/cache';
+import { CACHE_TAGS, READER_CACHE_TTL, STORY_CACHE_TTL } from '@/lib/cache';
 import { BULLETIN_PLAYLIST, kickerOf, listPlaylist, storyIdOf, youtubeConfigured } from '@/lib/youtube/client';
 import type { Video } from '@/components/long-read/videos-data';
 
@@ -55,6 +55,11 @@ async function load(): Promise<Video[]> {
 const readPlaylist = unstable_cache(load, ['reader-anchor-videos'],
   { revalidate: READER_CACHE_TTL, tags: [CACHE_TAGS.anchorVideos] });
 
+// Same list, read at the story pages' TTL (a separate entry: a shorter TTL here would make every story
+// page re-render at that rate). Approve/Edit still purge both through the tag.
+const readPlaylistForStories = unstable_cache(load, ['reader-anchor-videos-story'],
+  { revalidate: STORY_CACHE_TTL, tags: [CACHE_TAGS.anchorVideos] });
+
 /** The approved videos, newest first ([] when not configured or unreachable). */
 export async function getAnchorVideos(): Promise<Video[]> {
   if (!BULLETIN_PLAYLIST()) return [];
@@ -63,5 +68,6 @@ export async function getAnchorVideos(): Promise<Video[]> {
 
 /** The video for one story page, if one was approved for it. */
 export async function getStoryVideo(storyId: string): Promise<Video | null> {
-  return (await getAnchorVideos()).find((v) => v.storyId === storyId.toLowerCase()) ?? null;
+  if (!BULLETIN_PLAYLIST()) return null;
+  return (await readPlaylistForStories()).find((v) => v.storyId === storyId.toLowerCase()) ?? null;
 }

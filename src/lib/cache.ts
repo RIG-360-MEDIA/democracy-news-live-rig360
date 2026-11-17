@@ -37,3 +37,9 @@ function ttlFromEnv(): number {
 // Seconds the reader's Neon reads may be served from cache before refetch (default 30 min);
 // /api/revalidate refreshes sooner whenever new data lands.
 export const READER_CACHE_TTL = ttlFromEnv();
+
+// Story pages (/long-read/[slug]) and their reads. The box's hourly publish revalidates the front page,
+// not stories, so this TTL alone refreshes box updates to a story; editor edits and video approvals
+// still purge at once via their tags. 30 min made every visited story re-render up to 48×/day, the
+// largest remaining origin cost after the Nov 2026 Hobby pause. Keep the page's literal in step.
+export const STORY_CACHE_TTL = 10_800;
