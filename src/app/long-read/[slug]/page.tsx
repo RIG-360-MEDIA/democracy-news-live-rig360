@@ -3,7 +3,7 @@ import { unstable_cache } from 'next/cache';
 import { notFound } from 'next/navigation';
 
 import { BRAND } from '@/lib/brand';
-import { CACHE_TAGS, READER_CACHE_TTL } from '@/lib/cache';
+import { CACHE_TAGS, STORY_CACHE_TTL } from '@/lib/cache';
 import { getAuthors } from '@/lib/studio/authors';
 import { getStoryDetail, UUID_RE } from '@/lib/worldwide/detail';
 import { StoryRead } from '@/components/long-read/story-read';
@@ -15,8 +15,9 @@ import { getStoryVideo } from '@/lib/worldwide/anchor-videos';
 // Invalidation: the render reads through getCachedStoryDetail, whose CACHE_TAGS.storyDetail tag is
 // attached to the cached page too — so revalidateTag(storyDetail) (studio kill/edit, the box's
 // /api/revalidate) purges the HTML as well as the data, and a killed story re-renders to 404.
-// Must be a literal (Next reads it statically); keep in step with READER_CACHE_TTL's 1800 s default.
-export const revalidate = 1800;
+// Must be a literal (Next reads it statically); keep in step with STORY_CACHE_TTL. Every cached read
+// below must use STORY_CACHE_TTL too: the page refreshes at the shortest TTL of anything it reads.
+export const revalidate = 10800;
 export const dynamicParams = true;
 
 export function generateStaticParams(): { slug: string }[] {
@@ -25,14 +26,14 @@ export function generateStaticParams(): { slug: string }[] {
 
 // Cache the Neon read (keyed by slug). getStoryDetail is called twice per render
 // (generateMetadata + the page body); caching collapses that to one query and
-// serves subsequent renders from cache until READER_CACHE_TTL / an editor edit.
+// serves subsequent renders from cache until STORY_CACHE_TTL / an editor edit.
 const getCachedStoryDetail = unstable_cache(
   async (slug: string) => {
     const story = await getStoryDetail(slug);
     return story && { ...story, authors: await getAuthors(slug) };   // editor-set byline (CMS)
   },
   ['reader-story-detail'],
-  { revalidate: READER_CACHE_TTL, tags: [CACHE_TAGS.storyDetail] },
+  { revalidate: STORY_CACHE_TTL, tags: [CACHE_TAGS.storyDetail] },
 );
 
 interface PageProps {
