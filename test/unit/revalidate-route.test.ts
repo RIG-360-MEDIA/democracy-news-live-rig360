@@ -50,9 +50,10 @@ describe('POST /api/revalidate', () => {
     const res = await call({ tags: ['frontpage', 'ticker', 'story', 'ticker'] }, `Bearer ${SECRET}`);
     expect(res.status).toBe(200);
     const json = await res.json();
-    expect(json.revalidated).toEqual(['frontpage', 'ticker', 'story']);
+    expect(json.revalidated).toEqual(['frontpage', 'ticker']);
+    expect(json.skipped).toEqual(['story']); // box's hourly 'story' no longer purges every story page
     expect(revalidateTag.mock.calls.map((c) => c[0]).sort()).toEqual(
-      ['reader-front-page', 'reader-story-detail', 'reader-ticker'],
+      ['reader-front-page', 'reader-ticker'],
     );
   });
 });

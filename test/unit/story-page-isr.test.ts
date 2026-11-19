@@ -22,11 +22,11 @@ async function loadPage() {
 describe('/long-read/[slug] caching (E8)', () => {
   beforeEach(() => { getStoryDetail.mockReset(); });
 
-  it('is ISR with the reader TTL, rendered on demand (nothing prerendered at build)', async () => {
+  it('is ISR with the story TTL, rendered on demand (nothing prerendered at build)', async () => {
     const page = await loadPage();
-    const { READER_CACHE_TTL } = await import('@/lib/cache');
-    expect(page.revalidate).toBe(1800);
-    expect(page.revalidate).toBe(READER_CACHE_TTL);
+    const { STORY_CACHE_TTL } = await import('@/lib/cache');
+    expect(page.revalidate).toBe(10800);
+    expect(page.revalidate).toBe(STORY_CACHE_TTL);
     expect(page.dynamicParams).toBe(true);
     expect(page.generateStaticParams()).toEqual([]);
     expect((page as Record<string, unknown>).dynamic).toBeUndefined();

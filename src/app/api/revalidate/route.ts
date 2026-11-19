@@ -36,9 +36,11 @@ export async function POST(req: Request) {
   } catch {
     return NextResponse.json({ ok: false, error: 'invalid body' }, { status: 400 });
   }
-  const revalidated = [...new Set(body.tags)].map((t) => {
-    revalidateTag(REVALIDATE_TAGS[t]);
-    return t;
-  });
-  return NextResponse.json({ ok: true, revalidated, at: new Date().toISOString() });
+  // 'story' is accepted but not acted on: the box sends it every hour, and purging it threw away every
+  // cached story page each hour (~17K ISR writes/day, Nov 2026 Hobby limit). Stories refresh on their
+  // 3 h TTL instead; studio edits/kills and video approvals still purge at once via revalidateTag.
+  const tags = [...new Set(body.tags)];
+  const revalidated = tags.filter((t) => t !== 'story');
+  revalidated.forEach((t) => revalidateTag(REVALIDATE_TAGS[t]));
+  return NextResponse.json({ ok: true, revalidated, skipped: tags.filter((t) => t === 'story'), at: new Date().toISOString() });
 }
